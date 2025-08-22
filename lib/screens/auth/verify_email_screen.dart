@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pinput/pinput.dart';
+import 'package:swim360/screens/auth/login_screen.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
   const VerifyCodeScreen({super.key});
@@ -25,8 +26,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
 
     setState(() {
       _isResending = false;
-      _message = 'A new code has been sent.';
-      _messageColor = Colors.green.shade300;
+      _message = 'A new code has been sent!';
+      _messageColor = Colors.white;
       _code = '';
     });
   }
@@ -35,7 +36,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     if (_code.length != 6 || !_code.contains(RegExp(r'^\d+$'))) {
       setState(() {
         _message = 'Please enter the complete 6-digit code.';
-        _messageColor = Colors.red.shade300;
+        _messageColor = Colors.white;
       });
       return;
     }
@@ -50,14 +51,14 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     setState(() {
       _isVerifying = false;
       _message = 'Code verified successfully!';
-      _messageColor = Colors.green.shade300;
+      _messageColor = Colors.white;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFF24A1F1),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -67,13 +68,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
               decoration: BoxDecoration(
                 color: const Color(0xFF24A1F1),
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
               width: 400,
               child: Column(
@@ -222,16 +216,20 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   const SizedBox(height: 16),
 
                   // Return to sign-in link
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const LoginScreen(),
+                        ),
+                      );
                     },
                     child: const Text(
                       'Return to Sign in',
                       style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
                         color: Colors.white,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),

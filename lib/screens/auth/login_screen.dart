@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
+import 'package:swim360/screens/auth/signup_screen.dart';
+import 'package:swim360/screens/auth/forgot_password_screen.dart';
 
 void main() {
   runApp(const Swim360App());
@@ -69,14 +72,16 @@ class _LoginScreenState extends State<LoginScreen>
 
     // Create staggered animations for 8 items
     _itemAnimations = List.generate(8, (index) {
+      final start = math.min((index * 0.125) + 0.125, 1.0);
+      final end = math.min(start + 0.375, 1.0);
       return Tween<double>(
         begin: 0.0,
         end: 1.0,
       ).animate(CurvedAnimation(
         parent: _itemsController,
         curve: Interval(
-          (index * 0.125) + 0.125, // Start from 0.125 (200ms delay)
-          (index * 0.125) + 0.5, // Duration of 0.375 (600ms)
+          start, // Start clamped
+          end,   // End clamped
           curve: Curves.easeOut,
         ),
       ));
@@ -171,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF24A1F1),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -193,13 +198,6 @@ class _LoginScreenState extends State<LoginScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFF24A1F1),
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 25,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
                 child: Form(
                   key: _formKey,
@@ -268,11 +266,12 @@ class _LoginScreenState extends State<LoginScreen>
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
+                              style: const TextStyle(color: Colors.black),
                               decoration: InputDecoration(
                                 hintText: 'you@example.com',
                                 prefixIcon: const Icon(
                                   Icons.email_outlined,
-                                  color: Colors.grey,
+                                  color: Colors.black,
                                   size: 20,
                                 ),
                                 filled: true,
@@ -328,11 +327,12 @@ class _LoginScreenState extends State<LoginScreen>
                             TextFormField(
                               controller: _passwordController,
                               obscureText: !_isPasswordVisible,
+                              style: const TextStyle(color: Colors.black),
                               decoration: InputDecoration(
                                 hintText: '••••••••',
                                 prefixIcon: const Icon(
                                   Icons.lock_outline,
-                                  color: Colors.grey,
+                                  color: Colors.black,
                                   size: 20,
                                 ),
                                 suffixIcon: IconButton(
@@ -385,17 +385,24 @@ class _LoginScreenState extends State<LoginScreen>
                       _buildAnimatedItem(
                         Container(
                           width: double.infinity,
-                          margin: const EdgeInsets.only(top: 8, bottom: 24),
+                          margin: const EdgeInsets.only(top: 8, bottom: 15),
                           child: Align(
                             alignment: Alignment.centerRight,
                             child: TextButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const ForgotPasswordScreen(),
+                                  ),
+                                );
+                              },
                               child: const Text(
                                 'Forgot Password?',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                             ),
@@ -435,7 +442,7 @@ class _LoginScreenState extends State<LoginScreen>
                       // Sign Up Link
                       _buildAnimatedItem(
                         Container(
-                          margin: const EdgeInsets.only(top: 32),
+                          margin: const EdgeInsets.only(top: 20),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -447,7 +454,14 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const SignupScreen(),
+                                    ),
+                                  );
+                                },
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
@@ -458,7 +472,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
