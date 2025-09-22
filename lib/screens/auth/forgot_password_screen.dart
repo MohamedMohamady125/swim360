@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:swim360/screens/auth/login_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -40,7 +41,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     );
 
     _itemAnimations = List.generate(6, (index) {
-      final start = (index * 0.15);
+      final start = math.min((index * 0.15), 1.0);
       final end = math.min(start + 0.4, 1.0);
       return Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(
@@ -122,7 +123,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFF24A1F1),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -140,13 +141,13 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFF24A1F1),
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 25,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+                  // boxShadow: [
+                  //   BoxShadow(
+                  //     color: Colors.black.withOpacity(0.25),
+                  //     blurRadius: 25,
+                  //     offset: const Offset(0, 10),
+                  //   ),
+                  // ],
                 ),
                 child: Column(
                   children: [
@@ -193,9 +194,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                           TextField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
+                            style: const TextStyle(color: Colors.black),
                             decoration: InputDecoration(
                               hintText: 'you@example.com',
-                              prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                              hintStyle: const TextStyle(color: Colors.grey),
+                              prefixIcon: const Icon(Icons.email_outlined, color: Colors.black),
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
@@ -266,12 +269,19 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                     const SizedBox(height: 24),
                     _buildAnimatedItem(
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const LoginScreen(),
+                            ),
+                          );
+                        },
                         child: const Text(
                           'Return to Sign in',
                           style: TextStyle(
                             color: Colors.white,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),

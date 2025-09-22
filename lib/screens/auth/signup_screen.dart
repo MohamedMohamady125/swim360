@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:swim360/screens/auth/login_screen.dart';
 
 void main() {
   runApp(const Swim360SignupApp());
@@ -76,17 +77,17 @@ class _SignupScreenState extends State<SignupScreen>
     ));
 
     // Create staggered animations for 12 items with clamped intervals
-    _itemAnimations = List.generate(12, (index) {
-      final start = (index * 0.08) + 0.08;
-      final end = math.min(start + 0.25, 1.0);
-      return Tween<double>(
-        begin: 0.0,
-        end: 1.0,
-      ).animate(CurvedAnimation(
-        parent: _itemsController,
-        curve: Interval(start, end, curve: Curves.easeOut),
-      ));
-    });
+      _itemAnimations = List.generate(12, (index) {
+        final start = math.min((index * 0.08) + 0.08, 1.0);
+        final end = math.min(start + 0.25, 1.0);
+        return Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).animate(CurvedAnimation(
+          parent: _itemsController,
+          curve: Interval(start, end, curve: Curves.easeOut),
+        ));
+      });
   }
 
   void _startAnimations() {
@@ -143,7 +144,7 @@ class _SignupScreenState extends State<SignupScreen>
           break;
         default:
           _strengthWidth = 0.0;
-          _strengthColor = Colors.grey;
+          _strengthColor = Colors.black;
       }
     });
   }
@@ -265,7 +266,7 @@ class _SignupScreenState extends State<SignupScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color(0xFF24A1F1),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -287,13 +288,6 @@ class _SignupScreenState extends State<SignupScreen>
                 decoration: BoxDecoration(
                   color: const Color(0xFF24A1F1),
                   borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.25),
-                      blurRadius: 25,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
                 ),
                 child: Form(
                   key: _formKey,
@@ -354,11 +348,12 @@ class _SignupScreenState extends State<SignupScreen>
                             const SizedBox(height: 8),
                             TextFormField(
                               controller: _nameController,
+                              style: const TextStyle(color: Colors.black),
                               decoration: InputDecoration(
                                 hintText: 'John Doe',
                                 prefixIcon: const Icon(
                                   Icons.person_outline,
-                                  color: Colors.grey,
+                                  color: Colors.black,
                                   size: 20,
                                 ),
                                 filled: true,
@@ -409,11 +404,12 @@ class _SignupScreenState extends State<SignupScreen>
                             TextFormField(
                               controller: _emailController,
                               keyboardType: TextInputType.emailAddress,
+                              style: const TextStyle(color: Colors.black),
                               decoration: InputDecoration(
                                 hintText: 'you@example.com',
                                 prefixIcon: const Icon(
                                   Icons.email_outlined,
-                                  color: Colors.grey,
+                                  color: Colors.black,
                                   size: 20,
                                 ),
                                 filled: true,
@@ -467,11 +463,12 @@ class _SignupScreenState extends State<SignupScreen>
                             TextFormField(
                               controller: _passwordController,
                               obscureText: !_isPasswordVisible,
+                              style: const TextStyle(color: Colors.black),
                               decoration: InputDecoration(
                                 hintText: '••••••••',
                                 prefixIcon: const Icon(
                                   Icons.lock_outline,
-                                  color: Colors.grey,
+                                  color: Colors.black,
                                   size: 20,
                                 ),
                                 suffixIcon: IconButton(
@@ -479,7 +476,7 @@ class _SignupScreenState extends State<SignupScreen>
                                     _isPasswordVisible
                                         ? Icons.visibility_off
                                         : Icons.visibility,
-                                    color: Colors.grey,
+                                    color: Colors.black,
                                     size: 20,
                                   ),
                                   onPressed: () {
@@ -578,11 +575,12 @@ class _SignupScreenState extends State<SignupScreen>
                             TextFormField(
                               controller: _confirmPasswordController,
                               obscureText: !_isConfirmPasswordVisible,
+                              style: const TextStyle(color: Colors.black),
                               decoration: InputDecoration(
                                 hintText: '••••••••',
                                 prefixIcon: const Icon(
                                   Icons.lock_outline,
-                                  color: Colors.grey,
+                                  color: Colors.black,
                                   size: 20,
                                 ),
                                 suffixIcon: IconButton(
@@ -590,7 +588,7 @@ class _SignupScreenState extends State<SignupScreen>
                                     _isConfirmPasswordVisible
                                         ? Icons.visibility_off
                                         : Icons.visibility,
-                                    color: Colors.grey,
+                                    color: Colors.black,
                                     size: 20,
                                   ),
                                   onPressed: () {
@@ -673,7 +671,14 @@ class _SignupScreenState extends State<SignupScreen>
                                 ),
                               ),
                               TextButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  Navigator.pushReplacement(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => const LoginScreen(),
+                                    ),
+                                  );
+                                },
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
@@ -684,8 +689,7 @@ class _SignupScreenState extends State<SignupScreen>
                                   'Sign in',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
