@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../events/events_screen.dart';
 import '../profile/profile_screen.dart';
+import '../marketplace/used_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({Key? key}) : super(key: key);
@@ -309,7 +310,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               mainAxisSpacing: 16,
               children: [
                 _buildMarketplaceItem('🏊', getText('item1')),
-                _buildMarketplaceItem('👟', getText('item2')),
+                _buildNavigableMarketplaceItem('👟', getText('item2'), () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const UsedScreen()),
+                  );
+                }),
                 _buildMarketplaceItem('⏱️', getText('item3')),
                 _buildMarketplaceItem('🧴', getText('item4')),
               ],
@@ -340,9 +346,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         children: [
           Text(
             emoji,
-            style: const TextStyle(fontSize: 48),
+            style: const TextStyle(fontSize: 40),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             title,
             style: const TextStyle(
@@ -351,8 +357,58 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               color: Color(0xFF374151),
             ),
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavigableMarketplaceItem(String emoji, String title, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE5E7EB)),
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              emoji,
+              style: const TextStyle(fontSize: 40),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF374151),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 10,
+              color: Color(0xFF6B7280),
+            ),
+          ],
+        ),
       ),
     );
   }

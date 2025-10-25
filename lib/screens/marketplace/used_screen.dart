@@ -1,434 +1,1022 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Used Swimming Gear</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
-        /* Simple transition for view switching */
-        .view-container {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        /* Style for the filter modal */
-        .filter-modal {
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-    </style>
-</head>
-<body class="text-gray-800">
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-    <div id="app-container">
-        <!-- Views will be rendered here by JavaScript -->
-    </div>
+class MarketplaceItem {
+  final String id;
+  final String title;
+  final double price;
+  final String photo;
+  final String description;
+  final String condition;
+  final String size;
+  final String contact;
+  final String userId;
+  bool isSold;
+  final List<String> photos;
 
-    <!-- Floating Action Buttons -->
-    <div id="fab-container" class="fixed bottom-6 right-6 flex flex-col space-y-4 z-40">
-        <button id="my-items-fab" title="My Items" class="w-16 h-16 bg-yellow-500 text-white rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 transition-transform">
-            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-        </button>
-        <button id="sell-item-fab" title="Sell Item" class="w-16 h-16 bg-teal-600 text-white rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 transition-transform">
-            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-        </button>
-    </div>
+  MarketplaceItem({
+    required this.id,
+    required this.title,
+    required this.price,
+    required this.photo,
+    required this.description,
+    required this.condition,
+    required this.size,
+    required this.contact,
+    required this.userId,
+    this.isSold = false,
+    this.photos = const [],
+  });
+}
 
-    <!-- Modals -->
-    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden"></div>
-    <div id="filter-modal" class="fixed inset-0 flex items-center justify-center z-[51] p-4 hidden filter-modal">
-        <!-- Filter Modal Content will be injected here -->
-    </div>
-    <!-- FIX: Increased z-index to ensure it appears above other modals -->
-    <div id="confirm-modal" class="fixed inset-0 flex items-center justify-center z-[52] p-4 hidden">
-        <!-- Confirmation Modal Content will be injected here -->
-    </div>
+class MarketplaceFilters {
+  String searchTerm;
+  String? condition;
+  String? size;
+  double? maxPrice;
 
-    <script>
-        // --- Mock Data and State ---
-        const CURRENT_USER_ID = 'user123';
-        let state = {
-            currentView: 'home',
-            selectedItemId: null,
-            items: [
-                { id: 'item1', title: 'Speedo Fastskin LZR Racer', price: 299.99, photo: 'https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit', description: 'Elite racing suit, used once. Hydrodynamic compression.', condition: 'Excellent', size: 'M', contact: '966512345678', userId: 'user123', isSold: false, photos: ['https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit+1', 'https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit+2'] },
-                { id: 'item2', title: 'Zoggs Predator Goggles', price: 15.00, photo: 'https://placehold.co/400x300/06b6d4/ffffff?text=Goggles', description: 'Good condition, anti-fog coating still strong. Blue lenses.', condition: 'Good', size: 'One Size', contact: '966598765432', userId: 'user456', isSold: false, photos: ['https://placehold.co/400x300/06b6d4/ffffff?text=Goggles+1'] },
-                { id: 'item3', title: 'Arena Powerfin Pro', price: 35.50, photo: 'https://placehold.co/400x300/0f766e/ffffff?text=Fins', description: 'Size L training fins. Great for leg power and ankle flexibility.', condition: 'Fair', size: 'L', contact: '966511122233', userId: 'user123', isSold: false, photos: ['https://placehold.co/400x300/0f766e/ffffff?text=Fins+1', 'https://placehold.co/400x300/0f766e/ffffff?text=Fins+2', 'https://placehold.co/400x300/0f766e/ffffff?text=Fins+3'] },
-                { id: 'item4', title: 'FINIS Snorkel', price: 25.00, photo: 'https://placehold.co/400x300/22c55e/ffffff?text=Snorkel', description: 'Excellent centre-mount snorkel, clear tube. Used lightly.', condition: 'Excellent', size: 'S', contact: '966554433221', userId: 'user789', isSold: true, photos: ['https://placehold.co/400x300/22c55e/ffffff?text=Snorkel+1'] },
-                { id: 'item5', title: 'Water Polo Ball', price: 50.00, photo: 'https://placehold.co/400x300/f97316/ffffff?text=Ball', description: 'Official size 5 water polo ball. Barely used.', condition: 'New', size: 'M', contact: '966512345678', userId: 'user123', isSold: false, photos: ['https://placehold.co/400x300/f97316/ffffff?text=Ball+1', 'https://placehold.co/400x300/f97316/ffffff?text=Ball+2'] },
+  MarketplaceFilters({
+    this.searchTerm = '',
+    this.condition,
+    this.size,
+    this.maxPrice,
+  });
+
+  MarketplaceFilters copyWith({
+    String? searchTerm,
+    String? condition,
+    String? size,
+    double? maxPrice,
+  }) {
+    return MarketplaceFilters(
+      searchTerm: searchTerm ?? this.searchTerm,
+      condition: condition ?? this.condition,
+      size: size ?? this.size,
+      maxPrice: maxPrice ?? this.maxPrice,
+    );
+  }
+}
+
+class UsedScreen extends StatefulWidget {
+  const UsedScreen({Key? key}) : super(key: key);
+
+  @override
+  State<UsedScreen> createState() => _UsedScreenState();
+}
+
+class _UsedScreenState extends State<UsedScreen> with SingleTickerProviderStateMixin {
+  static const String currentUserId = 'user123';
+  
+  String currentView = 'home';
+  String? selectedItemId;
+  MarketplaceFilters filters = MarketplaceFilters();
+  late AnimationController _animationController;
+  late List<Animation<double>> _animations;
+  
+  final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
+  
+  String _selectedCondition = 'New';
+  String _selectedSize = 'M';
+
+  List<MarketplaceItem> items = [
+    MarketplaceItem(
+      id: 'item1',
+      title: 'Speedo Fastskin LZR Racer',
+      price: 299.99,
+      photo: 'https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit',
+      description: 'Elite racing suit, used once. Hydrodynamic compression.',
+      condition: 'Excellent',
+      size: 'M',
+      contact: '966512345678',
+      userId: 'user123',
+      isSold: false,
+      photos: ['https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit+1', 'https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit+2'],
+    ),
+    MarketplaceItem(
+      id: 'item2',
+      title: 'Zoggs Predator Goggles',
+      price: 15.00,
+      photo: 'https://placehold.co/400x300/06b6d4/ffffff?text=Goggles',
+      description: 'Good condition, anti-fog coating still strong. Blue lenses.',
+      condition: 'Good',
+      size: 'One Size',
+      contact: '966598765432',
+      userId: 'user456',
+      isSold: false,
+      photos: ['https://placehold.co/400x300/06b6d4/ffffff?text=Goggles+1'],
+    ),
+    MarketplaceItem(
+      id: 'item3',
+      title: 'Arena Powerfin Pro',
+      price: 35.50,
+      photo: 'https://placehold.co/400x300/0f766e/ffffff?text=Fins',
+      description: 'Size L training fins. Great for leg power and ankle flexibility.',
+      condition: 'Fair',
+      size: 'L',
+      contact: '966511122233',
+      userId: 'user123',
+      isSold: false,
+      photos: ['https://placehold.co/400x300/0f766e/ffffff?text=Fins+1', 'https://placehold.co/400x300/0f766e/ffffff?text=Fins+2', 'https://placehold.co/400x300/0f766e/ffffff?text=Fins+3'],
+    ),
+    MarketplaceItem(
+      id: 'item4',
+      title: 'FINIS Snorkel',
+      price: 25.00,
+      photo: 'https://placehold.co/400x300/22c55e/ffffff?text=Snorkel',
+      description: 'Excellent centre-mount snorkel, clear tube. Used lightly.',
+      condition: 'Excellent',
+      size: 'S',
+      contact: '966554433221',
+      userId: 'user789',
+      isSold: true,
+      photos: ['https://placehold.co/400x300/22c55e/ffffff?text=Snorkel+1'],
+    ),
+    MarketplaceItem(
+      id: 'item5',
+      title: 'Water Polo Ball',
+      price: 50.00,
+      photo: 'https://placehold.co/400x300/f97316/ffffff?text=Ball',
+      description: 'Official size 5 water polo ball. Barely used.',
+      condition: 'New',
+      size: 'M',
+      contact: '966512345678',
+      userId: 'user123',
+      isSold: false,
+      photos: ['https://placehold.co/400x300/f97316/ffffff?text=Ball+1', 'https://placehold.co/400x300/f97316/ffffff?text=Ball+2'],
+    ),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _setupAnimations();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  void _setupAnimations() {
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+
+    _animations = List.generate(6, (index) {
+      double start = (index * 0.1).clamp(0.0, 1.0);
+      double end = (start + 0.3).clamp(start, 1.0);
+      
+      return Tween<double>(begin: 0.0, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _animationController,
+          curve: Interval(start, end, curve: Curves.easeOut),
+        ),
+      );
+    });
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    _searchController.dispose();
+    _titleController.dispose();
+    _priceController.dispose();
+    _descriptionController.dispose();
+    _contactController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    setState(() {
+      filters = filters.copyWith(searchTerm: _searchController.text);
+    });
+  }
+
+  void _navigate(String view, [String? itemId]) {
+    setState(() {
+      currentView = view;
+      selectedItemId = itemId;
+    });
+  }
+
+  List<MarketplaceItem> get filteredItems {
+    return items.where((item) {
+      if (item.isSold) return false;
+      if (filters.searchTerm.isNotEmpty && 
+          !item.title.toLowerCase().contains(filters.searchTerm.toLowerCase())) {
+        return false;
+      }
+      if (filters.condition != null && item.condition != filters.condition) {
+        return false;
+      }
+      if (filters.size != null && item.size != filters.size) {
+        return false;
+      }
+      if (filters.maxPrice != null && item.price > filters.maxPrice!) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  List<MarketplaceItem> get myItems {
+    return items.where((item) => item.userId == currentUserId).toList();
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : Colors.green,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FB),
+      body: SafeArea(
+        child: _buildCurrentView(),
+      ),
+      floatingActionButton: currentView == 'home' ? _buildFABs() : null,
+    );
+  }
+
+  Widget _buildCurrentView() {
+    switch (currentView) {
+      case 'details':
+        return _buildItemDetailView();
+      case 'sell':
+        return _buildSellItemForm();
+      case 'my-items':
+        return _buildMyItemsView();
+      default:
+        return _buildHomeView();
+    }
+  }
+
+  Widget _buildFABs() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FloatingActionButton(
+          heroTag: "my-items",
+          backgroundColor: Colors.amber,
+          onPressed: () => _navigate('my-items'),
+          child: const Icon(Icons.shopping_bag, color: Colors.white),
+        ),
+        const SizedBox(height: 16),
+        FloatingActionButton(
+          heroTag: "sell-item",
+          backgroundColor: Colors.teal,
+          onPressed: () => _navigate('sell'),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHomeView() {
+    final filtered = filteredItems;
+    
+    return Column(
+      children: [
+        // Header
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              const Text(
+                'Used Swimming Gear',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: _showFilterDialog,
+                    icon: const Icon(Icons.filter_list),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: _resetFilters,
+                    child: const Text('Reset'),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[200],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ],
-            filters: {
-                searchTerm: "",
-                condition: null,
-                size: null,
-                maxPrice: null,
-            }
-        };
+          ),
+        ),
+        // Items Grid
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: filtered.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No items found.',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  )
+                : GridView.builder(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.75,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                    ),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      return AnimatedBuilder(
+                        animation: _animations[index % _animations.length],
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _animations[index % _animations.length].value,
+                            child: Opacity(
+                              opacity: _animations[index % _animations.length].value,
+                              child: _buildItemCard(filtered[index]),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
 
-        const appContainer = document.getElementById('app-container');
+  Widget _buildItemCard(MarketplaceItem item) {
+    return GestureDetector(
+      onTap: () => _navigate('details', item.id),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.2),
+              spreadRadius: 2,
+              blurRadius: 6,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                child: Image.network(
+                  item.photo,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      width: double.infinity,
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: Text('No Image', style: TextStyle(color: Colors.grey)),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+            Expanded(
+              flex: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        item.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '\$${item.price.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        color: Colors.blue,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFilterDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Filters'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            DropdownButtonFormField<String>(
+              value: filters.condition,
+              decoration: const InputDecoration(labelText: 'Condition'),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('All Conditions')),
+                DropdownMenuItem(value: 'New', child: Text('New')),
+                DropdownMenuItem(value: 'Excellent', child: Text('Excellent')),
+                DropdownMenuItem(value: 'Good', child: Text('Good')),
+                DropdownMenuItem(value: 'Fair', child: Text('Fair')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  filters = filters.copyWith(condition: value);
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: filters.size,
+              decoration: const InputDecoration(labelText: 'Size'),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('All Sizes')),
+                DropdownMenuItem(value: 'XS', child: Text('XS')),
+                DropdownMenuItem(value: 'S', child: Text('S')),
+                DropdownMenuItem(value: 'M', child: Text('M')),
+                DropdownMenuItem(value: 'L', child: Text('L')),
+                DropdownMenuItem(value: 'XL', child: Text('XL')),
+                DropdownMenuItem(value: 'One Size', child: Text('One Size')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  filters = filters.copyWith(size: value);
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              decoration: const InputDecoration(labelText: 'Max Price (\$)'),
+              keyboardType: TextInputType.number,
+              onChanged: (value) {
+                final price = double.tryParse(value);
+                setState(() {
+                  filters = filters.copyWith(maxPrice: price);
+                });
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _resetFilters() {
+    setState(() {
+      filters = MarketplaceFilters();
+      _searchController.clear();
+    });
+  }
+  Widget _buildItemDetailView() {
+    final item = items.firstWhere((i) => i.id == selectedItemId);
+    
+    return Column(
+      children: [
+        // Header
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  item.title,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Content
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image
+                Container(
+                  height: 250,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      item.photos.isNotEmpty ? item.photos[0] : item.photo,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Center(
+                          child: Text('No Image', style: TextStyle(color: Colors.grey)),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Title and Price
+                Text(
+                  item.title,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '\$${item.price.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Condition and Size
+                Wrap(
+                  spacing: 16,
+                  children: [
+                    Chip(
+                      label: Text('Condition: ${item.condition}'),
+                      backgroundColor: Colors.grey[200],
+                    ),
+                    Chip(
+                      label: Text('Size: ${item.size}'),
+                      backgroundColor: Colors.grey[200],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // Description
+                const Text(
+                  'Description',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  item.description,
+                  style: const TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+                const SizedBox(height: 24),
+                // Contact Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _launchWhatsApp(item),
+                    icon: const Icon(Icons.message, color: Colors.white),
+                    label: const Text(
+                      'Contact Seller (WhatsApp)',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSellItemForm() {
+    return Column(
+      children: [
+        // Header
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Sell Your Item',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        // Form
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _priceController,
+                  decoration: const InputDecoration(
+                    labelText: 'Price',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _descriptionController,
+                  decoration: const InputDecoration(
+                    labelText: 'Description',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: _contactController,
+                  decoration: const InputDecoration(
+                    labelText: 'Contact Number',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedCondition,
+                  decoration: const InputDecoration(
+                    labelText: 'Condition',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'New', child: Text('New')),
+                    DropdownMenuItem(value: 'Excellent', child: Text('Excellent')),
+                    DropdownMenuItem(value: 'Good', child: Text('Good')),
+                    DropdownMenuItem(value: 'Fair', child: Text('Fair')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedCondition = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedSize,
+                  decoration: const InputDecoration(
+                    labelText: 'Size',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'XS', child: Text('XS')),
+                    DropdownMenuItem(value: 'S', child: Text('S')),
+                    DropdownMenuItem(value: 'M', child: Text('M')),
+                    DropdownMenuItem(value: 'L', child: Text('L')),
+                    DropdownMenuItem(value: 'XL', child: Text('XL')),
+                    DropdownMenuItem(value: 'One Size', child: Text('One Size')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedSize = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      const Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey),
+                      const SizedBox(height: 8),
+                      const Text('Add up to 10 photos'),
+                      TextButton(
+                        onPressed: () {
+                          // TODO: Implement photo picker
+                          _showSnackBar('Photo picker not implemented yet');
+                        },
+                        child: const Text('Choose Photos'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _postItem,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text(
+                      'Post Item',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  Widget _buildMyItemsView() {
+    final myItemsList = myItems;
+    
+    return Column(
+      children: [
+        // Header
+        Container(
+          color: Colors.white,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'My Posted Items',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        // Items List
+        Expanded(
+          child: myItemsList.isEmpty
+              ? const Center(
+                  child: Text(
+                    'You have no posted items.',
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: myItemsList.length,
+                  itemBuilder: (context, index) {
+                    final item = myItemsList[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.2),
+                              spreadRadius: 2,
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.title,
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    item.isSold ? 'Sold' : 'Available',
+                                    style: TextStyle(
+                                      color: item.isSold ? Colors.red : Colors.green,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                IconButton(
+                                  onPressed: () => _toggleSoldStatus(item.id),
+                                  icon: Icon(
+                                    item.isSold ? Icons.refresh : Icons.check,
+                                    color: item.isSold ? Colors.blue : Colors.green,
+                                  ),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: item.isSold 
+                                        ? Colors.blue.withOpacity(0.1)
+                                        : Colors.green.withOpacity(0.1),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: () => _confirmDelete(item.id),
+                                  icon: const Icon(Icons.delete, color: Colors.red),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.red.withOpacity(0.1),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  void _postItem() {
+    if (_titleController.text.isEmpty ||
+        _priceController.text.isEmpty ||
+        _descriptionController.text.isEmpty ||
+        _contactController.text.isEmpty) {
+      _showSnackBar('Please fill all required fields', isError: true);
+      return;
+    }
+
+    final newItem = MarketplaceItem(
+      id: 'item_${DateTime.now().millisecondsSinceEpoch}',
+      title: _titleController.text,
+      price: double.tryParse(_priceController.text) ?? 0.0,
+      description: _descriptionController.text,
+      contact: _contactController.text,
+      condition: _selectedCondition,
+      size: _selectedSize,
+      photo: 'https://placehold.co/400x300/cccccc/ffffff?text=New+Item',
+      photos: [],
+      userId: currentUserId,
+      isSold: false,
+    );
+
+    setState(() {
+      items.add(newItem);
+    });
+
+    _titleController.clear();
+    _priceController.clear();
+    _descriptionController.clear();
+    _contactController.clear();
+
+    _showSnackBar('Item posted successfully!');
+    _navigate('home');
+  }
+
+  void _launchWhatsApp(MarketplaceItem item) async {
+    final message = Uri.encodeComponent('Is this item still available? (Item: ${item.title})');
+    final url = Uri.parse('https://wa.me/${item.contact}?text=$message');
+    
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else {
+      _showSnackBar('Could not launch WhatsApp', isError: true);
+    }
+  }
+
+  void _toggleSoldStatus(String itemId) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final item = items.firstWhere((i) => i.id == itemId);
+        final actionText = item.isSold ? 'mark as Available' : 'mark as Sold';
         
-        // --- Core App Logic ---
-        function setState(newState) {
-            state = { ...state, ...newState };
-            renderApp();
-        }
+        return AlertDialog(
+          title: const Text('Confirm Status Change'),
+          content: Text('Are you sure you want to $actionText this item?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                setState(() {
+                  item.isSold = !item.isSold;
+                });
+                Navigator.of(context).pop();
+                _showSnackBar('Item marked as ${item.isSold ? 'Sold' : 'Available'}.');
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
-        function navigate(view, itemId = null) {
-            setState({ currentView: view, selectedItemId: itemId });
-        }
-        
-        function showSnackbar(message, isError = false) {
-            const snackbar = document.createElement('div');
-            snackbar.textContent = message;
-            snackbar.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'}`;
-            document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
-        }
-
-        // --- View Renderers ---
-        function renderApp() {
-            const fabContainer = document.getElementById('fab-container');
-            fabContainer.style.display = state.currentView === 'home' ? 'flex' : 'none';
-
-            switch (state.currentView) {
-                case 'details':
-                    appContainer.innerHTML = renderItemDetailView();
-                    break;
-                case 'sell':
-                    appContainer.innerHTML = renderSellItemForm();
-                    attachSellFormListeners();
-                    break;
-                case 'my-items':
-                    appContainer.innerHTML = renderMyItemsView();
-                    break;
-                default:
-                    appContainer.innerHTML = renderHomeView();
-                    attachHomeViewListeners();
-                    break;
-            }
-        }
-        
-        // --- HOME VIEW ---
-        function renderHomeView() {
-            const { searchTerm, condition, size, maxPrice } = state.filters;
-            
-            const filteredItems = state.items.filter(item => {
-                if (item.isSold) return false;
-                if (searchTerm && !item.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-                if (condition && item.condition !== condition) return false;
-                if (size && item.size !== size) return false;
-                if (maxPrice && item.price > maxPrice) return false;
-                return true;
-            });
-
-            const itemCards = filteredItems.length > 0 ? filteredItems.map(item => `
-                <div class="bg-white rounded-xl shadow-lg overflow-hidden transform hover:scale-105 transition-transform duration-200 cursor-pointer" onclick="navigate('details', '${item.id}')">
-                    <img src="${item.photo}" alt="${item.title}" class="w-full h-40 object-cover" onerror="this.src='https://placehold.co/400x300/cccccc/ffffff?text=No+Image'">
-                    <div class="p-4">
-                        <h3 class="font-bold truncate">${item.title}</h3>
-                        <p class="text-blue-700 font-semibold text-lg">$${item.price.toFixed(2)}</p>
-                    </div>
-                </div>
-            `).join('') : `<p class="col-span-2 text-center text-gray-500 py-10">No items found.</p>`;
-            
-            return `
-                <div class="view-container">
-                    <header class="bg-white shadow-sm sticky top-0 z-10 p-4">
-                        <h1 class="text-2xl font-bold text-center">Used Swimming Gear</h1>
-                        <div class="mt-4 flex space-x-2">
-                            <input id="search-input" type="text" placeholder="Search..." class="flex-grow p-2 border rounded-lg" value="${searchTerm}">
-                            <button id="filter-btn" class="p-2 bg-gray-200 rounded-lg">
-                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M7 11h10M10 17h4"></path></svg>
-                            </button>
-                            <button id="reset-filters-btn" class="p-2 bg-gray-200 rounded-lg text-sm">Reset</button>
-                        </div>
-                    </header>
-                    <main class="p-4 grid grid-cols-2 gap-4">
-                        ${itemCards}
-                    </main>
-                </div>
-            `;
-        }
-
-        function attachHomeViewListeners() {
-            document.getElementById('search-input').addEventListener('input', e => {
-                setState({ filters: { ...state.filters, searchTerm: e.target.value } });
-            });
-            document.getElementById('filter-btn').addEventListener('click', showFilterDialog);
-            document.getElementById('reset-filters-btn').addEventListener('click', () => {
-                setState({ filters: { searchTerm: '', condition: null, size: null, maxPrice: null } });
-            });
-        }
-
-        function showFilterDialog() {
-            const modal = document.getElementById('filter-modal');
-            const backdrop = document.getElementById('modal-backdrop');
-
-            const allConditions = ['New', 'Excellent', 'Good', 'Fair'];
-            const allSizes = ['XS', 'S', 'M', 'L', 'XL', 'One Size'];
-
-            modal.innerHTML = `
-                <div class="bg-white rounded-xl p-6 w-full max-w-md">
-                    <h2 class="text-xl font-bold mb-4">Filters</h2>
-                    <div class="space-y-4">
-                        <select id="filter-condition" class="w-full p-2 border rounded-lg">
-                            <option value="">All Conditions</option>
-                            ${allConditions.map(c => `<option value="${c}" ${state.filters.condition === c ? 'selected' : ''}>${c}</option>`).join('')}
-                        </select>
-                        <select id="filter-size" class="w-full p-2 border rounded-lg">
-                             <option value="">All Sizes</option>
-                            ${allSizes.map(s => `<option value="${s}" ${state.filters.size === s ? 'selected' : ''}>${s}</option>`).join('')}
-                        </select>
-                        <input id="filter-price" type="number" placeholder="Max Price ($)" class="w-full p-2 border rounded-lg" value="${state.filters.maxPrice || ''}">
-                    </div>
-                    <div class="mt-6 flex justify-end space-x-2">
-                         <button id="cancel-filters" class="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
-                         <button id="apply-filters" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Apply</button>
-                    </div>
-                </div>
-            `;
-            
-            backdrop.classList.remove('hidden');
-            modal.classList.remove('hidden');
-
-            const closeModal = () => {
-                modal.classList.add('hidden');
-                backdrop.classList.add('hidden');
-            };
-
-            backdrop.onclick = closeModal;
-            document.getElementById('cancel-filters').onclick = closeModal;
-
-            document.getElementById('apply-filters').onclick = () => {
-                const condition = document.getElementById('filter-condition').value || null;
-                const size = document.getElementById('filter-size').value || null;
-                const maxPrice = parseFloat(document.getElementById('filter-price').value) || null;
-                setState({ filters: { ...state.filters, condition, size, maxPrice } });
-                closeModal();
-            };
-        }
-
-        // --- DETAIL VIEW ---
-        function renderItemDetailView() {
-            const item = state.items.find(i => i.id === state.selectedItemId);
-            if (!item) return `<p>Item not found</p>`;
-            
-            const whatsappLink = `https://wa.me/${item.contact}?text=${encodeURIComponent(`Is this item still available? (Item: ${item.title})`)}`;
-
-            return `
-                <div class="view-container">
-                    <header class="bg-white shadow-sm sticky top-0 z-10 p-4 flex items-center">
-                        <button onclick="navigate('home')" class="mr-4">
-                           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                        </button>
-                        <h1 class="text-xl font-bold truncate">${item.title}</h1>
-                    </header>
-                    <main class="p-4">
-                        <div class="h-64 w-full mb-4 bg-gray-200 rounded-lg overflow-hidden">
-                           <img src="${item.photos[0]}" class="w-full h-full object-cover">
-                        </div>
-                         <h2 class="text-2xl font-bold">${item.title}</h2>
-                        <p class="text-3xl font-bold text-blue-700 my-2">$${item.price.toFixed(2)}</p>
-                        <div class="flex space-x-4 my-4">
-                            <span class="bg-gray-200 px-3 py-1 rounded-full text-sm">Condition: ${item.condition}</span>
-                            <span class="bg-gray-200 px-3 py-1 rounded-full text-sm">Size: ${item.size}</span>
-                        </div>
-                        <h3 class="font-bold mt-4">Description</h3>
-                        <p class="text-gray-700">${item.description}</p>
-                         <div class="mt-6">
-                            <a href="${whatsappLink}" target="_blank" class="block w-full text-center bg-green-500 text-white p-3 rounded-lg font-semibold">Contact Seller (WhatsApp)</a>
-                        </div>
-                    </main>
-                </div>
-            `;
-        }
-
-        // --- SELL FORM ---
-        function renderSellItemForm() {
-            return `
-                 <div class="view-container">
-                    <header class="bg-white shadow-sm sticky top-0 z-10 p-4 flex items-center">
-                        <button onclick="navigate('home')" class="mr-4">
-                           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                        </button>
-                        <h1 class="text-xl font-bold">Sell Your Item</h1>
-                    </header>
-                    <form id="sell-form" class="p-4 space-y-4">
-                        <input name="title" required placeholder="Title" class="w-full p-2 border rounded-lg">
-                        <input name="price" required placeholder="Price" type="number" class="w-full p-2 border rounded-lg">
-                        <textarea name="description" required placeholder="Description" class="w-full p-2 border rounded-lg"></textarea>
-                        <input name="contact" required placeholder="Contact Number" type="tel" class="w-full p-2 border rounded-lg">
-                        <select name="condition" class="w-full p-2 border rounded-lg">
-                            <option>New</option><option>Excellent</option><option>Good</option><option>Fair</option>
-                        </select>
-                        <select name="size" class="w-full p-2 border rounded-lg">
-                             <option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>One Size</option>
-                        </select>
-                        <input type="file" multiple class="w-full">
-                        <p class="text-xs text-gray-500">Add up to 10 photos.</p>
-                        <button type="submit" class="w-full bg-teal-600 text-white p-3 rounded-lg font-semibold">Post Item</button>
-                    </form>
-                </div>
-            `;
-        }
-
-        function attachSellFormListeners() {
-            document.getElementById('sell-form').addEventListener('submit', e => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const newItem = {
-                    id: `item_${Date.now()}`,
-                    title: formData.get('title'),
-                    price: parseFloat(formData.get('price')),
-                    description: formData.get('description'),
-                    contact: formData.get('contact'),
-                    condition: formData.get('condition'),
-                    size: formData.get('size'),
-                    photo: 'https://placehold.co/400x300/cccccc/ffffff?text=New+Item',
-                    photos: [],
-                    userId: CURRENT_USER_ID,
-                    isSold: false
-                };
-                _postNewItem(newItem);
-            });
-        }
-        
-        // --- MY ITEMS VIEW ---
-        function renderMyItemsView() {
-            const myItems = state.items.filter(i => i.userId === CURRENT_USER_ID);
-            const itemsHtml = myItems.length > 0 ? myItems.map(item => {
-                const buttonClass = item.isSold ? 'bg-blue-100' : 'bg-green-100';
-                const buttonTitle = item.isSold ? 'Mark as Available' : 'Mark as Sold';
-                const buttonIcon = item.isSold 
-                    ? `<svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h5"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12A8 8 0 1013.2 5.2"></path></svg>`
-                    : `<svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
-
-                return `
-                    <div class="p-4 bg-white rounded-lg shadow-md flex justify-between items-center">
-                        <div>
-                            <p class="font-bold">${item.title}</p>
-                            <p class="${item.isSold ? 'text-red-500' : 'text-green-500'}">${item.isSold ? 'Sold' : 'Available'}</p>
-                        </div>
-                        <div class="flex space-x-2">
-                             <button 
-                                class="p-2 ${buttonClass} rounded-full" 
-                                onclick="toggleSoldStatus('${item.id}')"
-                                title="${buttonTitle}">
-                                ${buttonIcon}
-                             </button>
-                            <button class="p-2 bg-red-100 rounded-full" onclick="confirmDelete('${item.id}')"><svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                        </div>
-                    </div>
-                `
-            }).join('') : '<p class="text-center text-gray-500">You have no posted items.</p>';
-            
-            return `
-                 <div class="view-container">
-                    <header class="bg-white shadow-sm sticky top-0 z-10 p-4 flex items-center">
-                        <button onclick="navigate('home')" class="mr-4">
-                           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
-                        </button>
-                        <h1 class="text-xl font-bold">My Posted Items</h1>
-                    </header>
-                    <main class="p-4 space-y-4">
-                        ${itemsHtml}
-                    </main>
-                </div>
-            `;
-        }
-        
-        function confirmDelete(itemId) {
-            const modal = document.getElementById('confirm-modal');
-            const backdrop = document.getElementById('modal-backdrop');
-            
-            modal.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
-                    <h3 class="text-lg font-bold">Confirm Deletion</h3>
-                    <p class="my-4">Are you sure you want to delete this item? This cannot be undone.</p>
-                    <div class="flex justify-end space-x-2">
-                        <button id="cancel-delete" class="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
-                        <button id="confirm-delete" class="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
-                    </div>
-                </div>
-            `;
-            
-            backdrop.classList.remove('hidden');
-            modal.classList.remove('hidden');
-
-            const closeModal = () => {
-                modal.classList.add('hidden');
-                backdrop.classList.add('hidden');
-            };
-
-            backdrop.onclick = closeModal;
-            document.getElementById('cancel-delete').onclick = closeModal;
-            document.getElementById('confirm-delete').onclick = () => {
-                _deleteItem(itemId);
-                closeModal();
-            };
-        }
-        
-        function _deleteItem(itemId) {
-            const newItems = state.items.filter(i => i.id !== itemId);
-            setState({ items: newItems });
-            showSnackbar("Item deleted successfully.");
-        }
-
-        function toggleSoldStatus(itemId) {
-            const item = state.items.find(i => i.id === itemId);
-            if (!item) return;
-
-            const isCurrentlySold = item.isSold;
-            const actionText = isCurrentlySold ? "mark as Available" : "mark as Sold";
-            
-            const modal = document.getElementById('confirm-modal');
-            const backdrop = document.getElementById('modal-backdrop');
-            
-            modal.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
-                    <h3 class="text-lg font-bold">Confirm Status Change</h3>
-                    <p class="my-4">Are you sure you want to ${actionText} this item?</p>
-                    <div class="flex justify-end space-x-2">
-                        <button id="cancel-status" class="px-4 py-2 bg-gray-200 rounded-lg">Cancel</button>
-                        <button id="confirm-status" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Confirm</button>
-                    </div>
-                </div>
-            `;
-            
-            backdrop.classList.remove('hidden');
-            modal.classList.remove('hidden');
-
-            const closeModal = () => {
-                modal.classList.add('hidden');
-                backdrop.classList.add('hidden');
-            };
-
-            document.getElementById('cancel-status').onclick = closeModal;
-            document.getElementById('confirm-status').onclick = () => {
-                item.isSold = !isCurrentlySold;
-                setState({ items: [...state.items] }); // Trigger re-render
-                showSnackbar(`Item marked as ${isCurrentlySold ? 'Available' : 'Sold'}.`);
-                closeModal();
-            };
-            backdrop.onclick = closeModal;
-        }
-
-
-        // --- Initial Setup ---
-        document.getElementById('my-items-fab').addEventListener('click', () => navigate('my-items'));
-        document.getElementById('sell-item-fab').addEventListener('click', () => navigate('sell'));
-
-        renderApp();
-    </script>
-</body>
-</html>
+  void _confirmDelete(String itemId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content: const Text('Are you sure you want to delete this item? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                items.removeWhere((item) => item.id == itemId);
+              });
+              Navigator.of(context).pop();
+              _showSnackBar('Item deleted successfully.');
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
