@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../events/events_screen.dart';
 import '../profile/profile_screen.dart';
 import '../marketplace/used_screen.dart';
+import '../marketplace/stores_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({Key? key}) : super(key: key);
@@ -309,7 +310,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
               children: [
-                _buildMarketplaceItem('🏊', getText('item1')),
+                _buildNavigableMarketplaceItem('�', getText('item1'), () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const StoresScreen()),
+                  );
+                }),
                 _buildNavigableMarketplaceItem('👟', getText('item2'), () {
                   Navigator.push(
                     context,
