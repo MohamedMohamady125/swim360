@@ -295,9 +295,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            Text(
-              getText('marketplace_info'),
-              style: const TextStyle(
+            const Text(
+              'Buy and sell swimming gear and equipment.',
+              style: TextStyle(
                 fontSize: 16,
                 color: Color(0xFF374151),
               ),
@@ -309,21 +309,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
               physics: const NeverScrollableScrollPhysics(),
               crossAxisSpacing: 16,
               mainAxisSpacing: 16,
+              childAspectRatio: 0.65,
               children: [
-                _buildNavigableMarketplaceItem('�', getText('item1'), () {
+                _buildNavigableMarketplaceItem(
+                  const Icon(Icons.storefront_outlined, size: 64, color: Color(0xFF2563EB)),
+                  'Stores',
+                  () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const StoresScreen()),
                   );
                 }),
-                _buildNavigableMarketplaceItem('👟', getText('item2'), () {
+                _buildNavigableMarketplaceItem(
+                  const Icon(Icons.recycling_outlined, size: 64, color: Color(0xFF0EA5E9)),
+                  'Used Items',
+                  () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => const UsedScreen()),
                   );
                 }),
-                _buildMarketplaceItem('⏱️', getText('item3')),
-                _buildMarketplaceItem('🧴', getText('item4')),
               ],
             ),
           ],
@@ -332,50 +337,13 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
     );
   }
 
-  Widget _buildMarketplaceItem(String emoji, String title) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            emoji,
-            style: const TextStyle(fontSize: 40),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: Color(0xFF374151),
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
+  
 
-  Widget _buildNavigableMarketplaceItem(String emoji, String title, VoidCallback onTap) {
+  Widget _buildNavigableMarketplaceItem(Widget icon, String title, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
         decoration: BoxDecoration(
           border: Border.all(color: const Color(0xFFE5E7EB)),
           borderRadius: BorderRadius.circular(12),
@@ -391,26 +359,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
-              emoji,
-              style: const TextStyle(fontSize: 40),
-            ),
-            const SizedBox(height: 4),
+            icon,
+            const SizedBox(height: 12),
             Text(
               title,
               style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
                 color: Color(0xFF374151),
               ),
               textAlign: TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 8),
             const Icon(
               Icons.arrow_forward_ios,
-              size: 10,
+              size: 14,
               color: Color(0xFF6B7280),
             ),
           ],

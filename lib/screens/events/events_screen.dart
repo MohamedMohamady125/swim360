@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
+import 'package:url_launcher/url_launcher.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({Key? key}) : super(key: key);
@@ -209,6 +211,8 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
     
     return filtered;
   }
+
+  // Removed: location opener moved into EventCard for direct usage
 
   void _showFilterModal() {
     setState(() {
@@ -717,6 +721,28 @@ class _EventCardState extends State<EventCard> with SingleTickerProviderStateMix
     });
   }
 
+  Future<void> _openLocation(String coordinates, String label) async {
+    final parts = coordinates.split(',');
+    if (parts.length != 2) return;
+    final lat = parts[0].trim();
+    final lng = parts[1].trim();
+
+    // Prefer platform-specific scheme if available, else fall back to Google Maps web
+    Uri? uri;
+    if (Platform.isIOS) {
+      // Apple Maps
+      uri = Uri.parse('http://maps.apple.com/?ll=$lat,$lng&q=${Uri.encodeComponent(label)}');
+    } else {
+      // Android/others - Google Maps
+      uri = Uri.parse('geo:$lat,$lng?q=$lat,$lng(${Uri.encodeComponent(label)})');
+    }
+
+    if (!await canLaunchUrl(uri)) {
+      uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    }
+  await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -815,7 +841,12 @@ class _EventCardState extends State<EventCard> with SingleTickerProviderStateMix
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Expanded(child: _buildMetadataItem(Icons.location_on, widget.event.location[widget.currentLang] ?? '')),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _openLocation(widget.event.coordinates, widget.event.location[widget.currentLang] ?? ''),
+                            child: _buildMetadataItem(Icons.location_on, widget.event.location[widget.currentLang] ?? ''),
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         Expanded(child: _buildMetadataItem(Icons.category, _getTypeText())),
                       ],
@@ -904,8 +935,40 @@ class _EventCardState extends State<EventCard> with SingleTickerProviderStateMix
               ),
             ),
             const SizedBox(height: 16),
+            // Placeholder details section while waiting for real structured content
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Additional Event Details (Coming Soon)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF1E3A8A),
+                      )),
+                  SizedBox(height: 8),
+                  Text(
+                    'This area will display schedule, warm-up lanes, required gear, parking info, and organizer contacts. Placeholder content for now. Tap Go Back to flip the card.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF374151),
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
             
-            Expanded(
+            SizedBox(
+              height: 180,
               child: SingleChildScrollView(
                 child: Text(
                   widget.event.description[widget.currentLang] ?? '',
