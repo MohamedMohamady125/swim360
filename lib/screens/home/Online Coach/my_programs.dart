@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>My Programs List</title>
     <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -135,15 +135,13 @@
             { id: 'prog2', title: 'Nutrition for Triathletes', price: 49.00, duration_value: 8, duration_unit: 'sessions', end_date: null, video_url: 'https://vimeo.com/tri-nutri', photo_url: 'https://placehold.co/400x160/10b981/ffffff?text=NUTRITION+PLAN', description: 'Learn how to fuel your body correctly for endurance events with weekly video modules.' },
             { id: 'prog3', title: 'Beginner Open Water Prep', price: 99.50, duration_value: 4, duration_unit: 'weeks', end_date: '2024-10-15', video_url: null, photo_url: 'https://placehold.co/400x160/f97316/ffffff?text=OPEN+WATER+PREP', description: 'A four-week guide to transitioning from pool swimming to open water confidence.' },
         ];
-        
-        let appContainer, cartCountDisplay, backdrop;
+
         const programListContainer = document.getElementById('program-list');
         const modalOverlay = document.getElementById('edit-modal-overlay');
         const modalTitle = document.getElementById('modal-program-title');
         const editForm = document.getElementById('edit-program-form');
 
-
-        // --- Core Functions (Simplified for this screen demo) ---
+        // --- Core Functions ---
 
         function showSnackbar(message, isError = false) {
             const snackbar = document.createElement('div');
@@ -175,9 +173,13 @@
                     </div>
 
                     <!-- Edit Button -->
-                    <button onclick="openEditModal('${program.id}')" 
-                            class="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition flex-shrink-0" title="Edit Program">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z"></path></svg>
+                    <button data-program-id="${program.id}" 
+                            class="edit-program-btn p-2 text-blue-600 hover:bg-blue-100 rounded-full transition flex-shrink-0" title="Edit Program">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 
+                                  113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z"></path>
+                        </svg>
                     </button>
                 </div>
             `).join('');
@@ -205,9 +207,11 @@
 
         // --- Event Handlers ---
 
-        editForm.addEventListener('submit', function(event) {
+        function handleFormSubmit(event) {
             event.preventDefault();
-            
+
+            console.log('Form submit triggered');
+
             const programId = document.getElementById('edit-program-id').value;
             const programIndex = programs.findIndex(p => p.id === programId);
 
@@ -215,9 +219,8 @@
                 showSnackbar('Error: Program ID mismatch.', true);
                 return;
             }
-            
-            const form = event.target;
-            const endDateValue = form.elements.end_date.value || null;
+
+            const endDateValue = document.getElementById('edit-program-end-date').value || null;
 
             // Date Validation (End Date must be greater than today)
             if (endDateValue) {
@@ -232,29 +235,47 @@
             }
 
             // Update the program data
-            programs[programIndex].description = form.elements.description.value;
-            programs[programIndex].video_url = form.elements.intro_video_url.value;
+            programs[programIndex].description = document.getElementById('edit-description').value;
+            programs[programIndex].video_url = document.getElementById('edit-intro-video-url').value;
             programs[programIndex].end_date = endDateValue;
-            
+
             showSnackbar(`Changes saved for: ${programs[programIndex].title}`, false);
-            
+
             // Re-render the list and close modal
             renderProgramList();
             closeEditModal();
+        }
+
+        // Event delegation for edit buttons inside program list container
+        programListContainer.addEventListener('click', (e) => {
+            const editBtn = e.target.closest('.edit-program-btn');
+            if (editBtn) {
+                const progId = editBtn.getAttribute('data-program-id');
+                openEditModal(progId);
+            }
         });
 
-        // --- Initialization ---
-
         window.onload = () => {
-            appContainer = document.getElementById('app-container');
-            // This line ensures we find the badge element which prevents the null error
-            const cartFab = document.getElementById('cart-fab');
-            cartCountDisplay = cartFab ? cartFab.querySelector('.cart-badge') : { textContent: '0' };
-            backdrop = document.getElementById('modal-backdrop');
-            if (cartFab) cartFab.onclick = showCartModal;
-            
-            document.getElementById('close-modal-btn').onclick = closeEditModal;
-            
+            // Attach form submit handler
+            if (editForm) {
+                editForm.addEventListener('submit', handleFormSubmit);
+            }
+
+            // Attach close button handler
+            const closeBtn = document.getElementById('close-modal-btn');
+            if (closeBtn) {
+                closeBtn.onclick = closeEditModal;
+            }
+
+            // Close modal when clicking overlay
+            if (modalOverlay) {
+                modalOverlay.onclick = (e) => {
+                    if (e.target.id === 'edit-modal-overlay') {
+                        closeEditModal();
+                    }
+                };
+            }
+
             // Initial render of the program list
             renderProgramList();
         };
