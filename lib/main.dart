@@ -8,7 +8,7 @@
 
 
 import 'package:flutter/material.dart';
-import 'package:swim360/screens/home/main_navigation.dart';
+import 'package:swim360/screens/home/online coach/online_coach_home.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,7 +22,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Swim 360',
       debugShowCheckedModeBanner: false,
-      home: const MainNavigationScreen(),
+      home: const OnlineCoachHome(),
     );
   }
 }

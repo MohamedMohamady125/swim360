@@ -271,11 +271,10 @@
             const iteratorContainer = document.getElementById('day-iterator');
             iteratorContainer.innerHTML = '';
             
-            // Calculate start of the week (Monday)
+            // Calculate start of the week (Sunday)
             const currentDayOfWeek = selectedDate.getDay(); // 0 (Sun) to 6 (Sat)
-            const daysToMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1; // Sun -> 6, Mon -> 0, etc.
             const startOfWeek = new Date(selectedDate);
-            startOfWeek.setDate(selectedDate.getDate() - daysToMonday);
+            startOfWeek.setDate(selectedDate.getDate() - currentDayOfWeek); // Go back to Sunday
 
             const selectedDateStr = formatDate(selectedDate);
 
@@ -355,12 +354,12 @@
                     
                     if (isOutsideHours) {
                         slotClass = 'unavailable'; // Grey - closed hours
+                    } else if (isSelected) {
+                        slotClass = 'selected'; // Blue - selected (takes priority over blocked/booked when selected)
                     } else if (isBookedByClient) {
                         slotClass = 'booked'; // Green
                     } else if (isBlockedByAdmin) {
                         slotClass = 'blocked'; // Red
-                    } else if (isSelected) {
-                        slotClass = 'selected'; // Blue
                     }
 
                     gridHTML += `
@@ -563,6 +562,3 @@
     </script>
 </body>
 </html>
-
-//2 changes to be made :1. week starts on sunday and ends on saturday
-//2.  blocked slots that are selected should show that they are selected by being blue colored
