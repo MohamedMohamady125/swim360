@@ -1,494 +1,107 @@
-import 'package:flutter/material.dart';
-import 'dart:math' as math;
-import 'package:swim360/screens/auth/signup_screen.dart';
-import 'package:swim360/screens/auth/forgot_password_screen.dart';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Swim 360 - Login</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #2563eb; }
+        
+        /* Staggered Animation Logic matching Flutter's Interval */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-item { opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .delay-0 { animation-delay: 0.1s; }
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.3s; }
+        .delay-3 { animation-delay: 0.4s; }
+        .delay-4 { animation-delay: 0.5s; }
+        .delay-5 { animation-delay: 0.6s; }
+        .delay-6 { animation-delay: 0.7s; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .shadow-blueprint { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-6 no-scrollbar">
 
-void main() {
-  runApp(const Swim360App());
-}
+    <div class="w-full max-w-md bg-white p-8 md:p-10 rounded-[40px] shadow-2xl animate-item text-center relative">
+        
+        <div class="animate-item delay-0 flex justify-center mb-6">
+            <div class="w-16 h-16 bg-blue-50 rounded-[24px] flex items-center justify-center text-blue-600 shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                    <path d="M2 6c.6.5 1.2 1 2.5 1C5.8 7 7.2 6 8.5 6c1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
+                    <path d="M2 12c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
+                    <path d="M2 18c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
+                </svg>
+            </div>
+        </div>
 
-class Swim360App extends StatelessWidget {
-  const Swim360App({Key? key}) : super(key: key);
+        <h1 class="animate-item delay-1 text-4xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">
+            Swim 360
+        </h1>
 
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Swim 360 - Login',
-      theme: ThemeData(
-        fontFamily: 'Inter',
-        primaryColor: const Color(0xFF24A1F1),
-      ),
-      home: const LoginScreen(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
+        <p class="animate-item delay-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] mt-3 mb-10">
+            Dive into the community
+        </p>
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+        <form onsubmit="event.preventDefault(); triggerLogin();" class="space-y-6 text-left">
+            
+            <div class="animate-item delay-3 space-y-2">
+                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+                <div class="relative flex items-center group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 w-5 h-5 text-gray-300 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                    </svg>
+                    <input type="email" required placeholder="you@example.com" 
+                        class="w-full pl-12 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-blueprint transition-all">
+                </div>
+            </div>
 
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
+            <div class="animate-item delay-4 space-y-2">
+                <div class="flex justify-between items-center px-1">
+                    <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Password</label>
+                    <a href="#" class="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline">Forgot Password?</a>
+                </div>
+                <div class="relative flex items-center group">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 w-5 h-5 text-gray-300 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <input type="password" required placeholder="••••••••" 
+                        class="w-full pl-12 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-blueprint transition-all">
+                </div>
+            </div>
 
-class _LoginScreenState extends State<LoginScreen>
-    with TickerProviderStateMixin {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
-  bool _isAnimationStarted = false;
+            <div class="animate-item delay-5 pt-4">
+                <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
+                    Login
+                </button>
+            </div>
+        </form>
 
-  late AnimationController _cardController;
-  late AnimationController _itemsController;
-  late Animation<double> _cardAnimation;
-  late List<Animation<double>> _itemAnimations;
+        <p class="animate-item delay-6 mt-10 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            Don't have an account? 
+            <a href="#" class="text-blue-600 ml-1 hover:underline underline-offset-4">Create one now</a>
+        </p>
 
-  @override
-  void initState() {
-    super.initState();
-    _setupAnimations();
-    _startAnimations();
-  }
+    </div>
 
-  void _setupAnimations() {
-    _cardController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
+    <div id="toast" class="fixed top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] hidden uppercase tracking-widest animate-bounce">
+        Login attempt captured!
+    </div>
 
-    _itemsController = AnimationController(
-      duration: const Duration(milliseconds: 1600),
-      vsync: this,
-    );
-
-    _cardAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _cardController,
-      curve: Curves.easeOut,
-    ));
-
-    // Create staggered animations for 8 items
-    _itemAnimations = List.generate(8, (index) {
-      final start = math.min((index * 0.125) + 0.125, 1.0);
-      final end = math.min(start + 0.375, 1.0);
-      return Tween<double>(
-        begin: 0.0,
-        end: 1.0,
-      ).animate(CurvedAnimation(
-        parent: _itemsController,
-        curve: Interval(
-          start, // Start clamped
-          end,   // End clamped
-          curve: Curves.easeOut,
-        ),
-      ));
-    });
-  }
-
-  void _startAnimations() {
-    _cardController.forward();
-    _itemsController.forward();
-  }
-
-  @override
-  void dispose() {
-    _cardController.dispose();
-    _itemsController.dispose();
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  void _showMessage(String message, {bool isError = false}) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry overlayEntry;
-
-    overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        top: 50,
-        left: MediaQuery.of(context).size.width * 0.1,
-        right: MediaQuery.of(context).size.width * 0.1,
-        child: Material(
-          color: Colors.transparent,
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            decoration: BoxDecoration(
-              color: isError ? Colors.red[500] : Colors.green[500],
-              borderRadius: BorderRadius.circular(8),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Text(
-              message,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      ),
-    );
-
-    overlay.insert(overlayEntry);
-
-    Future.delayed(const Duration(milliseconds: 3000), () {
-      overlayEntry.remove();
-    });
-  }
-
-  void _handleLogin() {
-    if (_formKey.currentState!.validate()) {
-      print("Login attempt:");
-      print("Email: ${_emailController.text}");
-      print("Password: ${_passwordController.text}");
-      
-      _showMessage('Login attempt captured. This is a UI demo!');
-    }
-  }
-
-  Widget _buildAnimatedItem(Widget child, int index) {
-    return AnimatedBuilder(
-      animation: _itemAnimations[index],
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, 20 * (1 - _itemAnimations[index].value)),
-          child: Opacity(
-            opacity: _itemAnimations[index].value,
-            child: child,
-          ),
-        );
-      },
-      child: child,
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF24A1F1),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: AnimatedBuilder(
-              animation: _cardAnimation,
-              builder: (context, child) {
-                return Transform.translate(
-                  offset: Offset(0, 20 * (1 - _cardAnimation.value)),
-                  child: Opacity(
-                    opacity: _cardAnimation.value,
-                    child: child,
-                  ),
-                );
-              },
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 384),
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF24A1F1),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Logo
-                      _buildAnimatedItem(
-                        Container(
-                          width: 64,
-                          height: 64,
-                          margin: const EdgeInsets.only(bottom: 24),
-                          child: const Icon(
-                            Icons.pool,
-                            size: 64,
-                            color: Colors.white,
-                          ),
-                        ),
-                        0,
-                      ),
-
-                      // Title
-                      _buildAnimatedItem(
-                        const Text(
-                          'Swim 360',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        1,
-                      ),
-
-                      // Subtitle
-                      _buildAnimatedItem(
-                        Container(
-                          margin: const EdgeInsets.only(top: 8, bottom: 32),
-                          child: const Text(
-                            'Dive into the community.',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        2,
-                      ),
-
-                      // Email Field
-                      _buildAnimatedItem(
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Email Address',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _emailController,
-                              keyboardType: TextInputType.emailAddress,
-                              style: const TextStyle(color: Colors.black),
-                              decoration: InputDecoration(
-                                hintText: 'you@example.com',
-                                prefixIcon: const Icon(
-                                  Icons.email_outlined,
-                                  color: Colors.black,
-                                  size: 20,
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFD1D5DB),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your email';
-                                }
-                                if (!value.contains('@')) {
-                                  return 'Please enter a valid email';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 20),
-                          ],
-                        ),
-                        3,
-                      ),
-
-                      // Password Field
-                      _buildAnimatedItem(
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Password',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            TextFormField(
-                              controller: _passwordController,
-                              obscureText: !_isPasswordVisible,
-                              style: const TextStyle(color: Colors.black),
-                              decoration: InputDecoration(
-                                hintText: '••••••••',
-                                prefixIcon: const Icon(
-                                  Icons.lock_outline,
-                                  color: Colors.black,
-                                  size: 20,
-                                ),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _isPasswordVisible
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                    color: Colors.grey,
-                                    size: 20,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _isPasswordVisible = !_isPasswordVisible;
-                                    });
-                                  },
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Color(0xFFD1D5DB),
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: const BorderSide(
-                                    color: Colors.white,
-                                    width: 2,
-                                  ),
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter your password';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                        4,
-                      ),
-
-                      // Forgot Password Link
-                      _buildAnimatedItem(
-                        Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(top: 8, bottom: 15),
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => const ForgotPasswordScreen(),
-                                  ),
-                                );
-                              },
-                              child: const Text(
-                                'Forgot Password?',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        5,
-                      ),
-
-                      // Login Button
-                      _buildAnimatedItem(
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _handleLogin,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: const Color(0xFF24A1F1),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              elevation: 5,
-                              shadowColor: Colors.black.withOpacity(0.2),
-                            ),
-                            child: const Text(
-                              'Login',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        ),
-                        6,
-                      ),
-
-                      // Sign Up Link
-                      _buildAnimatedItem(
-                        Container(
-                          margin: const EdgeInsets.only(top: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                "Don't have an account? ",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => const SignupScreen(),
-                                    ),
-                                  );
-                                },
-                                style: TextButton.styleFrom(
-                                  padding: EdgeInsets.zero,
-                                  minimumSize: Size.zero,
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: const Text(
-                                  'Create one now',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        7,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+    <script>
+        function triggerLogin() {
+            const t = document.getElementById('toast');
+            t.classList.remove('hidden');
+            setTimeout(() => t.classList.add('hidden'), 3000);
+        }
+    </script>
+</body>
+</html>

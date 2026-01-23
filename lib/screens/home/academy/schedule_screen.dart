@@ -3,178 +3,173 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swim 360 - Groups & Schedule</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Swim 360 - Schedule</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+        
+        /* THE BLUEPRINT STANDARD: 32px Radius */
         .session-card {
             background-color: white;
-            border-radius: 16px;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-            transition: all 0.2s;
-            border-left: 6px solid #3B82F6;
+            border-radius: 32px;
+            border: 1px solid #F1F5F9;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 8px solid #3B82F6;
         }
-        .session-card:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+        .session-card:active { transform: scale(0.98); }
+
+        /* DAY PILLS: Standardized Navigation */
         .day-pill {
-            padding: 10px 16px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 700;
+            padding: 12px 20px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s;
             background-color: white;
-            color: #6B7280;
-            border: 1px solid #E5E7EB;
-            min-width: 60px;
+            color: #94A3B8;
+            border: 1px solid #F1F5F9;
+            min-width: 70px;
             text-align: center;
         }
         .day-pill.active {
             background-color: #3B82F6;
             color: white;
             border-color: #3B82F6;
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
         }
+
+        /* INPUT GROUPS: Shadow-Inner Style */
         .input-group {
             display: flex;
             align-items: center;
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-            padding: 0 12px;
-            background-color: #FAFAFA;
-            transition: border-color 0.2s;
+            border-radius: 16px;
+            padding: 0 16px;
+            background-color: #F8FAFC;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+            border: 1px solid transparent;
+            transition: all 0.3s;
         }
         .input-group:focus-within {
-            border-color: #3B82F6;
-            box-shadow: 0 0 0 1px #3B82F6;
             background-color: white;
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
+
         .input-group input, .input-group select {
             border: none;
             outline: none;
-            padding: 12px 0;
+            padding: 14px 0;
             flex-grow: 1;
             background-color: transparent;
+            font-weight: 700;
+            font-size: 0.875rem;
         }
+
+        /* BOTTOM SHEET STANDARD: 44px Top Radius */
+        .modal-sheet {
+            background-color: white;
+            width: 100%;
+            max-width: 28rem;
+            border-radius: 44px 44px 0 0;
+            padding: 2.5rem;
+            box-shadow: 0 -20px 40px -10px rgba(15, 23, 42, 0.3);
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .modal-overlay.active .modal-sheet { transform: translateY(0); }
+
         .capacity-bar {
-            height: 6px;
+            height: 10px;
+            background-color: #F1F5F9;
             border-radius: 999px;
-            background-color: #E5E7EB;
             overflow: hidden;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
         }
         .capacity-progress {
             height: 100%;
             background-color: #10B981;
-            transition: width 0.3s ease;
+            border-radius: 999px;
+            transition: width 0.8s cubic-bezier(0.65, 0, 0.35, 1);
         }
         .capacity-warning { background-color: #F59E0B; }
         .capacity-full { background-color: #EF4444; }
 
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 99;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .btn-action {
-            background-color: #3B82F6;
-            color: white;
-            font-weight: 700;
-            border-radius: 12px;
-            transition: all 0.2s;
-        }
-        .btn-action:hover {
-            background-color: #2563EB;
-        }
-        /* Scroll hide for day navigator */
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="p-4 md:p-8 pb-24">
+<body class="p-6 md:p-10 pb-32 no-scrollbar">
 
-    <div class="max-w-xl mx-auto">
-        <!-- Header -->
-        <div class="flex items-center space-x-4 mb-6">
-            <button onclick="window.history.back()" class="p-2 hover:bg-gray-200 rounded-full transition">
-                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+    <div class="max-w-2xl mx-auto text-left">
+        <header class="flex items-center space-x-6 mb-10">
+            <button onclick="window.history.back()" class="p-3 bg-white border border-slate-100 text-slate-900 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-90">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path d="M15 19l-7-7 7-7"></path>
+                </svg>
             </button>
-            <h1 class="text-3xl font-extrabold text-gray-800">Schedule</h1>
-        </div>
+            <div>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">Schedule</h1>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2 italic">Live Session Management</p>
+            </div>
+        </header>
 
-        <!-- Branch Selector -->
-        <div class="mb-6">
-            <label class="block text-xs font-bold text-gray-400 uppercase mb-2 ml-1">Current Academy Branch</label>
+        <div class="mb-10">
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Current Academy Branch</label>
             <div class="input-group">
-                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 10h6"></path></svg>
+                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 10h6"></path></svg>
                 <select id="branch-filter" onchange="updateView()">
-                    <!-- Populated by JS -->
-                </select>
+                    </select>
             </div>
         </div>
 
-        <!-- Weekly Day Navigator -->
-        <div class="flex space-x-2 overflow-x-auto pb-4 no-scrollbar mb-6" id="day-navigator">
-            <!-- Day pills populated by JS -->
-        </div>
+        <div class="flex space-x-3 overflow-x-auto pb-6 no-scrollbar mb-6" id="day-navigator">
+            </div>
 
-        <!-- Sessions List -->
-        <div id="sessions-list" class="space-y-4">
-            <!-- Session cards grouped by time injected here -->
-        </div>
+        <div id="sessions-list" class="space-y-6">
+            </div>
     </div>
 
-    <!-- Edit Session Modal -->
-    <div id="edit-modal-overlay" class="modal-overlay hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 overflow-y-auto max-h-[90vh]">
-            <div class="flex justify-between items-center border-b pb-3 mb-6">
-                <h3 class="text-2xl font-extrabold text-gray-800">Manage Session</h3>
-                <button onclick="closeModal('edit-modal-overlay')" class="text-gray-500 hover:text-gray-800 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+    <div id="edit-modal-overlay" class="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-end justify-center" onclick="closeModal('edit-modal-overlay')">
+        <div class="modal-sheet no-scrollbar overflow-y-auto max-h-[90vh]" onclick="event.stopPropagation()">
+            <div class="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-10 shadow-inner"></div>
+            
+            <div class="mb-8">
+                <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">Manage Session</h3>
             </div>
             
-            <form id="edit-session-form" class="space-y-5">
+            <form id="edit-session-form" class="space-y-6">
                 <input type="hidden" id="edit-session-id">
                 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Time Slot</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Time Slot</label>
                     <div class="input-group">
                         <input type="time" id="edit-time" required>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Assigned Coach</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Assigned Coach</label>
                     <div class="input-group">
-                        <select id="edit-coach" required>
-                            <!-- Coaches populated by JS -->
-                        </select>
+                        <select id="edit-coach" required></select>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">Total Capacity (Swimmers)</label>
+                    <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Total Capacity (Swimmers)</label>
                     <div class="input-group">
-                        <input type="number" id="edit-capacity" required min="1" placeholder="e.g., 15">
+                        <input type="number" id="edit-capacity" required min="1">
                     </div>
                 </div>
 
-                <div class="pt-4 border-t space-y-3">
-                    <button type="button" onclick="openSwimmersModal()" class="w-full py-3 border-2 border-blue-600 text-blue-600 font-bold rounded-xl hover:bg-blue-50 transition">
+                <div class="pt-4 space-y-4">
+                    <button type="button" onclick="openSwimmersModal()" class="w-full py-4 border-2 border-dashed border-blue-100 text-blue-600 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-blue-50 transition-all">
                         Manage Swimmer Roster
                     </button>
-                    <button type="submit" class="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition">
+                    <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">
                         Save Session Changes
                     </button>
                 </div>
@@ -182,116 +177,86 @@
         </div>
     </div>
 
-    <!-- Swimmers Roster Modal -->
-    <div id="swimmers-modal-overlay" class="modal-overlay hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 overflow-y-auto max-h-[80vh]">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="text-xl font-bold text-gray-800">Swimmer Roster</h3>
-                <button onclick="closeModal('swimmers-modal-overlay')" class="text-gray-400 hover:text-gray-600 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+    <div id="swimmers-modal-overlay" class="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-end justify-center" onclick="closeModal('swimmers-modal-overlay')">
+        <div class="modal-sheet no-scrollbar overflow-y-auto max-h-[85vh]" onclick="event.stopPropagation()">
+            <div class="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-10 shadow-inner"></div>
+            
+            <div class="mb-8">
+                <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">Swimmer Roster</h3>
             </div>
+            
             <div id="swimmers-list" class="space-y-3">
-                <!-- Swimmers injected here -->
-            </div>
+                </div>
         </div>
     </div>
 
-    <!-- Move Swimmer Modal -->
-    <div id="move-modal-overlay" class="modal-overlay hidden">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <div class="flex justify-between items-center border-b pb-3 mb-4">
-                <h3 class="text-xl font-bold text-gray-800">Move Swimmer</h3>
-                <button onclick="closeModal('move-modal-overlay')" class="text-gray-400 hover:text-gray-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+    <div id="move-modal-overlay" class="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-end justify-center" onclick="closeModal('move-modal-overlay')">
+        <div class="modal-sheet" onclick="event.stopPropagation()">
+            <div class="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-10 shadow-inner"></div>
+            
+            <div class="mb-6">
+                <h3 class="text-2xl font-black text-slate-900 uppercase italic tracking-tighter leading-none">Move Swimmer</h3>
+                <p class="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest leading-none">Select target group for <span id="move-swimmer-name" class="text-blue-600"></span></p>
             </div>
-            <p class="text-sm text-gray-500 mb-4">Select the target group for <strong id="move-swimmer-name"></strong>:</p>
-            <div id="target-session-list" class="space-y-2 max-h-60 overflow-y-auto">
-                <!-- Other sessions on the same day -->
-            </div>
+
+            <div id="target-session-list" class="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+                </div>
         </div>
     </div>
 
     <script>
-        // --- MOCK DATA ---
-        const mockBranches = [
-            { id: 'b1', name: 'Olympic Aquatic Center' },
-            { id: 'b2', name: 'West Side Academy' }
-        ];
-
-        const mockCoaches = [
-            { id: 'c1', name: 'Coach Michael' },
-            { id: 'c2', name: 'Coach Elena' },
-            { id: 'c3', name: 'Coach David' }
-        ];
-
+        const mockBranches = [{ id: 'b1', name: 'Olympic Aquatic Center' }, { id: 'b2', name: 'West Side Academy' }];
+        const mockCoaches = [{ id: 'c1', name: 'Coach Michael' }, { id: 'c2', name: 'Coach Elena' }, { id: 'c3', name: 'Coach David' }];
         let sessions = [
             { id: 's1', branchId: 'b1', day: 'Mon', time: '16:00', program: 'Elite Mastery', coachId: 'c1', enrolled: 4, capacity: 15, swimmers: ['Alex J.', 'Sarah C.', 'Mike R.', 'John D.'] },
             { id: 's2', branchId: 'b1', day: 'Mon', time: '17:30', program: 'Junior Squad', coachId: 'c2', enrolled: 2, capacity: 20, swimmers: ['Liam W.', 'Ava M.'] },
-            { id: 's3', branchId: 'b1', day: 'Wed', time: '16:00', program: 'Elite Mastery', coachId: 'c1', enrolled: 1, capacity: 15, swimmers: ['Noah G.'] },
-            { id: 's4', branchId: 'b2', day: 'Mon', time: '10:00', program: 'Learn to Swim', coachId: 'c3', enrolled: 1, capacity: 10, swimmers: ['Emma S.'] }
+            { id: 's3', branchId: 'b1', day: 'Wed', time: '16:00', program: 'Elite Mastery', coachId: 'c1', enrolled: 1, capacity: 15, swimmers: ['Noah G.'] }
         ];
 
         let currentDay = 'Mon';
         let currentBranchId = 'b1';
         let currentSessionId = null;
 
-        // --- CORE LOGIC ---
-
-        function updateView() {
-            currentBranchId = document.getElementById('branch-filter').value;
-            renderSchedule();
-        }
+        function updateView() { currentBranchId = document.getElementById('branch-filter').value; renderSchedule(); }
 
         function setDay(day) {
             currentDay = day;
-            document.querySelectorAll('.day-pill').forEach(p => {
-                p.classList.toggle('active', p.textContent === day);
-            });
+            document.querySelectorAll('.day-pill').forEach(p => p.classList.toggle('active', p.textContent === day));
             renderSchedule();
         }
 
         function renderSchedule() {
             const container = document.getElementById('sessions-list');
-            const filtered = sessions.filter(s => s.branchId === currentBranchId && s.day === currentDay);
-            
-            // Sort by time
-            filtered.sort((a, b) => a.time.localeCompare(b.time));
+            const filtered = sessions.filter(s => s.branchId === currentBranchId && s.day === currentDay).sort((a, b) => a.time.localeCompare(b.time));
 
-            if (filtered.length === 0) {
-                container.innerHTML = `<div class="p-12 text-center text-gray-400 bg-white rounded-2xl border border-dashed border-gray-200 italic">No sessions scheduled for this day.</div>`;
+            if (!filtered.length) {
+                container.innerHTML = `<div class="p-12 text-center text-gray-300 uppercase font-black text-xs tracking-[0.2em] bg-white rounded-[32px] border border-dashed border-gray-100 italic">No sessions scheduled</div>`;
                 return;
             }
 
-            container.innerHTML = filtered.map(session => {
-                const coach = mockCoaches.find(c => c.id === session.coachId);
-                const percent = (session.enrolled / session.capacity) * 100;
-                let statusClass = '';
-                if (percent >= 100) statusClass = 'capacity-full';
-                else if (percent >= 80) statusClass = 'capacity-warning';
+            container.innerHTML = filtered.map(s => {
+                const coach = mockCoaches.find(c => c.id === s.coachId);
+                const percent = (s.enrolled / s.capacity) * 100;
+                let statusClass = percent >= 100 ? 'capacity-full' : (percent >= 80 ? 'capacity-warning' : '');
 
                 return `
-                    <div class="session-card p-5 relative">
-                        <div class="flex justify-between items-start mb-3">
+                    <div class="session-card p-8 relative">
+                        <div class="flex justify-between items-start mb-6">
                             <div>
-                                <p class="text-sm font-black text-blue-600 uppercase tracking-tighter mb-1">${session.time}</p>
-                                <h3 class="text-lg font-extrabold text-gray-900">${session.program}</h3>
+                                <p class="text-xl font-black text-blue-600 uppercase italic tracking-tighter leading-none">${s.time}</p>
+                                <h3 class="text-2xl font-black text-gray-900 uppercase tracking-tighter mt-3">${s.program}</h3>
+                                <div class="flex items-center space-x-2 mt-4 text-slate-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                                    <span class="text-[10px] font-black uppercase tracking-widest">${coach ? coach.name : 'Unassigned'}</span>
+                                </div>
                             </div>
-                            <button onclick="openEditModal('${session.id}')" class="p-2 bg-gray-50 text-gray-400 hover:text-blue-600 rounded-full transition">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z"></path></svg>
-                            </button>
+                            <button onclick="openEditModal('${s.id}')" class="w-11 h-11 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 shadow-inner transition-all"><svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z"></path></svg></button>
                         </div>
                         
-                        <div class="flex items-center space-x-2 mb-4">
-                            <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                            <span class="text-sm font-medium text-gray-600">${coach ? coach.name : 'Unassigned'}</span>
-                        </div>
-
-                        <div class="space-y-1.5">
-                            <div class="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                        <div class="space-y-3">
+                            <div class="flex justify-between text-[9px] font-black uppercase tracking-widest text-gray-400">
                                 <span>Attendance</span>
-                                <span class="${percent >= 100 ? 'text-red-500' : 'text-gray-600'}">${session.enrolled} / ${session.capacity}</span>
+                                <span class="${percent >= 100 ? 'text-rose-500' : 'text-slate-900'}">${s.enrolled} / ${s.capacity}</span>
                             </div>
                             <div class="capacity-bar">
                                 <div class="capacity-progress ${statusClass}" style="width: ${Math.min(percent, 100)}%"></div>
@@ -302,133 +267,84 @@
             }).join('');
         }
 
-        // --- MODAL LOGIC ---
+        function openModal(id) { 
+            const overlay = document.getElementById(id);
+            overlay.classList.remove('hidden'); overlay.classList.add('flex');
+            setTimeout(() => overlay.classList.add('active'), 10);
+        }
+        
+        function closeModal(id) { 
+            const overlay = document.getElementById(id);
+            overlay.classList.remove('active');
+            setTimeout(() => { overlay.classList.remove('flex'); overlay.classList.add('hidden'); }, 500);
+        }
 
-        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-        function openEditModal(sessionId) {
-            currentSessionId = sessionId;
-            const session = sessions.find(s => s.id === sessionId);
-            
-            document.getElementById('edit-time').value = session.time;
-            document.getElementById('edit-coach').value = session.coachId;
-            document.getElementById('edit-capacity').value = session.capacity;
-            
+        function openEditModal(id) {
+            currentSessionId = id;
+            const s = sessions.find(x => x.id === id);
+            document.getElementById('edit-time').value = s.time;
+            document.getElementById('edit-coach').value = s.coachId;
+            document.getElementById('edit-capacity').value = s.capacity;
             openModal('edit-modal-overlay');
         }
 
         function openSwimmersModal() {
-            const session = sessions.find(s => s.id === currentSessionId);
+            const s = sessions.find(x => x.id === currentSessionId);
             const container = document.getElementById('swimmers-list');
-            
-            if (session.swimmers.length === 0) {
-                container.innerHTML = `<div class="p-8 text-center text-gray-400 italic">No swimmers enrolled.</div>`;
-            } else {
-                container.innerHTML = session.swimmers.map(name => `
-                    <div class="flex justify-between items-center p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <span class="font-bold text-gray-800">${name}</span>
-                        <button onclick="openMoveModal('${name}')" class="px-3 py-1 bg-blue-100 text-blue-600 text-xs font-bold rounded-lg hover:bg-blue-600 hover:text-white transition">
-                            Move
-                        </button>
-                    </div>
-                `).join('');
-            }
-            
+            container.innerHTML = s.swimmers.length ? s.swimmers.map(name => `
+                <div class="flex justify-between items-center p-5 bg-gray-50 rounded-2xl border border-gray-100 shadow-inner">
+                    <span class="text-sm font-black text-slate-900 uppercase italic tracking-tighter">${name}</span>
+                    <button onclick="openMoveModal('${name}')" class="px-4 py-2 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all active:scale-95">Move</button>
+                </div>
+            `).join('') : '<p class="p-10 text-center text-gray-400 italic">No swimmers enrolled</p>';
             openModal('swimmers-modal-overlay');
         }
 
-        function openMoveModal(swimmerName) {
-            document.getElementById('move-swimmer-name').textContent = swimmerName;
-            const list = document.getElementById('target-session-list');
-            
-            // List sessions in the same branch, on the same day, that are NOT the current session
-            const otherSessions = sessions.filter(s => s.branchId === currentBranchId && s.day === currentDay && s.id !== currentSessionId);
-            
-            if (otherSessions.length === 0) {
-                list.innerHTML = `<p class="text-center text-gray-400 py-4 italic">No other groups available today.</p>`;
-            } else {
-                list.innerHTML = otherSessions.map(s => `
-                    <button onclick="executeMoveSwimmer('${swimmerName}', '${s.id}')" class="w-full text-left p-4 bg-gray-50 hover:bg-blue-50 border border-gray-100 rounded-xl transition group">
-                        <div class="flex justify-between items-center">
-                            <div>
-                                <p class="text-sm font-bold text-gray-900">${s.program}</p>
-                                <p class="text-xs text-blue-600 font-semibold">${s.time}</p>
-                            </div>
-                            <span class="text-xs text-gray-400 font-bold group-hover:text-blue-600">${s.enrolled}/${s.capacity}</span>
-                        </div>
-                    </button>
-                `).join('');
-            }
-            
+        function openMoveModal(name) {
+            document.getElementById('move-swimmer-name').textContent = name;
+            const others = sessions.filter(s => s.branchId === currentBranchId && s.day === currentDay && s.id !== currentSessionId);
+            document.getElementById('target-session-list').innerHTML = others.length ? others.map(s => `
+                <button onclick="executeMoveSwimmer('${name}', '${s.id}')" class="w-full p-5 bg-gray-50 border border-gray-100 rounded-2xl text-left shadow-inner group active:scale-[0.98] transition-all">
+                    <div class="flex justify-between items-center">
+                        <div><p class="text-sm font-black text-slate-900 uppercase">${s.program}</p><p class="text-[9px] text-blue-600 font-bold uppercase mt-1">${s.time}</p></div>
+                        <span class="text-[9px] font-black text-gray-400 uppercase">${s.enrolled}/${s.capacity}</span>
+                    </div>
+                </button>
+            `).join('') : '<p class="text-center text-gray-400 py-10 italic uppercase font-black text-[10px]">No target groups</p>';
             openModal('move-modal-overlay');
         }
 
-        function executeMoveSwimmer(swimmerName, targetSessionId) {
-            const source = sessions.find(s => s.id === currentSessionId);
-            const target = sessions.find(s => s.id === targetSessionId);
-            
-            if (target.enrolled >= target.capacity) {
-                showSnackbar("Target group is at maximum capacity!", true);
-                return;
-            }
-
-            // Remove from source
-            source.swimmers = source.swimmers.filter(n => n !== swimmerName);
-            source.enrolled = source.swimmers.length;
-
-            // Add to target
-            target.swimmers.push(swimmerName);
-            target.enrolled = target.swimmers.length;
-
-            renderSchedule();
-            closeModal('move-modal-overlay');
-            openSwimmersModal(); // Refresh roster view
-            showSnackbar(`${swimmerName} moved to ${target.program}.`);
+        function executeMoveSwimmer(name, targetId) {
+            const target = sessions.find(s => s.id === targetId);
+            if (target.enrolled >= target.capacity) { showSnackbar("Group is Full!", true); return; }
+            const src = sessions.find(s => s.id === currentSessionId);
+            src.swimmers = src.swimmers.filter(n => n !== name); src.enrolled = src.swimmers.length;
+            target.swimmers.push(name); target.enrolled = target.swimmers.length;
+            renderSchedule(); closeModal('move-modal-overlay'); openSwimmersModal(); showSnackbar(`${name} Moved`);
         }
-
-        // --- ACTIONS ---
 
         document.getElementById('edit-session-form').onsubmit = (e) => {
             e.preventDefault();
-            const session = sessions.find(s => s.id === currentSessionId);
-            session.time = document.getElementById('edit-time').value;
-            session.coachId = document.getElementById('edit-coach').value;
-            session.capacity = parseInt(document.getElementById('edit-capacity').value);
-            
-            renderSchedule();
-            closeModal('edit-modal-overlay');
-            showSnackbar('Session updated successfully.');
+            const s = sessions.find(x => x.id === currentSessionId);
+            s.time = document.getElementById('edit-time').value;
+            s.coachId = document.getElementById('edit-coach').value;
+            s.capacity = parseInt(document.getElementById('edit-capacity').value);
+            renderSchedule(); closeModal('edit-modal-overlay'); showSnackbar('Session Updated');
         };
 
-        // --- UI SETUP ---
+        function showSnackbar(msg, err = false) {
+            const s = document.createElement('div');
+            s.className = `fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] uppercase tracking-[0.2em] animate-bounce ${err ? 'bg-rose-500' : 'bg-slate-900'} text-white`;
+            s.textContent = msg; document.body.appendChild(s);
+            setTimeout(() => s.remove(), 3000);
+        }
 
-        function init() {
-            const branchSelect = document.getElementById('branch-filter');
-            branchSelect.innerHTML = mockBranches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-
-            const coachSelect = document.getElementById('edit-coach');
-            coachSelect.innerHTML = mockCoaches.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-            const dayNav = document.getElementById('day-navigator');
-            const days = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-            dayNav.innerHTML = days.map(d => `<div class="day-pill ${d === 'Mon' ? 'active' : ''}" onclick="setDay('${d}')">${d}</div>`).join('');
-
+        window.onload = () => {
+            document.getElementById('branch-filter').innerHTML = mockBranches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+            document.getElementById('edit-coach').innerHTML = mockCoaches.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            document.getElementById('day-navigator').innerHTML = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map(d => `<div class="day-pill ${d === 'Mon' ? 'active' : ''}" onclick="setDay('${d}')">${d}</div>`).join('');
             renderSchedule();
-        }
-
-        function showSnackbar(message, isError = false) {
-            const old = document.getElementById('snackbar');
-            if (old) old.remove();
-            const snack = document.createElement('div');
-            snack.id = 'snackbar';
-            snack.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg text-white font-bold transition-all animate-bounce z-[100] ${isError ? 'bg-red-500' : 'bg-blue-600'}`;
-            snack.textContent = message;
-            document.body.appendChild(snack);
-            setTimeout(() => snack.remove(), 3000);
-        }
-
-        window.onload = init;
+        };
     </script>
 </body>
 </html>

@@ -1,564 +1,388 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Branch Availability Management</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
-        .form-card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-            padding: 1rem;
-        }
-        /* Style for the fixed date header row */
-        .date-header-row {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #E5E7EB; /* Gray-200 */
-        }
-        /* Style for the fixed time column (first column) */
-        .fixed-time-col {
-            position: sticky;
-            left: 0;
-            z-index: 5;
-            background-color: #F3F4F6; /* Gray-100 */
-        }
-        /* Style for individual time slots */
-        .time-slot {
-            height: 35px; /* Fixed slot height */
-            border-bottom: 1px solid #F3F4F6;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: #374151;
-            transition: background-color 0.15s;
-            user-select: none; /* Prevent text selection during drag */
-        }
-        /* Color Scheme Definitions (matching request) */
-        .available {
-            background-color: white; /* White: Free */
-        }
-        .blocked {
-            background-color: #EF4444; /* Red: Blocked by Clinic Admin */
-            color: white;
-            font-weight: 700;
-        }
-        .booked {
-            background-color: #38A169; /* Green: Booked by Client (New State) */
-            color: white;
-            font-weight: 700;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-        .unavailable {
-            background-color: #E5E7EB; /* Light Gray: Outside operating hours (closed) */
-            color: #9CA3AF;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-        .selected {
-            background-color: #3B82F6; /* Blue: Selected for blocking/unblocking */
-            color: white;
-        }
-        /* Hide scrollbars for cleaner grid display */
-        .hide-scrollbar {
-            overflow-x: auto;
-            overflow-y: auto;
-            -ms-overflow-style: none; /* IE and Edge */
-            scrollbar-width: none; /* Firefox */
-        }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none; /* Chrome, Safari, Opera */
-        }
-        /* Date Navigator Styling */
-        .date-nav-button {
-            padding: 0.5rem 0.75rem;
-            border-radius: 9999px;
-            font-weight: 600;
-            transition: background-color 0.2s;
-            cursor: pointer;
-            min-height: 50px; /* Make room for two lines */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .date-nav-button.selected {
-            background-color: #3B82F6;
-            color: white;
-        }
-        .date-nav-button:not(.selected):hover {
-            background-color: #E5E7EB;
-        }
-    </style>
-</head>
-<body class="p-4 md:p-8">
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { 
+  Plus, Calendar, ChevronDown, Check, 
+  Building2, X, Info, ArrowLeft, ArrowRight,
+  ShieldOff, RotateCcw, CheckCircle, AlertCircle,
+  Clock, Layers, MapPin, Activity, ChevronLeft, ChevronRight
+} from 'lucide-react';
 
-    <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Branch Availability</h1>
-        <p class="text-gray-500 mb-4">View capacity and block time slots for maintenance or external bookings.</p>
+// --- DATA DEFINITIONS ---
+const MOCK_DATA = {
+    branches: [
+        { id: 'b1', name: 'Family Park Clinic', beds: 3, open: 8, close: 17, city: 'Riyadh' },
+        { id: 'b2', name: 'Jeddah Coastal Center', beds: 2, open: 9, close: 18, city: 'Jeddah' }
+    ],
+    // Initial Admin Blocked Slots (RED)
+    blockedSlots: {
+        'b1': {
+            '2026-01-23': { 'Bed-1': ['10:00', '11:00'], 'Bed-3': ['14:00'] },
+            '2026-01-25': { 'Bed-2': ['13:00'] }
+        },
+    },
+    // Client Booked Slots (GREEN) - Usually immutable by Admin here
+    bookedSlots: {
+        'b1': {
+            '2026-01-23': { 'Bed-2': ['09:00'] },
+            '2026-01-24': { 'Bed-1': ['16:00'] }
+        }
+    }
+};
 
-        <!-- Branch Selector & Date Navigator -->
-        <div class="form-card mb-6">
-            <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mb-4">
-                <!-- Branch Dropdown -->
-                <div class="w-full sm:w-1/2">
-                    <label for="branch-select" class="block text-xs font-medium text-gray-500">Current Branch</label>
-                    <select id="branch-select" class="w-full text-lg font-semibold py-2 rounded-lg border border-gray-300" onchange="initializeView()">
-                        <!-- Options populated by JS -->
-                    </select>
-                </div>
-                
-                <!-- Date Navigator -->
-                <div class="w-full sm:w-1/2 flex items-center justify-end space-x-2">
-                    <button onclick="changeWeek(-7)" class="p-2 bg-gray-200 rounded-full hover:bg-gray-300 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg>
-                    </button>
-                    <input type="date" id="current-date-picker" class="p-2 border rounded-lg text-center font-medium w-32 hidden" onchange="initializeView()">
-                    <button onclick="changeWeek(7)" class="p-2 bg-gray-200 rounded-full hover:bg-gray-300 transition">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7m-8 0l7-7-7-7"></path></svg>
-                    </button>
-                </div>
-            </div>
+export default function App() {
+    const [selectedDate, setSelectedDate] = useState(new Date(2026, 0, 23)); 
+    const [selectedBranchId, setSelectedBranchId] = useState('b1');
+    const [selectedSlots, setSelectedSlots] = useState([]); // Array of {bedId, time}
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStartSlot, setDragStartSlot] = useState(null);
+    
+    // Manage blocked slots in local state for immediate UI feedback
+    const [localBlockedSlots, setLocalBlockedSlots] = useState(MOCK_DATA.blockedSlots);
+    
+    const [notification, setNotification] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-            <!-- Day Iterator (New Requirement) -->
-            <div id="day-iterator" class="flex justify-between mt-3 gap-1">
-                <!-- Days populated by JS -->
-            </div>
+    // --- UTILITIES ---
+    const showNotify = (msg, type = 'success') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
+
+    const formatDateStr = (date) => {
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, '0');
+        const dd = String(date.getDate()).padStart(2, '0');
+        return `${yyyy}-${mm}-${dd}`;
+    };
+
+    const getDisplayDate = (date) => {
+        return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+    };
+
+    const formatTime24to12 = (hr24) => {
+        const hr = parseInt(hr24);
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        const displayHr = hr % 12 || 12;
+        return `${String(displayHr).padStart(2, '0')}:00 ${ampm}`;
+    };
+
+    const timeSlots = useMemo(() => {
+        return Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
+    }, []);
+
+    const selectedBranch = useMemo(() => {
+        return MOCK_DATA.branches.find(b => b.id === selectedBranchId);
+    }, [selectedBranchId]);
+
+    const bedIds = useMemo(() => {
+        return Array.from({ length: selectedBranch.beds }, (_, i) => `Bed-${i + 1}`);
+    }, [selectedBranch]);
+
+    // --- LOGIC ---
+    const changeDate = (date) => {
+        setSelectedDate(date);
+        setSelectedSlots([]);
+    };
+
+    const changeWeek = (direction) => {
+        const newDate = new Date(selectedDate);
+        newDate.setDate(selectedDate.getDate() + (direction * 7));
+        setSelectedDate(newDate);
+        setSelectedSlots([]);
+    };
+
+    const handleMouseDown = (bedId, time, type) => {
+        if (type === 'unavailable' || type === 'booked') return;
+        setIsDragging(true);
+        setDragStartSlot({ bedId, time });
+        setSelectedSlots([{ bedId, time }]);
+    };
+
+    const handleMouseEnter = (bedId, time, type) => {
+        if (!isDragging || type === 'unavailable' || type === 'booked') return;
+        if (bedId !== dragStartSlot.bedId) return;
+
+        const startIdx = timeSlots.indexOf(dragStartSlot.time);
+        const currentIdx = timeSlots.indexOf(time);
+        const minIdx = Math.min(startIdx, currentIdx);
+        const maxIdx = Math.max(startIdx, currentIdx);
+
+        const newSelection = [];
+        for (let i = minIdx; i <= maxIdx; i++) {
+            const t = timeSlots[i];
+            const dateKey = formatDateStr(selectedDate);
+            const isBooked = MOCK_DATA.bookedSlots[selectedBranchId]?.[dateKey]?.[bedId]?.includes(t);
+            const isOut = i < selectedBranch.open || i >= selectedBranch.close;
             
-            <p class="text-sm text-gray-700 font-medium mt-4" id="branch-summary"></p>
-        </div>
-
-        <!-- Availability Grid Container -->
-        <div class="hide-scrollbar">
-            <div id="availability-grid" class="relative w-full overflow-x-auto">
-                <!-- Grid content will be injected here by JS -->
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="mt-6 flex justify-between space-x-4">
-             <button onclick="blockSelectedSlots()" class="flex-1 py-3 text-white font-semibold rounded-lg bg-red-600 hover:bg-red-700 transition">
-                Block Selected Slots (Admin)
-            </button>
-            <button onclick="unblockSelectedSlots()" class="flex-1 py-3 text-gray-700 font-semibold rounded-lg bg-gray-300 hover:bg-gray-400 transition">
-                Unblock Selected
-            </button>
-        </div>
-        <p id="selection-status" class="text-sm text-gray-500 mt-3 text-center"></p>
-    </div>
-
-    <script>
-        // --- MOCK DATA ---
-        const MOCK_DATA = {
-            branches: [
-                { id: 'b1', name: 'Family Park Clinic', beds: 3, open: 8, close: 17, city: 'Riyadh' }, // 8:00 AM to 5:00 PM
-                { id: 'b2', name: 'Jeddah Coastal Center', beds: 2, open: 9, close: 18, city: 'Jeddah' }  // 9:00 AM to 6:00 PM
-            ],
-            // Mock data for slots already blocked by an Admin
-            blockedSlots: {
-                'b1': {
-                    '2025-12-01': { 'Bed-1': ['10:00', '11:00'], 'Bed-3': ['14:00'] },
-                    '2025-12-03': { 'Bed-2': ['13:00'] }
-                },
-            },
-            // Mock data for slots booked by a Client (Green)
-            bookedSlots: {
-                'b1': {
-                    '2025-12-01': { 'Bed-2': ['09:00'] },
-                    '2025-12-02': { 'Bed-1': ['16:00'] }
-                }
+            if (!isBooked && !isOut) {
+                newSelection.push({ bedId, time: t });
             }
-        };
+        }
+        setSelectedSlots(newSelection);
+    };
 
-        // --- GLOBAL STATE ---
-        let selectedDate = new Date(2025, 11, 1); // Monday, Dec 1, 2025
-        let selectedBranchId = 'b1';
-        let selectedSlots = []; // Array of {bedId: 'Bed-X', time: 'HH:MM', date: 'YYYY-MM-DD'}
-        let isDragging = false;
-        let startSlot = null;
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
 
-        const timeSlotLength = 60; // 60 minutes per slot (1 hour)
-        const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // ACTION: BLOCK SLOTS (Turn Red)
+    const handleBlock = () => {
+        if (selectedSlots.length === 0) return;
+        
+        const dateKey = formatDateStr(selectedDate);
+        const updatedBlocked = { ...localBlockedSlots };
+        
+        if (!updatedBlocked[selectedBranchId]) updatedBlocked[selectedBranchId] = {};
+        if (!updatedBlocked[selectedBranchId][dateKey]) updatedBlocked[selectedBranchId][dateKey] = {};
 
-        // --- SETUP FUNCTIONS ---
+        selectedSlots.forEach(slot => {
+            if (!updatedBlocked[selectedBranchId][dateKey][slot.bedId]) {
+                updatedBlocked[selectedBranchId][dateKey][slot.bedId] = [];
+            }
+            if (!updatedBlocked[selectedBranchId][dateKey][slot.bedId].includes(slot.time)) {
+                updatedBlocked[selectedBranchId][dateKey][slot.bedId].push(slot.time);
+            }
+        });
 
-        function initializeSelects() {
-            const branchSelect = document.getElementById('branch-select');
-            branchSelect.innerHTML = '';
-            
-            MOCK_DATA.branches.forEach(branch => {
-                const option = document.createElement('option');
-                option.value = branch.id;
-                option.textContent = branch.name;
-                if (branch.id === selectedBranchId) {
-                    option.selected = true;
+        setLocalBlockedSlots(updatedBlocked);
+        showNotify(`${selectedSlots.length} slots blocked (Red)`, 'error');
+        setSelectedSlots([]);
+    };
+
+    // ACTION: FREE UP SLOTS (Turn White)
+    const handleFree = () => {
+        if (selectedSlots.length === 0) return;
+        
+        const dateKey = formatDateStr(selectedDate);
+        const updatedBlocked = { ...localBlockedSlots };
+        
+        if (updatedBlocked[selectedBranchId] && updatedBlocked[selectedBranchId][dateKey]) {
+            selectedSlots.forEach(slot => {
+                if (updatedBlocked[selectedBranchId][dateKey][slot.bedId]) {
+                    updatedBlocked[selectedBranchId][dateKey][slot.bedId] = 
+                        updatedBlocked[selectedBranchId][dateKey][slot.bedId].filter(t => t !== slot.time);
                 }
-                branchSelect.appendChild(option);
             });
         }
 
-        function initializeView() {
-            selectedBranchId = document.getElementById('branch-select').value;
-            const datePickerValue = document.getElementById('current-date-picker').value;
-            
-            // If the user manually changed the date via the date picker, use that date
-            if (datePickerValue) {
-                selectedDate = new Date(datePickerValue.replace(/-/g, '/'));
-            } else {
-                 // Update date picker to reflect current selectedDate state (for initial load)
-                 document.getElementById('current-date-picker').value = formatDate(selectedDate);
-            }
-            
-            const selectedBranch = MOCK_DATA.branches.find(b => b.id === selectedBranchId);
-            const openTime = formatTime12hr(selectedBranch.open);
-            const closeTime = formatTime12hr(selectedBranch.close);
-            
-            document.getElementById('branch-summary').textContent = 
-                `Open: ${openTime} | Close: ${closeTime} | Beds: ${selectedBranch.beds}`;
+        setLocalBlockedSlots(updatedBlocked);
+        showNotify(`${selectedSlots.length} slots freed up (White)`);
+        setSelectedSlots([]);
+    };
 
-            renderDayIterator();
-            renderAvailabilityGrid();
+    // --- RENDERERS ---
+
+    const renderDayIterator = () => {
+        const days = [];
+        const startOfWeek = new Date(selectedDate);
+        startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay()); // Go to Sunday
+
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(startOfWeek);
+            day.setDate(startOfWeek.getDate() + i);
+            const isSelected = formatDateStr(day) === formatDateStr(selectedDate);
+            days.push(
+                <button 
+                    key={i}
+                    onClick={() => changeDate(day)}
+                    className={`flex-1 flex flex-col items-center py-3 rounded-2xl transition-all duration-300 ${isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
+                >
+                    <span className="text-[10px] font-black uppercase tracking-widest">{day.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                    <span className="text-sm font-black mt-1">{day.getDate()}</span>
+                </button>
+            );
         }
-
-        // --- DATE MANIPULATION ---
-
-        function changeWeek(days) {
-            selectedDate.setDate(selectedDate.getDate() + days);
-            document.getElementById('current-date-picker').value = formatDate(selectedDate);
-            initializeView();
-        }
-
-        function changeDay(dateString) {
-            selectedDate = new Date(dateString.replace(/-/g, '/'));
-             document.getElementById('current-date-picker').value = dateString;
-            initializeView();
-        }
-
-        function formatDate(date) {
-            const yyyy = date.getFullYear();
-            const mm = String(date.getMonth() + 1).padStart(2, '0');
-            const dd = String(date.getDate()).padStart(2, '0');
-            return `${yyyy}-${mm}-${dd}`;
-        }
-        
-        function formatTime12hr(hour24) {
-            const h = hour24 % 12 || 12;
-            const ampm = hour24 < 12 || hour24 === 24 ? 'AM' : 'PM';
-            const minute = '00';
-            return `${h}:${minute} ${ampm}`;
-        }
-        
-        function formatDayDisplay(date) {
-            const dayName = DAY_NAMES[date.getDay()];
-            const day = date.getDate();
-            const month = date.getMonth() + 1; // Months are 0-indexed
-            return `<div class="text-center"><div>${dayName}</div><div class="text-xs">${day}/${month}</div></div>`;
-        }
-        
-        function renderDayIterator() {
-            const iteratorContainer = document.getElementById('day-iterator');
-            iteratorContainer.innerHTML = '';
-            
-            // Calculate start of the week (Sunday)
-            const currentDayOfWeek = selectedDate.getDay(); // 0 (Sun) to 6 (Sat)
-            const startOfWeek = new Date(selectedDate);
-            startOfWeek.setDate(selectedDate.getDate() - currentDayOfWeek); // Go back to Sunday
-
-            const selectedDateStr = formatDate(selectedDate);
-
-            for (let i = 0; i < 7; i++) {
-                const day = new Date(startOfWeek);
-                day.setDate(startOfWeek.getDate() + i);
-                
-                const dayStr = formatDate(day);
-                const isSelected = dayStr === selectedDateStr;
-
-                const dayHtml = `
-                    <button onclick="changeDay('${dayStr}')" 
-                            class="flex-1 text-center text-sm date-nav-button ${isSelected ? 'selected' : 'bg-white text-gray-800'}">
-                        ${formatDayDisplay(day)}
+        return (
+            <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                    <button onClick={() => changeWeek(-1)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-blue-600 transition-colors">
+                        <ChevronLeft className="w-5 h-5" />
                     </button>
-                `;
-                iteratorContainer.innerHTML += dayHtml;
-            }
-        }
+                    <span className="text-xs font-black text-gray-800 uppercase tracking-widest">
+                        {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <button onClick={() => changeWeek(1)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-blue-600 transition-colors">
+                        <ChevronRight className="w-5 h-5" />
+                    </button>
+                </div>
+                <div className="flex space-x-2">{days}</div>
+            </div>
+        );
+    };
 
-        // --- GRID RENDERING LOGIC ---
+    const renderGrid = () => {
+        const dateKey = formatDateStr(selectedDate);
+        const branchBlocked = localBlockedSlots[selectedBranchId]?.[dateKey] || {};
+        const branchBooked = MOCK_DATA.bookedSlots[selectedBranchId]?.[dateKey] || {};
 
-        function getTimeslots() {
-            const slots = [];
-            // Generate all 24 hours (0-23)
-            for (let h = 0; h < 24; h++) {
-                slots.push(`${String(h).padStart(2, '0')}:00`);
-            }
-            return slots;
-        }
+        return (
+            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
+                <div className="flex border-b border-gray-50 bg-gray-50/50">
+                    <div className="w-20 p-3 text-[10px] font-black text-gray-400 uppercase border-r border-gray-100">Time</div>
+                    {bedIds.map(bed => (
+                        <div key={bed} className="flex-1 p-3 text-[10px] font-black text-gray-600 uppercase text-center border-r border-gray-100 last:border-0">{bed.replace('-', ' ')}</div>
+                    ))}
+                </div>
 
-        function getBedIds(count) {
-            return Array.from({ length: count }, (_, i) => `Bed ${i + 1}`);
-        }
+                <div className="overflow-y-auto max-h-[420px] no-scrollbar select-none" onMouseLeave={handleMouseUp}>
+                    {timeSlots.map(time => {
+                        const hour = parseInt(time.split(':')[0]);
+                        const isOutside = hour < selectedBranch.open || hour >= selectedBranch.close;
 
-        function renderAvailabilityGrid() {
-            const gridContainer = document.getElementById('availability-grid');
-            const branch = MOCK_DATA.branches.find(b => b.id === selectedBranchId);
-            const beds = getBedIds(branch.beds);
-            const slots = getTimeslots(); // Get all 24 hours
-            const bookingDateStr = formatDate(selectedDate);
+                        return (
+                            <div key={time} className="flex border-b border-gray-50 last:border-0">
+                                <div className="w-20 p-2 text-[10px] font-bold text-gray-400 text-center border-r border-gray-100 bg-gray-50/30">
+                                    {formatTime24to12(time)}
+                                </div>
+                                {bedIds.map(bed => {
+                                    const isBooked = branchBooked[bed]?.includes(time);
+                                    const isBlocked = branchBlocked[bed]?.includes(time);
+                                    const isSelected = selectedSlots.some(s => s.bedId === bed && s.time === time);
+
+                                    let status = 'available';
+                                    if (isOutside) status = 'unavailable';
+                                    else if (isSelected) status = 'selected';
+                                    else if (isBooked) status = 'booked';
+                                    else if (isBlocked) status = 'blocked';
+
+                                    return (
+                                        <div 
+                                            key={bed}
+                                            onMouseDown={() => handleMouseDown(bed, time, status)}
+                                            onMouseEnter={() => handleMouseEnter(bed, time, status)}
+                                            onMouseUp={handleMouseUp}
+                                            className={`flex-1 h-11 border-r border-gray-50 last:border-0 transition-all duration-150 relative
+                                                ${status === 'unavailable' ? 'bg-gray-100/50 cursor-not-allowed opacity-40' : ''}
+                                                ${status === 'available' ? 'bg-white cursor-pointer hover:bg-blue-50/30' : ''}
+                                                ${status === 'selected' ? 'bg-blue-500 shadow-inner' : ''}
+                                                ${status === 'booked' ? 'bg-emerald-500 cursor-not-allowed' : ''}
+                                                ${status === 'blocked' ? 'bg-rose-500' : ''}
+                                            `}
+                                        >
+                                            {status === 'booked' && <Check className="w-3 h-3 text-white absolute inset-0 m-auto opacity-40" />}
+                                            {status === 'blocked' && <ShieldOff className="w-4 h-4 text-white absolute inset-0 m-auto opacity-40" />}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        );
+    };
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse">SWIM 360</div>;
+
+    return (
+        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
             
-            const currentDayBlocked = MOCK_DATA.blockedSlots[selectedBranchId]?.[bookingDateStr] || {};
-            const currentDayBooked = MOCK_DATA.bookedSlots[selectedBranchId]?.[bookingDateStr] || {};
-            
-            // --- Determine Grid Columns ---
-            // 1 column for Time + N columns for Beds
-            const gridTemplateColumns = `minmax(80px, 80px) repeat(${beds.length}, 1fr)`;
-
-            let gridHTML = `<div style="display: grid; grid-template-columns: ${gridTemplateColumns};">`;
-
-            // --- 1. Header Row (Beds) ---
-            gridHTML += `<div class="date-header-row fixed-time-col border-r border-b">Time</div>`; // Top-left corner
-            beds.forEach(bedId => {
-                gridHTML += `<div class="date-header-row text-center font-bold text-sm py-2 border-b">${bedId}</div>`;
-            });
-
-            // --- 2. Content Rows (Slots) ---
-            slots.forEach(time24hr => {
-                const slotHour = parseInt(time24hr.split(':')[0]);
-                const timeDisplay = formatTime12hr(slotHour);
-                
-                // Time Column (Fixed)
-                gridHTML += `<div class="time-slot fixed-time-col border-r">${timeDisplay}</div>`;
-
-                // Bed Columns (Interactive)
-                beds.forEach(bedId => {
-                    const bedIdClean = bedId.replace(/\s/g, '-');
-                    const isBookedByClient = currentDayBooked[bedIdClean] && currentDayBooked[bedIdClean].includes(time24hr);
-                    const isBlockedByAdmin = currentDayBlocked[bedIdClean] && currentDayBlocked[bedIdClean].includes(time24hr);
-                    const isSelected = selectedSlots.some(s => s.bedId === bedIdClean && s.time === time24hr);
-
-                    // Check if time is outside operating hours (Unavailable/Closed)
-                    const isOutsideHours = slotHour < branch.open || slotHour >= branch.close;
-
-                    let slotClass = 'available';
-                    
-                    if (isOutsideHours) {
-                        slotClass = 'unavailable'; // Grey - closed hours
-                    } else if (isSelected) {
-                        slotClass = 'selected'; // Blue - selected (takes priority over blocked/booked when selected)
-                    } else if (isBookedByClient) {
-                        slotClass = 'booked'; // Green
-                    } else if (isBlockedByAdmin) {
-                        slotClass = 'blocked'; // Red
-                    }
-
-                    gridHTML += `
-                        <div class="time-slot ${slotClass}" 
-                             data-bed="${bedIdClean}" 
-                             data-time="${time24hr}"
-                             onmousedown="startDrag(event)"
-                             onmouseup="endDrag(event)"
-                             onmousemove="dragOver(event)">
+            {/* Header */}
+            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30">
+                <div className="flex items-center justify-between text-left">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
+                            <Calendar className="w-6 h-6" />
                         </div>
-                    `;
-                });
-            });
+                        <div>
+                            <h1 className="text-2xl font-black tracking-tight leading-none">Availability</h1>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">Branch Capacity Management</p>
+                        </div>
+                    </div>
+                    <button onClick={() => window.history.back()} className="p-2 text-gray-400 active:scale-90 transition-transform"><X className="w-6 h-6" /></button>
+                </div>
+            </header>
 
-            gridHTML += `</div>`;
-            gridContainer.innerHTML = gridHTML;
-            updateSelectionStatus();
-        }
-
-        // --- INTERACTION LOGIC (Drag & Select) ---
-
-        function getSlotData(element) {
-            return {
-                bedId: element.getAttribute('data-bed'),
-                time: element.getAttribute('data-time'),
-                element: element
-            };
-        }
-
-        function toggleSlot(slot, forceState = null) {
-            const index = selectedSlots.findIndex(s => s.bedId === slot.bedId && s.time === slot.time);
-            
-            // Check if slot is booked (green) - if so, it cannot be selected/modified
-            const element = document.querySelector(`.time-slot[data-bed="${slot.bedId}"][data-time="${slot.time}"]`);
-            if (element && element.classList.contains('booked')) {
-                 showSnackbar("Cannot modify client-booked slots (Green).", true);
-                 return;
-            }
-
-            // Check if slot is unavailable (gray) - if so, it cannot be selected
-            if (element && element.classList.contains('unavailable')) {
-                 return;
-            }
-
-            if (forceState === true && index === -1) {
-                 selectedSlots.push({ bedId: slot.bedId, time: slot.time });
-            } else if (forceState === false && index !== -1) {
-                 selectedSlots.splice(index, 1);
-            } else if (forceState === null) {
-                 if (index !== -1) {
-                    selectedSlots.splice(index, 1);
-                } else {
-                    selectedSlots.push({ bedId: slot.bedId, time: slot.time });
-                }
-            }
-            
-            renderAvailabilityGrid();
-        }
-
-        function startDrag(event) {
-            if (event.button !== 0 || event.target.classList.contains('unavailable') || event.target.classList.contains('booked')) return; 
-
-            // Don't clear previous selection - allow accumulative selection
-            
-            isDragging = true;
-            startSlot = getSlotData(event.target);
-            toggleSlot(startSlot, true); // Force select the start slot
-            event.preventDefault();
-        }
-
-        function dragOver(event) {
-            if (!isDragging || event.target.classList.contains('unavailable') || event.target.classList.contains('booked')) return;
-            
-            const currentSlotElement = event.target;
-            const currentSlot = getSlotData(currentSlotElement);
-            
-            if (startSlot.bedId !== currentSlot.bedId) return; // Only allow drag within the same bed
-
-            if (currentSlot.bedId && currentSlot.time) {
-                // Calculate the range from startSlot to currentSlot
-                const slots = getTimeslots(); // All 24 hours
-                const startIndex = slots.indexOf(startSlot.time);
-                const endIndex = slots.indexOf(currentSlot.time);
-
-                const minIndex = Math.min(startIndex, endIndex);
-                const maxIndex = Math.max(startIndex, endIndex);
-
-                // Remove any previously selected slots in this drag range for this bed
-                selectedSlots = selectedSlots.filter(s => s.bedId !== currentSlot.bedId);
-
-                // Add the new range to selectedSlots
-                for (let i = minIndex; i <= maxIndex; i++) {
-                    const time24hr = slots[i];
-                    const slotElement = document.querySelector(`.time-slot[data-bed="${currentSlot.bedId}"][data-time="${time24hr}"]`);
-                    
-                    if (slotElement && !slotElement.classList.contains('unavailable') && !slotElement.classList.contains('booked')) {
-                         selectedSlots.push({ bedId: currentSlot.bedId, time: time24hr });
-                    }
-                }
-                renderAvailabilityGrid(); // Visually update the selection range
-            }
-        }
-
-        function endDrag(event) {
-            if (!isDragging) return;
-            isDragging = false;
-            startSlot = null;
-            // The selectedSlots array is already updated by dragOver/toggleSlot.
-            updateSelectionStatus();
-            renderAvailabilityGrid(); // Final render to set .blocked/selected state
-        }
-
-        // --- ACTION BUTTONS ---
-
-        function blockSelectedSlots() {
-            if (selectedSlots.length === 0) {
-                return showSnackbar("No slots selected to block.", true);
-            }
-
-            const bookingDateStr = formatDate(selectedDate);
-            const blockedRef = MOCK_DATA.blockedSlots[selectedBranchId] || {};
-            blockedRef[bookingDateStr] = blockedRef[bookingDateStr] || {};
-            MOCK_DATA.blockedSlots[selectedBranchId] = blockedRef;
-
-            selectedSlots.forEach(slot => {
-                const bedKey = slot.bedId;
-                blockedRef[bookingDateStr][bedKey] = blockedRef[bookingDateStr][bedKey] || [];
+            <main className="p-6 space-y-6 animate-in">
                 
-                if (!blockedRef[bookingDateStr][bedKey].includes(slot.time)) {
-                    blockedRef[bookingDateStr][bedKey].push(slot.time);
-                }
-            });
+                {/* Branch Selection & Date Card */}
+                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
+                    <div className="space-y-2 text-left">
+                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">Active Branch</label>
+                        <div className="flex items-center bg-gray-50 rounded-2xl px-4 py-1 border border-transparent focus-within:border-blue-500 transition-all">
+                            <Building2 className="w-5 h-5 text-gray-400 mr-3" />
+                            <select 
+                                value={selectedBranchId}
+                                onChange={(e) => setSelectedBranchId(e.target.value)}
+                                className="flex-1 bg-transparent py-4 text-sm font-bold outline-none appearance-none"
+                            >
+                                {MOCK_DATA.branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            <ChevronDown className="w-4 h-4 text-gray-400 ml-2" />
+                        </div>
+                    </div>
 
-            showSnackbar(`${selectedSlots.length} slots blocked successfully (Red).`, false);
-            selectedSlots = [];
-            renderAvailabilityGrid();
-        }
+                    {renderDayIterator()}
+                    
+                    <div className="pt-2 flex items-center justify-center space-x-4 text-[10px] font-black text-gray-400 uppercase tracking-tighter">
+                        <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> {selectedBranch.open}:00 - {selectedBranch.close}:00</span>
+                        <span className="flex items-center"><Layers className="w-3 h-3 mr-1" /> {selectedBranch.beds} Beds Total</span>
+                    </div>
+                </div>
 
-        function unblockSelectedSlots() {
-             if (selectedSlots.length === 0) {
-                return showSnackbar("No slots selected to unblock.", true);
-            }
+                {/* Legend Chips */}
+                <div className="flex space-x-3 overflow-x-auto no-scrollbar py-1">
+                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
+                        <div className="w-2.5 h-2.5 rounded-full bg-white border border-gray-300"></div>
+                        <span className="text-[9px] font-black text-gray-500 uppercase">Free</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
+                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                        <span className="text-[9px] font-black text-gray-500 uppercase">Booked</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
+                        <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                        <span className="text-[9px] font-black text-gray-500 uppercase">Blocked</span>
+                    </div>
+                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
+                        <div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div>
+                        <span className="text-[9px] font-black text-gray-500 uppercase">Closed</span>
+                    </div>
+                </div>
 
-            const bookingDateStr = formatDate(selectedDate);
-            const blockedRef = MOCK_DATA.blockedSlots[selectedBranchId]?.[bookingDateStr];
-            
-            selectedSlots.forEach(slot => {
-                const bedKey = slot.bedId;
-                if (blockedRef && blockedRef[bedKey]) {
-                    const index = blockedRef[bedKey].indexOf(slot.time);
-                    if (index > -1) {
-                        blockedRef[bedKey].splice(index, 1);
-                    }
-                }
-            });
+                {/* Interactive Grid */}
+                {renderGrid()}
 
-            showSnackbar(`${selectedSlots.length} slots unblocked successfully (White).`, false);
-            selectedSlots = [];
-            renderAvailabilityGrid();
-        }
+                {/* Actions Footer */}
+                <div className="grid grid-cols-2 gap-4">
+                    <button 
+                        onClick={handleBlock}
+                        disabled={selectedSlots.length === 0}
+                        className={`py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-2
+                        ${selectedSlots.length > 0 ? 'bg-rose-500 text-white shadow-rose-100 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                    >
+                        <ShieldOff className="w-5 h-5" /> <span>Block</span>
+                    </button>
+                    <button 
+                        onClick={handleFree}
+                        disabled={selectedSlots.length === 0}
+                        className={`py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-2
+                        ${selectedSlots.length > 0 ? 'bg-blue-600 text-white shadow-blue-100 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
+                    >
+                        <RotateCcw className="w-5 h-5" /> <span>Free Up</span>
+                    </button>
+                </div>
 
-        // --- UTILITY FUNCTIONS ---
-        
-        function showSnackbar(message, isError = false) {
-            const snackbar = document.createElement('div');
-            snackbar.textContent = message;
-            snackbar.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'} z-[60]`;
-            document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
-        }
+                {selectedSlots.length > 0 && (
+                    <div className="flex items-center justify-center space-x-2 text-blue-600 animate-pulse">
+                        <Info className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">{selectedSlots.length} Slots Selected</span>
+                    </div>
+                )}
+            </main>
 
-        function updateSelectionStatus() {
-            const statusEl = document.getElementById('selection-status');
-            if (selectedSlots.length > 0) {
-                statusEl.textContent = `${selectedSlots.length} slot(s) selected`;
-            } else {
-                statusEl.textContent = '';
-            }
-        }
+            {notification && (
+                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
+                    <CheckCircle className="w-4 h-4" />
+                    <span>{notification.msg}</span>
+                </div>
+            )}
 
-        // --- INITIALIZATION ---
-
-        window.onload = () => {
-            const dateInput = document.getElementById('current-date-picker');
-            dateInput.value = formatDate(selectedDate);
-            dateInput.min = formatDate(new Date()); 
-            
-            // Set up initial drag listeners globally
-            document.body.addEventListener('mouseup', endDrag); 
-            document.body.addEventListener('mousemove', dragOver); 
-
-            initializeSelects();
-            initializeView();
-            
-            // Initial render of the day iterator
-            renderDayIterator();
-        };
-    </script>
-</body>
-</html>
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+        </div>
+    );
+}

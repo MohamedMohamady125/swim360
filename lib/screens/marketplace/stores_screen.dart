@@ -1,1085 +1,449 @@
-import 'package:flutter/material.dart';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, addDoc, deleteDoc, onSnapshot, collection, query, Timestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { 
+  Search, Plus, Trash2, List, MapPin, 
+  ChevronLeft, MessageSquare, MessageCircle, 
+  ArrowLeft, ChevronRight, Share2, Star,
+  ShoppingCart, Store, Tag, Info, Layers, Check, X, Maximize2
+} from 'lucide-react';
 
-class Store {
-    final String id;
-    final String name;
-    final String photo;
-    final String location;
-    final bool shipping;
-    final List<String> categories;
-    final List<String> mostSold;
+// --- Global Context/Setup ---
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    Store({
-        required this.id,
-        required this.name,
-        required this.photo,
-        required this.location,
-        required this.shipping,
-        required this.categories,
-        required this.mostSold,
-    });
+let app, db, auth;
+if (Object.keys(firebaseConfig).length) {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
 }
 
-class Product {
-    final String id;
-    final String name;
-    final String size; // display size
-    final double price;
-    final String brand;
-    final String description;
-    final List<String> photos;
-    final List<String> availableSizes;
-    final List<String> availableColors;
-    final String? defaultSize;
-    final String? defaultColor;
+const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/usedItems`;
 
-    Product({
-        required this.id,
-        required this.name,
-        required this.size,
-        required this.price,
-        required this.brand,
-        required this.description,
-        required this.photos,
-        this.availableSizes = const [],
-        this.availableColors = const [],
-        this.defaultSize,
-        this.defaultColor,
-    });
-}
-
-class CartItem {
-    final String productName;
-    final String storeName;
-    final String? size;
-    final String? color;
-
-    CartItem({
-        required this.productName,
-        required this.storeName,
-        this.size,
-        this.color,
-    });
-}
-
-class VariantSelection {
-    String? size;
-    String? color;
-    VariantSelection({this.size, this.color});
-}
-
-class StoresScreen extends StatefulWidget {
-    const StoresScreen({Key? key}) : super(key: key);
-
-    @override
-    State<StoresScreen> createState() => _StoresScreenState();
-}
-
-class _StoresScreenState extends State<StoresScreen> {
-    // Views: 'stores-list', 'store-profile', 'store-products', 'product-detail'
-    String currentView = 'stores-list';
-    String? selectedStoreId;
-    String? selectedCategory;
-    String? selectedProductName;
-
-    VariantSelection productVariants = VariantSelection();
-    List<CartItem> cart = [];
-
-    late final List<Store> stores;
-    late final Map<String, Map<String, List<Product>>> storeProducts;
-
-    @override
-    void initState() {
-        super.initState();
-        stores = [
-            Store(
-                id: 'store1',
-                name: 'Swim Gear Pro',
-                photo: 'https://placehold.co/100x100/3b82f6/ffffff?text=SGP',
-                location: '15.345, 44.567 (Riyadh)',
-                shipping: true,
-                categories: const ['Suits', 'Goggles', 'Training'],
-                mostSold: const ['Pro Racing Suit', 'Mirrored Goggles', 'Kickboard Pro'],
-            ),
-            Store(
-                id: 'store2',
-                name: 'Aqua Outlet',
-                photo: 'https://placehold.co/100x100/06b6d4/ffffff?text=AO',
-                location: '15.123, 44.789 (Jeddah)',
-                shipping: false,
-                categories: const ['Fins', 'Paddles', 'Snorkels'],
-                mostSold: const ['Short Blade Fins'],
-            ),
-            Store(
-                id: 'store3',
-                name: 'Triathlon Hub',
-                photo: 'https://placehold.co/100x100/ef4444/ffffff?text=TH',
-                location: '15.987, 44.321 (Dammam)',
-                shipping: true,
-                categories: const ['Wetsuits', 'Bags', 'Nutrition'],
-                mostSold: const [],
-            ),
-        ];
-
-        storeProducts = {
-            'store1': {
-                'Suits': [
-                    Product(
-                        id: 'p1',
-                        name: 'Pro Racing Suit',
-                        size: '32',
-                        price: 150.00,
-                        brand: 'Speedo',
-                        description:
-                                'Elite FINA-approved suit for competitions. Maximizes hydrodynamics.',
-                        photos: const [
-                            'https://placehold.co/600x600/1e40af/ffffff?text=SUIT+A',
-                            'https://placehold.co/600x600/1e40af/ffffff?text=SUIT+B'
-                        ],
-                        availableSizes: const ['28', '30', '32', '34'],
-                        availableColors: const ['Black', 'Navy', 'Red'],
-                        defaultSize: '32',
-                        defaultColor: 'Black',
-                    ),
-                    Product(
-                        id: 'p2',
-                        name: 'Practice Suit',
-                        size: '34',
-                        price: 45.00,
-                        brand: 'Arena',
-                        description:
-                                'Durable chlorine-resistant material for daily training sessions.',
-                        photos: const [
-                            'https://placehold.co/600x600/22c55e/ffffff?text=PRAC+A'
-                        ],
-                        availableSizes: const ['30', '32', '34', '36'],
-                        availableColors: const ['Blue', 'Green'],
-                        defaultSize: '34',
-                        defaultColor: 'Blue',
-                    ),
-                ],
-                'Goggles': [
-                    Product(
-                        id: 'p3',
-                        name: 'Mirrored Goggles',
-                        size: 'Adjustable',
-                        price: 25.00,
-                        brand: 'Zoggs',
-                        description: 'Mirrored lenses reduce glare for outdoor swimming.',
-                        photos: const [
-                            'https://placehold.co/600x600/f97316/ffffff?text=GOGGLE+A',
-                            'https://placehold.co/600x600/f97316/ffffff?text=GOGGLE+B',
-                            'https://placehold.co/600x600/f97316/ffffff?text=GOGGLE+C'
-                        ],
-                        availableSizes: const ['Adjustable'],
-                        availableColors: const ['Silver', 'Blue Mirror'],
-                        defaultSize: 'Adjustable',
-                        defaultColor: 'Silver',
-                    ),
-                ],
-                'Training': [
-                    Product(
-                        id: 'p4',
-                        name: 'Kickboard Pro',
-                        size: 'One Size',
-                        price: 12.00,
-                        brand: 'FINIS',
-                        description:
-                                'Ergonomic shape for natural body position. Lightweight.',
-                        photos: const [
-                            'https://placehold.co/600x600/0f766e/ffffff?text=KCK'
-                        ],
-                        availableSizes: const ['One Size'],
-                        availableColors: const ['Yellow', 'Orange'],
-                        defaultSize: 'One Size',
-                        defaultColor: 'Yellow',
-                    ),
-                ],
-            },
-            'store2': {
-                'Fins': [
-                    Product(
-                        id: 'p5',
-                        name: 'Short Blade Fins',
-                        size: 'Shoe 9',
-                        price: 30.00,
-                        brand: 'Finis',
-                        description:
-                                'Ideal for fast tempo kicking and ankle flexibility.',
-                        photos: const [
-                            'https://placehold.co/600x600/06b6d4/ffffff?text=FINS+1'
-                        ],
-                        availableSizes: const ['Shoe 7', 'Shoe 8', 'Shoe 9'],
-                        availableColors: const ['Blue'],
-                        defaultSize: 'Shoe 9',
-                        defaultColor: 'Blue',
-                    ),
-                ],
-            },
-        };
+// --- DATA DEFINITIONS ---
+const STORE_DATA = [
+    {
+        id: 's1',
+        name: 'Swim Gear Pro',
+        photo: 'https://placehold.co/100x100/3b82f6/ffffff?text=SGP',
+        banner: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800',
+        location: 'Zamalek, Cairo',
+        rating: 4.8,
+        categories: ['Suits', 'Goggles', 'Training'],
+        mostSold: ['Pro Racing Suit', 'Mirrored Goggles'],
+        products: {
+            'Suits': [
+                { 
+                    id: 'p1', 
+                    name: 'Pro Racing Suit', 
+                    price: 150.00, 
+                    brand: 'Speedo', 
+                    description: 'Elite FINA-approved suit for competitions. Maximizes hydrodynamics and muscle compression.', 
+                    photos: [
+                        'https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?auto=format&fit=crop&q=80&w=800',
+                        'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800'
+                    ],
+                    availableSizes: ['24', '26', '28', '30'],
+                    availableColors: ['#000000', '#1e40af', '#ef4444'],
+                    // Optional Size Guide Photo
+                    sizeGuidePhoto: 'https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&q=80&w=800'
+                },
+                { 
+                    id: 'p2', 
+                    name: 'Practice Jammer', 
+                    price: 45.00, 
+                    brand: 'Arena', 
+                    description: 'Durable chlorine-resistant material for daily training sessions.', 
+                    photos: ['https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?auto=format&fit=crop&q=80&w=800'],
+                    availableSizes: ['28', '30', '32', '34'],
+                    availableColors: ['#000000', '#111827'],
+                    sizeGuidePhoto: null // Button will be disabled
+                }
+            ],
+            'Goggles': [
+                { 
+                    id: 'p3', 
+                    name: 'Mirrored Goggles', 
+                    price: 25.00, 
+                    brand: 'Zoggs', 
+                    description: 'Mirrored lenses reduce glare for outdoor swimming. Soft-frame technology for comfort.', 
+                    photos: [
+                        'https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?auto=format&fit=crop&q=80&w=800',
+                        'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=800'
+                    ],
+                    availableSizes: ['One Size'],
+                    availableColors: ['#94a3b8', '#3b82f6', '#ffd700'],
+                    sizeGuidePhoto: null
+                }
+            ],
+            'Training': [
+                { 
+                    id: 'p4', 
+                    name: 'Foam Kickboard', 
+                    price: 15.00, 
+                    brand: 'TYR', 
+                    description: 'High-density foam for improved leg strength and focus.', 
+                    photos: ['https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800'],
+                    availableSizes: ['Standard'],
+                    availableColors: ['#3b82f6'],
+                    sizeGuidePhoto: null
+                }
+            ]
+        }
     }
+];
 
-    // Color mapping similar to original
-    static const Map<String, Color> colorMap = {
-        'black': Color(0xFF000000),
-        'navy': Color(0xFF1d4ed8),
-        'red': Color(0xFFef4444),
-        'blue': Color(0xFF3b82f6),
-        'green': Color(0xFF10b981),
-        'silver': Color(0xFF9ca3af),
-        'blue mirror': Color(0xFF60a5fa),
-        'yellow': Color(0xFFfacc15),
-        'orange': Color(0xFFf97316),
+// --- COMPONENTS ---
+
+const PhotoCarousel = ({ photos }) => {
+    const [activeIndex, setActiveIndex] = useState(0);
+    const scrollRef = useRef(null);
+
+    const handleScroll = (e) => {
+        const scrollPos = e.target.scrollLeft;
+        const width = e.target.offsetWidth;
+        const index = Math.round(scrollPos / width);
+        setActiveIndex(index);
     };
 
-    void _navigate(String view,
-            {String? id, String? category, String? productName}) {
-        setState(() {
-            currentView = view;
-            selectedStoreId = id;
-            selectedCategory = category;
-            selectedProductName = productName;
-            if (view == 'product-detail') {
-                final store = stores.firstWhere((s) => s.id == id);
-                final prods = storeProducts[store.id]?[category] ?? [];
-                final prod = prods.firstWhere((p) => p.name == productName);
-                productVariants = VariantSelection(
-                    size: prod.defaultSize,
-                    color: prod.defaultColor,
-                );
-            }
+    return (
+        <div className="relative aspect-square bg-gray-100 overflow-hidden">
+            <div 
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar h-full scroll-smooth"
+            >
+                {photos.map((src, i) => (
+                    <div key={i} className="flex-shrink-0 w-full h-full snap-center">
+                        <img src={src} className="w-full h-full object-cover" alt={`Product ${i}`} />
+                    </div>
+                ))}
+            </div>
+            {photos.length > 1 && (
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex space-x-1.5 px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full z-10">
+                    {photos.map((_, i) => (
+                        <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${activeIndex === i ? 'bg-white w-4' : 'bg-white/50 w-1.5'}`} />
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// --- Main App ---
+export default function App() {
+    const [view, setView] = useState('home'); 
+    const [selectedStore, setSelectedStore] = useState(null);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [cart, setCart] = useState([]);
+    
+    const [userId, setUserId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [notification, setNotification] = useState(null);
+
+    const [selectedSize, setSelectedSize] = useState(null);
+    const [selectedColor, setSelectedColor] = useState(null);
+
+    // Modal state for Size Guide
+    const [sizeGuideModalPhoto, setSizeGuideModalPhoto] = useState(null);
+
+    const storeProfileRef = useRef(null);
+
+    useEffect(() => {
+        if (!auth) return;
+        const initAuth = async () => {
+            if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+            else await signInAnonymously(auth);
+        };
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setUserId(user ? user.uid : null);
+            setLoading(false);
         });
-    }
+        initAuth();
+        return () => unsubscribe();
+    }, []);
 
-    void _showSnack(String msg, {bool error = false}) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-                content: Text(msg),
-                backgroundColor: error ? Colors.red : Colors.green,
-                duration: const Duration(seconds: 3),
-            ),
-        );
-    }
+    const showNotify = (msg, type = 'success') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
 
-    @override
-    Widget build(BuildContext context) {
-        final hasBack = currentView != 'stores-list';
-        final String title = () {
-            switch (currentView) {
-                case 'stores-list':
-                    return 'Shops & Retailers';
-                case 'store-profile':
-                    final store = stores.firstWhere((s) => s.id == selectedStoreId);
-                    return store.name;
-                case 'store-products':
-                    return selectedCategory ?? 'Products';
-                case 'product-detail':
-                    final store = stores.firstWhere((s) => s.id == selectedStoreId);
-                    return store.name;
-                default:
-                    return 'Stores';
-            }
-        }();
-
-        return Scaffold(
-            backgroundColor: const Color(0xFFF7F9FB),
-            appBar: AppBar(
-                backgroundColor: Colors.white,
-                elevation: 1,
-                leading: hasBack
-                        ? IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.black87),
-                                onPressed: () {
-                                    if (currentView == 'store-profile') {
-                                        _navigate('stores-list');
-                                    } else if (currentView == 'store-products') {
-                                        _navigate('store-profile', id: selectedStoreId);
-                                    } else if (currentView == 'product-detail') {
-                                        _navigate('store-products',
-                                                id: selectedStoreId, category: selectedCategory);
-                                    }
-                                },
-                            )
-                        : null,
-                title: Text(title,
-                        style: const TextStyle(
-                                color: Colors.black, fontWeight: FontWeight.bold)),
-                centerTitle: false,
-            ),
-            body: SafeArea(child: _buildCurrentView()),
-            floatingActionButton: _buildCartFab(),
-        );
-    }
-
-    Widget _buildCartFab() {
-        return Stack(
-            clipBehavior: Clip.none,
-            children: [
-                FloatingActionButton(
-                    backgroundColor: Colors.blue,
-                    onPressed: _showCartDialog,
-                    child: const Icon(Icons.shopping_cart, color: Colors.white),
-                ),
-                if (cart.isNotEmpty)
-                    Positioned(
-                        right: -2,
-                        top: -2,
-                        child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                                cart.length.toString(),
-                                style: const TextStyle(color: Colors.white, fontSize: 11),
-                            ),
-                        ),
-                    ),
-            ],
-        );
-    }
-
-    Widget _buildCurrentView() {
-        switch (currentView) {
-            case 'stores-list':
-                return _buildStoresList();
-            case 'store-profile':
-                return _buildStoreProfile();
-            case 'store-products':
-                return _buildStoreProducts();
-            case 'product-detail':
-                return _buildProductDetail();
-            default:
-                return _buildStoresList();
-        }
-    }
-
-    // 1) Stores list
-    Widget _buildStoresList() {
-        return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-                const Text(
-                    'Shops & Retailers',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 12),
-                ...stores.map((store) => InkWell(
-                            onTap: () => _navigate('store-profile', id: store.id),
-                            child: Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                        BoxShadow(
-                                            color: Colors.black.withOpacity(0.05),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                        )
-                                    ],
-                                ),
-                                child: Row(
-                                    children: [
-                                                            ClipRRect(
-                                                                borderRadius: BorderRadius.circular(40),
-                                                                child: Image.network(
-                                                                    store.photo,
-                                                                    width: 64,
-                                                                    height: 64,
-                                                                    fit: BoxFit.cover,
-                                                                    errorBuilder: (_, __, ___) => Container(
-                                                                        width: 64,
-                                                                        height: 64,
-                                                                        color: Colors.grey.shade300,
-                                                                        alignment: Alignment.center,
-                                                                        child: const Icon(Icons.store, color: Colors.white70),
-                                                                    ),
-                                                                ),
-                                                            ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                            child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                    Text(store.name,
-                                                            style: const TextStyle(
-                                                                    fontSize: 18, fontWeight: FontWeight.bold)),
-                                                    const SizedBox(height: 4),
-                                                    Text(
-                                                        store.shipping
-                                                                ? 'Shipping Available'
-                                                                : 'Local Pickup Only',
-                                                        style: TextStyle(
-                                                            color: store.shipping
-                                                                    ? Colors.green.shade700
-                                                                    : Colors.red.shade500,
-                                                            fontWeight: FontWeight.w600,
-                                                            fontSize: 12,
-                                                        ),
-                                                    ),
-                                                ],
-                                            ),
-                                        ),
-                                        const Icon(Icons.chevron_right, color: Colors.grey),
-                                    ],
-                                ),
-                            ),
-                        )),
-            ],
-        );
-    }
-
-    // helper to find product details from product name
-    ({Product product, String category})? _findProductByName(
-            String storeId, String productName) {
-        final sp = storeProducts[storeId];
-        if (sp == null) return null;
-        for (final entry in sp.entries) {
-            final prod = entry.value.firstWhere(
-                (p) => p.name == productName,
-                orElse: () => Product(
-                    id: '',
-                    name: '',
-                    size: '',
-                    price: 0,
-                    brand: '',
-                    description: '',
-                    photos: const [],
-                ),
-            );
-            if (prod.id.isNotEmpty) {
-                return (product: prod, category: entry.key);
-            }
-        }
-        return null;
-    }
-
-    // 2) Store profile
-    Widget _buildStoreProfile() {
-        final store = stores.firstWhere((s) => s.id == selectedStoreId);
-        return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                        )
-                    ],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                        Row(
-                            children: [
-                                                ClipRRect(
-                                                    borderRadius: BorderRadius.circular(48),
-                                                    child: Image.network(
-                                                        store.photo,
-                                                        width: 80,
-                                                        height: 80,
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (_, __, ___) => Container(
-                                                            width: 80,
-                                                            height: 80,
-                                                            color: Colors.grey.shade300,
-                                                            alignment: Alignment.center,
-                                                            child: const Icon(Icons.store, color: Colors.white70),
-                                                        ),
-                                                    ),
-                                                ),
-                                const SizedBox(width: 12),
-                                Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                        Text(store.name,
-                                                style: const TextStyle(
-                                                        fontSize: 22, fontWeight: FontWeight.bold)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                            store.shipping
-                                                    ? 'Shipping Available'
-                                                    : 'Local Pickup Only',
-                                            style: TextStyle(
-                                                color: store.shipping
-                                                        ? Colors.green.shade700
-                                                        : Colors.red.shade500,
-                                                fontWeight: FontWeight.w600,
-                                            ),
-                                        ),
-                                    ],
-                                ),
-                            ],
-                        ),
-                        const SizedBox(height: 16),
-                        const Text('Most Sold Items',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: store.mostSold.map((name) {
-                                final details = _findProductByName(store.id, name);
-                                if (details == null) {
-                                    return Chip(
-                                        label: Text('$name (Out of Stock)'),
-                                        backgroundColor: Colors.grey.shade200,
-                                        labelStyle: const TextStyle(color: Colors.grey),
-                                    );
-                                }
-                                return ActionChip(
-                                    label: Text(name),
-                                    onPressed: () => _navigate('product-detail',
-                                            id: store.id,
-                                            category: details.category,
-                                            productName: details.product.name),
-                                    backgroundColor: Colors.blue.shade50,
-                                    labelStyle: TextStyle(color: Colors.blue.shade800),
-                                );
-                            }).toList(),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text('Browse Categories',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: store.categories
-                                    .map((c) => ElevatedButton(
-                                                onPressed: () => _navigate('store-products',
-                                                        id: store.id, category: c),
-                                                style: ElevatedButton.styleFrom(
-                                                        backgroundColor: Colors.blue,
-                                                        foregroundColor: Colors.white,
-                                                        shape: RoundedRectangleBorder(
-                                                                borderRadius: BorderRadius.circular(10))),
-                                                child: Text(c),
-                                            ))
-                                    .toList(),
-                        )
-                    ],
-                ),
-            ),
-        );
-    }
-
-    // 3) Category products list
-    Widget _buildStoreProducts() {
-        final store = stores.firstWhere((s) => s.id == selectedStoreId);
-        final prods = storeProducts[store.id]?[selectedCategory] ?? [];
-        return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-                Text('${store.name} - ${selectedCategory ?? ''}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 12),
-                ...prods.map((p) => InkWell(
-                            onTap: () => _navigate('product-detail',
-                                    id: store.id, category: selectedCategory, productName: p.name),
-                            child: Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                        BoxShadow(
-                                            color: Colors.black.withOpacity(0.05),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                        )
-                                    ],
-                                ),
-                                child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.center,
-                                    children: [
-                                                            ClipRRect(
-                                                                borderRadius: BorderRadius.circular(8),
-                                                                child: Image.network(
-                                                                    (p.photos.isNotEmpty
-                                                                            ? p.photos.first
-                                                                            : 'https://placehold.co/100x100/9ca3af/ffffff?text=N%2FA'),
-                                                                    width: 56,
-                                                                    height: 56,
-                                                                    fit: BoxFit.cover,
-                                                                    errorBuilder: (_, __, ___) => Container(
-                                                                        width: 56,
-                                                                        height: 56,
-                                                                        color: Colors.grey.shade300,
-                                                                        alignment: Alignment.center,
-                                                                        child: const Icon(Icons.image_not_supported,
-                                                                                color: Colors.white70, size: 20),
-                                                                    ),
-                                                                ),
-                                                            ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                            child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                    Text(p.name,
-                                                            style: const TextStyle(
-                                                                    fontWeight: FontWeight.bold)),
-                                                    const SizedBox(height: 2),
-                                                    Text('Size: ${p.size}',
-                                                            style: const TextStyle(color: Colors.grey)),
-                                                ],
-                                            ),
-                                        ),
-                                        Column(
-                                            crossAxisAlignment: CrossAxisAlignment.end,
-                                            children: [
-                                                Text('\$${p.price.toStringAsFixed(2)}',
-                                                        style: const TextStyle(
-                                                                color: Colors.blue,
-                                                                fontWeight: FontWeight.w600)),
-                                                const SizedBox(height: 6),
-                                                TextButton(
-                                                    onPressed: () => _addToCart(p.name, store.name),
-                                                    style: TextButton.styleFrom(
-                                                            backgroundColor: Colors.teal,
-                                                            foregroundColor: Colors.white,
-                                                            minimumSize: const Size(0, 32),
-                                                            padding: const EdgeInsets.symmetric(
-                                                                    horizontal: 10, vertical: 6),
-                                                            shape: RoundedRectangleBorder(
-                                                                    borderRadius: BorderRadius.circular(16))),
-                                                    child: const Text('Add to Cart',
-                                                            style: TextStyle(fontSize: 12)),
-                                                )
-                                            ],
-                                        )
-                                    ],
-                                ),
-                            ),
-                        ))
-            ],
-        );
-    }
-
-    // 4) Product detail
-    Widget _buildProductDetail() {
-        final store = stores.firstWhere((s) => s.id == selectedStoreId);
-        final prods = storeProducts[store.id]?[selectedCategory] ?? [];
-        final product = prods.firstWhere((p) => p.name == selectedProductName);
-
-        final requiresSize = product.availableSizes.isNotEmpty;
-        final requiresColor = product.availableColors.isNotEmpty;
-        final isSizeSelected = !requiresSize || productVariants.size != null;
-        final isColorSelected = !requiresColor || productVariants.color != null;
-        final isAddEnabled = isSizeSelected && isColorSelected && store.shipping;
-
-        return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Container(
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                        BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                        )
-                    ],
-                ),
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                        Text(product.name,
-                                style: const TextStyle(
-                                        fontSize: 22, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 12),
-                        // Photo gallery
-                        if (product.photos.isNotEmpty)
-                            GridView.builder(
-                                itemCount: product.photos.length,
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                gridDelegate:
-                                        const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    crossAxisSpacing: 8,
-                                    mainAxisSpacing: 8,
-                                ),
-                                                itemBuilder: (context, index) => ClipRRect(
-                                                    borderRadius: BorderRadius.circular(8),
-                                                    child: Image.network(
-                                                        product.photos[index],
-                                                        fit: BoxFit.cover,
-                                                        errorBuilder: (_, __, ___) => Container(
-                                                            color: Colors.grey.shade300,
-                                                            alignment: Alignment.center,
-                                                            child: const Icon(Icons.image_not_supported,
-                                                                    color: Colors.white70),
-                                                        ),
-                                                    ),
-                                                ),
-                            )
-                        else
-                            Container(
-                                alignment: Alignment.center,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Text('No photos available.',
-                                        style: TextStyle(color: Colors.grey)),
-                            ),
-                        const SizedBox(height: 12),
-                        Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                                color: const Color(0xFFEFF6FF),
-                                borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                                children: [
-                                    Row(
-                                        children: [
-                                            const Expanded(
-                                                child: Text('Price',
-                                                        style: TextStyle(
-                                                                color: Colors.grey, fontWeight: FontWeight.w600)),
-                                            ),
-                                            Text('\$${product.price.toStringAsFixed(2)}',
-                                                    style: const TextStyle(
-                                                            color: Colors.blue,
-                                                            fontSize: 20,
-                                                            fontWeight: FontWeight.bold)),
-                                        ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                        children: [
-                                            const Expanded(
-                                                child: Text('Size',
-                                                        style: TextStyle(
-                                                                color: Colors.grey, fontWeight: FontWeight.w600)),
-                                            ),
-                                            Text(product.size,
-                                                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                        children: [
-                                            const Expanded(
-                                                child: Text('Brand',
-                                                        style: TextStyle(
-                                                                color: Colors.grey, fontWeight: FontWeight.w600)),
-                                            ),
-                                            Text(product.brand,
-                                                    style: const TextStyle(fontWeight: FontWeight.bold)),
-                                        ],
-                                    ),
-                                ],
-                            ),
-                        ),
-                        const SizedBox(height: 12),
-                        // Variant selection
-                        if (product.availableSizes.isNotEmpty) ...[
-                            Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                    const Text('Size:',
-                                            style:
-                                                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    Text(productVariants.size ?? 'Required',
-                                            style: const TextStyle(color: Colors.grey)),
-                                ],
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                                spacing: 8,
-                                children: product.availableSizes
-                                        .map((s) => ChoiceChip(
-                                                    label: Text(s),
-                                                    selected: productVariants.size == s,
-                                                    onSelected: (_) => setState(() {
-                                                        productVariants.size = s;
-                                                    }),
-                                                ))
-                                        .toList(),
-                            ),
-                            if (!isSizeSelected)
-                                const Padding(
-                                    padding: EdgeInsets.only(top: 6),
-                                    child: Text('Please select a size.',
-                                            style: TextStyle(color: Colors.red, fontSize: 12)),
-                                ),
-                            const SizedBox(height: 12),
-                        ],
-                        if (product.availableColors.isNotEmpty) ...[
-                            Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                    const Text('Color:',
-                                            style:
-                                                    TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                                    Text(productVariants.color ?? 'Required',
-                                            style: const TextStyle(color: Colors.grey)),
-                                ],
-                            ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: product.availableColors.map((c) {
-                                    final color = colorMap[c.toLowerCase()] ?? Colors.grey;
-                                    final selected = productVariants.color == c;
-                                    return GestureDetector(
-                                        onTap: () => setState(() => productVariants.color = c),
-                                        child: Container(
-                                            width: 32,
-                                            height: 32,
-                                            decoration: BoxDecoration(
-                                                color: color,
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                    color: selected ? Colors.blue : Colors.transparent,
-                                                    width: 3,
-                                                ),
-                                            ),
-                                        ),
-                                    );
-                                }).toList(),
-                            ),
-                            if (!isColorSelected)
-                                const Padding(
-                                    padding: EdgeInsets.only(top: 6),
-                                    child: Text('Please select a color.',
-                                            style: TextStyle(color: Colors.red, fontSize: 12)),
-                                ),
-                            const SizedBox(height: 12),
-                        ],
-                        const Text('Details',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        Text(product.description, style: const TextStyle(color: Colors.grey)),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                                onPressed: isAddEnabled
-                                        ? () => _addToCart(product.name, store.name)
-                                        : null,
-                                style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                            store.shipping ? Colors.teal : Colors.grey.shade400,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                    shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                    ),
-                                ),
-                                child: Text(
-                                    store.shipping ? 'Add to Cart' : 'Local Pickup Only',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                ),
-                            ),
-                        ),
-                        if (!store.shipping)
-                            const Padding(
-                                padding: EdgeInsets.only(top: 6),
-                                child: Text(
-                                    'This item is only available for local pickup.',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.red, fontSize: 12),
-                                ),
-                            )
-                    ],
-                ),
-            ),
-        );
-    }
-
-    void _addToCart(String productName, String storeName) {
-        final store = stores.firstWhere((s) => s.name == storeName);
-        final prods = storeProducts[store.id]?[selectedCategory] ?? [];
-        final product = prods.firstWhere((p) => p.name == productName,
-                orElse: () => Product(
-                            id: '',
-                            name: '',
-                            size: '',
-                            price: 0,
-                            brand: '',
-                            description: '',
-                            photos: const [],
-                        ));
-
-        final requiresSize = product.availableSizes.isNotEmpty;
-        final requiresColor = product.availableColors.isNotEmpty;
-        if ((requiresSize && productVariants.size == null) ||
-                (requiresColor && productVariants.color == null)) {
-            _showSnack('Please select all required variants (Size/Color).',
-                    error: true);
+    const addToCart = (product) => {
+        if (product.availableSizes && !selectedSize) {
+            showNotify("Please select a size", "error");
             return;
         }
-
-        if (!store.shipping) {
-            _showSnack('Cannot add item. $storeName only offers local pickup.',
-                    error: true);
+        if (product.availableColors && !selectedColor) {
+            showNotify("Please select a color", "error");
             return;
         }
+        setCart([...cart, { ...product, selectedSize, selectedColor }]);
+        showNotify(`Added ${product.name} to basket`);
+    };
 
-        final currentCartStore = cart.isNotEmpty ? cart.first.storeName : null;
-        if (currentCartStore != null && currentCartStore != storeName) {
-            _confirmCartReset(productName, storeName, currentCartStore);
-            return;
+    const scrollToCategory = (catId) => {
+        const element = document.getElementById(`category-section-${catId}`);
+        if (element) {
+            const yOffset = -60; 
+            const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+            window.scrollTo({ top: y, behavior: 'smooth' });
         }
+    };
 
-        setState(() {
-            cart.add(CartItem(
-                productName: productName,
-                storeName: storeName,
-                size: productVariants.size,
-                color: productVariants.color,
-            ));
-        });
-        _showSnack(
-                'Added $productName (Size: ${productVariants.size ?? 'N/A'}, Color: ${productVariants.color ?? 'N/A'}) to cart.');
-    }
+    // --- VIEW RENDERERS ---
 
-    void _confirmCartReset(
-            String productName, String newStoreName, String oldStoreName) {
-        showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-                title: const Text('Reset Cart?'),
-                content: Text(
-                        'Your cart has items from $oldStoreName. To add an item from $newStoreName, your cart must be cleared.'),
-                actions: [
-                    TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
-                    ),
-                    ElevatedButton(
-                        onPressed: () {
-                            setState(() {
-                                cart = [
-                                    CartItem(
-                                        productName: productName,
-                                        storeName: newStoreName,
-                                        size: productVariants.size,
-                                        color: productVariants.color,
-                                    )
-                                ];
-                            });
-                            Navigator.of(context).pop();
-                            _showSnack('Cart reset. Added $productName from $newStoreName.');
-                        },
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                        child: const Text('Reset & Add',
-                                style: TextStyle(color: Colors.white)),
-                    )
-                ],
-            ),
-        );
-    }
+    const renderStoresList = () => (
+        <div className="p-5 space-y-8 animate-in text-left">
+            <div className="space-y-1">
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Marketplace</h1>
+                <p className="text-sm text-gray-400 font-medium">Shop official gear from top retailers</p>
+            </div>
+            
+            <div className="space-y-5">
+                {STORE_DATA.map(store => (
+                    <div key={store.id} 
+                         onClick={() => { setSelectedStore(store); setView('store-profile'); }}
+                         className="bg-white rounded-[32px] overflow-hidden shadow-xl shadow-gray-200/50 border border-white group active:scale-[0.98] transition-all cursor-pointer">
+                        <div className="h-40 bg-gray-100 relative">
+                            <img src={store.banner} className="w-full h-full object-cover" alt={store.name} />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                            <div className="absolute bottom-4 left-5 flex items-center space-x-3">
+                                <div className="w-14 h-14 rounded-2xl bg-white p-1 shadow-2xl border-2 border-white/50">
+                                    <img src={store.photo} className="w-full h-full object-cover rounded-xl" alt="logo" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-black text-xl leading-none">{store.name}</h3>
+                                    <div className="flex items-center text-blue-200 text-[10px] font-black uppercase tracking-widest mt-1.5 opacity-90">
+                                        <Star className="w-3 h-3 mr-1 text-amber-400 fill-amber-400" /> {store.rating} • {store.location}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="p-5 flex items-center space-x-2 overflow-hidden bg-white">
+                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mr-2 flex-shrink-0">Picks:</span>
+                            {store.mostSold.map(tag => (
+                                <span key={tag} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase whitespace-nowrap">{tag}</span>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 
-    void _showCartDialog() {
-        showDialog(
-            context: context,
-            builder: (context) {
-                return AlertDialog(
-                    title: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                            const Text('Shopping Cart'),
-                            Container(
-                                padding:
-                                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                    color: Colors.blue.shade50,
-                                    borderRadius: BorderRadius.circular(999),
-                                ),
-                                child: Text('${cart.length} items',
-                                        style: const TextStyle(color: Colors.blue)),
-                            )
-                        ],
-                    ),
-                    content: SizedBox(
-                        width: 320,
-                        child: cart.isEmpty
-                                ? const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 24),
-                                        child:
-                                                Center(child: Text('Your cart is empty.', style: TextStyle(color: Colors.grey))),
-                                    )
-                                : SizedBox(
-                                        height: 240,
-                                        child: ListView.separated(
-                                            itemCount: cart.length,
-                                            separatorBuilder: (_, __) => const Divider(height: 12),
-                                            itemBuilder: (_, i) {
-                                                final item = cart[i];
-                                                return Row(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                                    children: [
-                                                        Expanded(
-                                                            child: Text(
-                                                                '${item.productName} ${_variantSuffix(item)}',
-                                                                style: const TextStyle(fontSize: 13),
-                                                                overflow: TextOverflow.ellipsis,
-                                                            ),
-                                                        ),
-                                                        Text('(${item.storeName})',
-                                                                style: const TextStyle(
-                                                                        fontSize: 11, color: Colors.grey)),
-                                                    ],
-                                                );
-                                            },
-                                        ),
-                                    ),
-                    ),
-                    actions: [
-                        TextButton(
-                            onPressed: cart.isEmpty
-                                    ? null
-                                    : () {
-                                            setState(() => cart.clear());
-                                            Navigator.of(context).pop();
-                                            _showSnack('Cart cleared.');
-                                        },
-                            child: const Text('Clear Cart'),
-                        ),
-                        ElevatedButton(
-                            onPressed: cart.isEmpty
-                                    ? null
-                                    : () {
-                                            Navigator.of(context).pop();
-                                            _showSnack('Proceeding to payment... (Demo)');
-                                        },
-                            child: const Text('Proceed to Payment'),
-                        ),
-                        TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('Close'),
-                        )
-                    ],
-                );
-            },
-        );
-    }
+    const renderStoreProfile = () => (
+        <div ref={storeProfileRef} className="flex flex-col bg-white min-h-screen pb-32 animate-in text-left">
+            <div className="relative h-56">
+                <img src={selectedStore.banner} className="w-full h-full object-cover" alt="banner" />
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
+                <button onClick={() => setView('home')} className="absolute top-12 left-5 p-2.5 bg-white/20 backdrop-blur-xl rounded-2xl text-white active:scale-90 transition-transform">
+                    <ChevronLeft className="w-6 h-6" />
+                </button>
+                <div className="absolute -bottom-8 left-8 w-24 h-24 bg-white p-1.5 rounded-[32px] shadow-2xl border-4 border-white">
+                    <img src={selectedStore.photo} className="w-full h-full object-cover rounded-[24px]" alt="logo" />
+                </div>
+            </div>
 
-    String _variantSuffix(CartItem item) {
-        final parts = <String>[];
-        if (item.size != null) parts.add(item.size!);
-        if (item.color != null) parts.add(item.color!);
-        if (parts.isEmpty) return '';
-        return '(${parts.join(', ')})';
-    }
+            <div className="pt-14 px-6 space-y-8">
+                <div className="flex justify-between items-start">
+                    <div className="space-y-1">
+                        <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-none">{selectedStore.name}</h1>
+                        <p className="text-sm font-bold text-blue-600 uppercase tracking-widest pt-1 flex items-center">
+                            <MapPin className="w-3.5 h-3.5 mr-1.5" /> {selectedStore.location}
+                        </p>
+                    </div>
+                    <div className="bg-emerald-50 px-4 py-2 rounded-2xl flex items-center shadow-sm">
+                        <Star className="w-4 h-4 text-emerald-600 fill-emerald-600 mr-1.5" />
+                        <span className="text-sm font-black text-emerald-700">{selectedStore.rating}</span>
+                    </div>
+                </div>
+
+                <div className="flex space-x-2 overflow-x-auto no-scrollbar py-2.5 sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-gray-50">
+                    {selectedStore.categories.map(cat => (
+                        <button 
+                            key={cat} 
+                            onClick={() => scrollToCategory(cat)}
+                            className="px-5 py-2.5 bg-gray-50 border border-gray-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-500 hover:bg-blue-600 hover:text-white active:scale-95 transition-all whitespace-nowrap"
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+
+                <div className="space-y-10 pb-10">
+                    {Object.entries(selectedStore.products).map(([cat, prods]) => (
+                        <div key={cat} id={`category-section-${cat}`} className="space-y-4 scroll-mt-20">
+                            <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] ml-2 flex items-center">
+                                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2"></span>
+                                {cat}
+                            </h3>
+                            {prods.map(prod => (
+                                <div key={prod.id} 
+                                     onClick={() => { setSelectedProduct(prod); setSelectedSize(null); setSelectedColor(null); setView('store-product-details'); }}
+                                     className="flex items-center p-4 bg-white rounded-[32px] border border-gray-50 shadow-sm hover:shadow-xl transition-all cursor-pointer group">
+                                    <div className="w-24 h-24 rounded-3xl bg-gray-100 overflow-hidden mr-4">
+                                        <img src={prod.photos[0]} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="product" />
+                                    </div>
+                                    <div className="flex-grow">
+                                        <h4 className="font-black text-gray-900 leading-tight text-lg">{prod.name}</h4>
+                                        <p className="text-xs text-gray-400 font-medium line-clamp-1 mt-1">{prod.description}</p>
+                                        <p className="text-xl font-black text-blue-600 mt-2">${prod.price}</p>
+                                    </div>
+                                    <div className="w-10 h-10 rounded-2xl bg-gray-50 text-gray-300 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                        <ChevronRight className="w-6 h-6" />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderProductDetails = () => (
+        <div className="flex flex-col bg-white min-h-screen pb-32 animate-in text-left">
+            <div className="relative">
+                <button onClick={() => setView('store-profile')} className="absolute top-12 left-5 z-20 p-2.5 bg-black/20 backdrop-blur-xl rounded-2xl text-white active:scale-90 transition-transform">
+                    <ChevronLeft className="w-6 h-6" />
+                </button>
+                <PhotoCarousel photos={selectedProduct.photos} />
+            </div>
+
+            <div className="p-7 space-y-8">
+                <div className="space-y-2">
+                    <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase tracking-widest">{selectedProduct.brand}</span>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight leading-tight">{selectedProduct.name}</h1>
+                    <p className="text-4xl font-black text-blue-600 pt-2 tracking-tighter">${selectedProduct.price}</p>
+                </div>
+
+                {selectedProduct.availableSizes && (
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                            <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Select Size</h2>
+                            
+                            {/* SIZE GUIDE BUTTON: CONDITIONAL LOGIC */}
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (selectedProduct.sizeGuidePhoto) setSizeGuideModalPhoto(selectedProduct.sizeGuidePhoto);
+                                }}
+                                disabled={!selectedProduct.sizeGuidePhoto}
+                                className={`text-[10px] font-bold underline transition-colors ${selectedProduct.sizeGuidePhoto ? 'text-blue-600 hover:text-blue-800' : 'text-gray-300 cursor-not-allowed'}`}
+                            >
+                                Size Guide
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {selectedProduct.availableSizes.map(size => (
+                                <button 
+                                    key={size}
+                                    onClick={() => setSelectedSize(size)}
+                                    className={`px-6 py-3 rounded-2xl text-sm font-black transition-all ${selectedSize === size ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                                >
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {selectedProduct.availableColors && (
+                    <div className="space-y-4">
+                        <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">Available Colors</h2>
+                        <div className="flex flex-wrap gap-4">
+                            {selectedProduct.availableColors.map(color => (
+                                <button 
+                                    key={color}
+                                    onClick={() => setSelectedColor(color)}
+                                    className={`w-10 h-10 rounded-full border-4 transition-all flex items-center justify-center ${selectedColor === color ? 'border-blue-600 scale-110 shadow-lg' : 'border-transparent'}`}
+                                    style={{ backgroundColor: color }}
+                                >
+                                    {selectedColor === color && <Check className={`w-5 h-5 ${color === '#ffffff' ? 'text-gray-900' : 'text-white'}`} />}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                <div className="space-y-3 pt-4">
+                    <h2 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">About this item</h2>
+                    <p className="text-sm text-gray-600 leading-relaxed font-medium">{selectedProduct.description}</p>
+                </div>
+            </div>
+
+            <div className="fixed bottom-0 left-0 right-0 p-8 bg-white/95 backdrop-blur-xl border-t border-gray-100 max-w-md mx-auto rounded-t-[44px] shadow-2xl z-40">
+                <button 
+                    onClick={() => addToCart(selectedProduct)}
+                    className="w-full flex items-center justify-center py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm shadow-xl shadow-blue-100 active:scale-95 transition-all tracking-[0.2em] uppercase">
+                    <ShoppingCart className="w-6 h-6 mr-3" />
+                    Add to Basket
+                </button>
+            </div>
+        </div>
+    );
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse uppercase tracking-[0.3em]">Swim 360</div>;
+
+    return (
+        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative selection:bg-blue-100">
+            {view === 'home' && renderStoresList()}
+            {view === 'store-profile' && renderStoreProfile()}
+            {view === 'store-product-details' && renderProductDetails()}
+
+            {cart.length > 0 && view !== 'store-product-details' && (
+                <button 
+                    onClick={() => showNotify(`Checking out ${cart.length} items...`)} 
+                    className="fixed bottom-8 right-6 z-30 flex items-center space-x-3 bg-blue-600 text-white px-7 py-4 rounded-[28px] font-black shadow-2xl active:scale-90 transition-all border-4 border-white/20 uppercase text-xs tracking-widest"
+                >
+                    <ShoppingCart className="w-6 h-6" /> 
+                    <span>Basket ({cart.length})</span>
+                </button>
+            )}
+
+            {/* SIZE GUIDE MODAL OVERLAY */}
+            {sizeGuideModalPhoto && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/90 backdrop-blur-md animate-in">
+                    <button 
+                        onClick={() => setSizeGuideModalPhoto(null)}
+                        className="absolute top-12 right-6 p-3 bg-white/20 rounded-full text-white active:scale-90 transition-transform"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                    <div className="w-full max-w-sm space-y-6">
+                        <div className="bg-white rounded-[32px] overflow-hidden shadow-2xl relative">
+                            <img src={sizeGuideModalPhoto} className="w-full h-auto object-contain" alt="Size Guide" />
+                            <div className="p-4 bg-gray-50 flex items-center justify-center">
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pinch to zoom for details</span>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => setSizeGuideModalPhoto(null)}
+                            className="w-full py-4 bg-white text-gray-900 rounded-[20px] font-black text-sm tracking-widest uppercase shadow-xl"
+                        >
+                            Got it
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {notification && (
+                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
+                    <span>{notification.msg}</span>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+                .scroll-mt-20 { scroll-margin-top: 80px; }
+            `}</style>
+        </div>
+    );
 }
-

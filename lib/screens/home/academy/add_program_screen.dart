@@ -4,353 +4,346 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Swim 360 - Create Program</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+        
         .form-card {
             background-color: white;
-            border-radius: 20px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            border-radius: 32px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #F1F5F9;
         }
+
         .input-group {
             display: flex;
             align-items: center;
-            border: 1px solid #E5E7EB;
-            border-radius: 12px;
-            padding: 0 12px;
-            background-color: #FAFAFA;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            border-radius: 16px;
+            padding: 0 16px;
+            background-color: #F8FAFC;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05);
+            border: 1px solid transparent;
         }
+
         .input-group:focus-within {
-            border-color: #3B82F6;
-            box-shadow: 0 0 0 1px #3B82F6;
             background-color: white;
+            border-color: #2563EB;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
         }
-        .input-group input, .input-group select, .input-group textarea {
+
+        .input-group input, .input-group textarea {
             border: none;
             outline: none;
-            padding: 12px 0;
+            padding: 14px 0;
             flex-grow: 1;
             background-color: transparent;
+            font-weight: 700;
+            font-size: 0.875rem;
         }
-        /* Day Row Styling */
+
         .day-row {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid #F3F4F6;
-            transition: all 0.2s;
+            flex-direction: column;
+            padding: 16px;
+            border-radius: 20px;
+            border: 1px solid #F1F5F9;
+            transition: all 0.3s ease;
+            background-color: white;
+            margin-bottom: 12px;
         }
+
         .day-row.active {
             border-color: #DBEAFE;
             background-color: #EFF6FF;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.05);
         }
+
         .day-toggle {
-            cursor: pointer;
-            width: 45px;
-            height: 45px;
+            width: 48px;
+            height: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
-            background-color: #F3F4F6;
-            color: #6B7280;
-            font-weight: 700;
-            font-size: 0.8rem;
-            transition: all 0.2s;
+            border-radius: 14px;
+            background-color: #F1F5F9;
+            color: #94A3B8;
+            font-weight: 900;
+            font-size: 0.75rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
         .day-row.active .day-toggle {
-            background-color: #3B82F6;
+            background-color: #2563EB;
             color: white;
+            box-shadow: 0 8px 15px -3px rgba(37, 99, 235, 0.3);
         }
-        .time-picker-mini {
-            font-size: 0.85rem;
-            padding: 6px 8px;
-            border-radius: 8px;
-            border: 1px solid #E5E7EB;
+
+        .time-picker-blueprint {
+            font-size: 0.8rem;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid #E2E8F0;
             background-color: white;
+            font-weight: 800;
             outline: none;
         }
-        .btn-submit {
-            background-color: #10B981;
-            color: white;
-            transition: all 0.2s;
-        }
-        .btn-submit:hover {
-            background-color: #059263;
-            transform: translateY(-1px);
-        }
+
+        .btn-action { transition: all 0.2s ease; }
+        .btn-action:active { transform: scale(0.96); }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="p-4 md:p-8 pb-20">
+<body class="p-6 md:p-10 pb-32">
 
-    <div class="max-w-xl mx-auto">
-        <!-- Header -->
-        <div class="flex items-center space-x-4 mb-6">
-            <button onclick="window.history.back()" class="p-2 hover:bg-gray-200 rounded-full transition">
-                <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+    <div class="max-w-2xl mx-auto text-left">
+        <header class="flex items-center space-x-6 mb-10">
+            <button type="button" onclick="window.history.back()" class="p-3 bg-white border border-slate-100 text-slate-900 rounded-2xl shadow-sm hover:bg-slate-50 btn-action">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                    <path d="M15 19l-7-7 7-7"></path>
+                </svg>
             </button>
-            <h1 class="text-3xl font-extrabold text-gray-800">Create Program</h1>
-        </div>
+            <div>
+                <h1 class="text-4xl font-black text-slate-900 tracking-tighter uppercase italic leading-none">New Program</h1>
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mt-2">Training Level Definition</p>
+            </div>
+        </header>
 
-        <p class="text-gray-500 mb-8">Define a new training level and visualize the weekly session schedule.</p>
-
-        <form id="create-program-form">
+        <form id="create-program-form" class="space-y-6">
             
-            <!-- Section 1: Basic Identification -->
             <div class="form-card">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Program Details</h3>
-                <div class="space-y-4">
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 10h6"></path></svg>
+                    </div>
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Program Details</h3>
+                </div>
+
+                <div class="space-y-6">
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase ml-1 mb-1">Program Name (Level)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Program Title (Level)</label>
                         <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 10h6"></path></svg>
-                            <input type="text" name="name" required placeholder="e.g., Intermediate Squad">
+                            <input type="text" name="name" required placeholder="E.G., INTERMEDIATE STROKE SQUAD">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase ml-1 mb-1">Short Description</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Description</label>
                         <div class="input-group">
-                            <textarea name="description" rows="2" required placeholder="Basic description for swimmers and parents."></textarea>
+                            <textarea name="description" rows="3" required placeholder="Outline the technical focus and goals..."></textarea>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 2: Pricing & Capacity -->
             <div class="form-card">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Pricing & Capacity</h3>
-                <div class="grid grid-cols-2 gap-4">
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Price & capacity</h3>
+                </div>
+                <div class="grid grid-cols-2 gap-6">
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase ml-1 mb-1">Price (USD)</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Subscription</label>
                         <div class="input-group">
-                            <span class="text-gray-400 font-bold mr-1">$</span>
                             <input type="number" name="price" required step="0.01" placeholder="120.00">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase ml-1 mb-1">Max Capacity</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Maximum Capacity</label>
                         <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v13a2 2 0 002 2h2M9 14v6M15 14v6M12 3v18"></path></svg>
                             <input type="number" name="capacity" required min="1" placeholder="20">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 3: Visual Weekly Schedule -->
             <div class="form-card">
-                <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Weekly Schedule</h3>
-                <p class="text-xs text-gray-400 mb-4">Select the days and times for this program.</p>
+                <div class="flex items-center space-x-3 mb-8">
+                    <div class="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center text-purple-600 shadow-inner">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Weekly Schedule</h3>
+                </div>
                 
-                <div id="schedule-builder" class="space-y-2">
-                    <!-- Iterating Days -->
-                    <div class="day-row" data-day="Sat">
-                        <div class="flex items-center space-x-3">
-                            <div class="day-toggle" onclick="toggleDay(this)">SAT</div>
-                            <span class="text-sm font-semibold text-gray-700 day-label">Saturday</span>
+                <div id="schedule-builder" class="space-y-4">
+                    <!-- Sat -->
+                    <div class="day-row" id="row-Sat">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center space-x-4 cursor-pointer" onclick="toggleDay('Sat')">
+                                <div class="day-toggle">SAT</div>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-widest">Saturday</span>
+                            </div>
+                            <button type="button" onclick="addTimeSlot('Sat')" id="btn-Sat" class="hidden text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:scale-105 active:scale-95">+ Add Slot</button>
                         </div>
-                        <div class="time-inputs hidden flex items-center space-x-2">
-                            <input type="time" class="time-picker-mini start-time">
-                            <span class="text-gray-400 text-xs">to</span>
-                            <input type="time" class="time-picker-mini end-time">
-                        </div>
+                        <div id="slots-Sat" class="hidden mt-4 space-y-3"></div>
                     </div>
 
-                    <div class="day-row" data-day="Sun">
-                        <div class="flex items-center space-x-3">
-                            <div class="day-toggle" onclick="toggleDay(this)">SUN</div>
-                            <span class="text-sm font-semibold text-gray-700 day-label">Sunday</span>
+                    <!-- Sun -->
+                    <div class="day-row" id="row-Sun">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center space-x-4 cursor-pointer" onclick="toggleDay('Sun')">
+                                <div class="day-toggle">SUN</div>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-widest">Sunday</span>
+                            </div>
+                            <button type="button" onclick="addTimeSlot('Sun')" id="btn-Sun" class="hidden text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:scale-105 active:scale-95">+ Add Slot</button>
                         </div>
-                        <div class="time-inputs hidden flex items-center space-x-2">
-                            <input type="time" class="time-picker-mini start-time">
-                            <span class="text-gray-400 text-xs">to</span>
-                            <input type="time" class="time-picker-mini end-time">
-                        </div>
+                        <div id="slots-Sun" class="hidden mt-4 space-y-3"></div>
                     </div>
 
-                    <div class="day-row" data-day="Mon">
-                        <div class="flex items-center space-x-3">
-                            <div class="day-toggle" onclick="toggleDay(this)">MON</div>
-                            <span class="text-sm font-semibold text-gray-700 day-label">Monday</span>
+                    <!-- Mon -->
+                    <div class="day-row" id="row-Mon">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center space-x-4 cursor-pointer" onclick="toggleDay('Mon')">
+                                <div class="day-toggle">MON</div>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-widest">Monday</span>
+                            </div>
+                            <button type="button" onclick="addTimeSlot('Mon')" id="btn-Mon" class="hidden text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:scale-105 active:scale-95">+ Add Slot</button>
                         </div>
-                        <div class="time-inputs hidden flex items-center space-x-2">
-                            <input type="time" class="time-picker-mini start-time">
-                            <span class="text-gray-400 text-xs">to</span>
-                            <input type="time" class="time-picker-mini end-time">
-                        </div>
+                        <div id="slots-Mon" class="hidden mt-4 space-y-3"></div>
                     </div>
 
-                    <div class="day-row" data-day="Tue">
-                        <div class="flex items-center space-x-3">
-                            <div class="day-toggle" onclick="toggleDay(this)">TUE</div>
-                            <span class="text-sm font-semibold text-gray-700 day-label">Tuesday</span>
+                    <!-- Tue -->
+                    <div class="day-row" id="row-Tue">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center space-x-4 cursor-pointer" onclick="toggleDay('Tue')">
+                                <div class="day-toggle">TUE</div>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-widest">Tuesday</span>
+                            </div>
+                            <button type="button" onclick="addTimeSlot('Tue')" id="btn-Tue" class="hidden text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:scale-105 active:scale-95">+ Add Slot</button>
                         </div>
-                        <div class="time-inputs hidden flex items-center space-x-2">
-                            <input type="time" class="time-picker-mini start-time">
-                            <span class="text-gray-400 text-xs">to</span>
-                            <input type="time" class="time-picker-mini end-time">
-                        </div>
+                        <div id="slots-Tue" class="hidden mt-4 space-y-3"></div>
                     </div>
 
-                    <div class="day-row" data-day="Wed">
-                        <div class="flex items-center space-x-3">
-                            <div class="day-toggle" onclick="toggleDay(this)">WED</div>
-                            <span class="text-sm font-semibold text-gray-700 day-label">Wednesday</span>
+                    <!-- Wed -->
+                    <div class="day-row" id="row-Wed">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center space-x-4 cursor-pointer" onclick="toggleDay('Wed')">
+                                <div class="day-toggle">WED</div>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-widest">Wednesday</span>
+                            </div>
+                            <button type="button" onclick="addTimeSlot('Wed')" id="btn-Wed" class="hidden text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:scale-105 active:scale-95">+ Add Slot</button>
                         </div>
-                        <div class="time-inputs hidden flex items-center space-x-2">
-                            <input type="time" class="time-picker-mini start-time">
-                            <span class="text-gray-400 text-xs">to</span>
-                            <input type="time" class="time-picker-mini end-time">
-                        </div>
+                        <div id="slots-Wed" class="hidden mt-4 space-y-3"></div>
                     </div>
 
-                    <div class="day-row" data-day="Thu">
-                        <div class="flex items-center space-x-3">
-                            <div class="day-toggle" onclick="toggleDay(this)">THU</div>
-                            <span class="text-sm font-semibold text-gray-700 day-label">Thursday</span>
+                    <!-- Thu -->
+                    <div class="day-row" id="row-Thu">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center space-x-4 cursor-pointer" onclick="toggleDay('Thu')">
+                                <div class="day-toggle">THU</div>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-widest">Thursday</span>
+                            </div>
+                            <button type="button" onclick="addTimeSlot('Thu')" id="btn-Thu" class="hidden text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:scale-105 active:scale-95">+ Add Slot</button>
                         </div>
-                        <div class="time-inputs hidden flex items-center space-x-2">
-                            <input type="time" class="time-picker-mini start-time">
-                            <span class="text-gray-400 text-xs">to</span>
-                            <input type="time" class="time-picker-mini end-time">
-                        </div>
+                        <div id="slots-Thu" class="hidden mt-4 space-y-3"></div>
                     </div>
 
-                    <div class="day-row" data-day="Fri">
-                        <div class="flex items-center space-x-3">
-                            <div class="day-toggle" onclick="toggleDay(this)">FRI</div>
-                            <span class="text-sm font-semibold text-gray-700 day-label">Friday</span>
+                    <!-- Fri -->
+                    <div class="day-row" id="row-Fri">
+                        <div class="flex items-center justify-between w-full">
+                            <div class="flex items-center space-x-4 cursor-pointer" onclick="toggleDay('Fri')">
+                                <div class="day-toggle">FRI</div>
+                                <span class="text-xs font-black text-slate-600 uppercase tracking-widest">Friday</span>
+                            </div>
+                            <button type="button" onclick="addTimeSlot('Fri')" id="btn-Fri" class="hidden text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:scale-105 active:scale-95">+ Add Slot</button>
                         </div>
-                        <div class="time-inputs hidden flex items-center space-x-2">
-                            <input type="time" class="time-picker-mini start-time">
-                            <span class="text-gray-400 text-xs">to</span>
-                            <input type="time" class="time-picker-mini end-time">
-                        </div>
+                        <div id="slots-Fri" class="hidden mt-4 space-y-3"></div>
                     </div>
                 </div>
 
-                <div class="mt-6 grid grid-cols-2 gap-4">
+                <div class="mt-8 grid grid-cols-2 gap-6 pt-6 border-t border-slate-50">
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase ml-1 mb-1">Program Duration</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Cycle Length</label>
                         <div class="input-group">
-                            <input type="text" name="duration" required placeholder="e.g., 3 Months">
+                            <input type="text" name="duration" required placeholder="E.G., 3 MONTHS">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-400 uppercase ml-1 mb-1">Total Sessions</label>
+                        <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-2">Total Unit Sessions</label>
                         <div class="input-group">
-                            <input type="number" name="sessions" required min="1" placeholder="e.g., 24">
+                            <input type="number" name="sessions" required min="1" placeholder="24">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Section 4: Initial Status -->
-            <div class="form-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-800">Launch Immediately?</h3>
-                        <p class="text-xs text-gray-500 italic">Inactive programs won't be visible to new signups.</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" name="status" id="program-status-toggle" checked class="sr-only peer">
-                        <div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
-                    </label>
-                </div>
+            <div class="fixed bottom-0 left-0 right-0 p-6 bg-white/80 backdrop-blur-md border-t border-slate-100 z-50">
+                <button type="submit" class="max-w-2xl mx-auto w-full py-5 bg-emerald-600 text-white rounded-3xl font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-emerald-600/20 flex items-center justify-center space-x-3 btn-action">
+                    <span>Deploy Program</span>
+                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"></path></svg>
+                </button>
             </div>
-
-            <!-- Submit Button -->
-            <button type="submit" class="w-full py-4 btn-submit rounded-2xl font-extrabold text-lg shadow-xl flex items-center justify-center space-x-3 mt-4">
-                <span>Publish New Program</span>
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </button>
 
         </form>
     </div>
 
     <script>
-        /**
-         * Toggles a day row as active/inactive.
-         * Shows time inputs only when active.
-         */
-        function toggleDay(element) {
-            const row = element.closest('.day-row');
-            const timeInputs = row.querySelector('.time-inputs');
+        function toggleDay(day) {
+            const row = document.getElementById('row-' + day);
+            const slotsContainer = document.getElementById('slots-' + day);
+            const addBtn = document.getElementById('btn-' + day);
             
-            row.classList.toggle('active');
-            timeInputs.classList.toggle('hidden');
-            
-            // Set default times if activated
             if (row.classList.contains('active')) {
-                const start = row.querySelector('.start-time');
-                const end = row.querySelector('.end-time');
-                if (!start.value) start.value = "16:00";
-                if (!end.value) end.value = "17:00";
+                row.classList.remove('active');
+                slotsContainer.classList.add('hidden');
+                addBtn.classList.add('hidden');
+                slotsContainer.innerHTML = ''; // Clear slots if deactivated
+            } else {
+                row.classList.add('active');
+                slotsContainer.classList.remove('hidden');
+                addBtn.classList.remove('hidden');
+                addTimeSlot(day); // Add first slot automatically
             }
+        }
+
+        function addTimeSlot(day) {
+            const container = document.getElementById('slots-' + day);
+            const slotDiv = document.createElement('div');
+            slotDiv.className = 'flex items-center space-x-3 animate-in fade-in slide-in-from-top-2 duration-300';
+            slotDiv.innerHTML = `
+                <div class="flex-grow grid grid-cols-2 gap-3 bg-white p-2 rounded-2xl border border-slate-50 shadow-sm">
+                    <div class="flex items-center space-x-2 px-2">
+                        <span class="text-[8px] font-black text-slate-300 uppercase">From</span>
+                        <input type="time" class="time-picker-blueprint w-full border-none bg-transparent" value="16:00" required>
+                    </div>
+                    <div class="flex items-center space-x-2 px-2 border-l border-slate-50">
+                        <span class="text-[8px] font-black text-slate-300 uppercase">To</span>
+                        <input type="time" class="time-picker-blueprint w-full border-none bg-transparent" value="17:00" required>
+                    </div>
+                </div>
+                <button type="button" onclick="this.parentElement.remove()" class="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="3"><path d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            `;
+            container.appendChild(slotDiv);
         }
 
         document.getElementById('create-program-form').onsubmit = function(e) {
             e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            const originalContent = btn.innerHTML;
             
-            const formData = new FormData(e.target);
-            const status = document.getElementById('program-status-toggle').checked ? 'active' : 'paused';
-
-            // Extract visual schedule data
-            const schedule = [];
-            document.querySelectorAll('.day-row.active').forEach(row => {
-                const day = row.dataset.day;
-                const startTime = row.querySelector('.start-time').value;
-                const endTime = row.querySelector('.end-time').value;
-                schedule.push({ day, startTime, endTime });
-            });
-
-            if (schedule.length === 0) {
-                showSnackbar("Please select at least one training day.", true);
-                return;
-            }
-
-            const programData = {
-                name: formData.get('name'),
-                description: formData.get('description'),
-                price: parseFloat(formData.get('price')),
-                capacity: parseInt(formData.get('capacity')),
-                duration: formData.get('duration'),
-                sessions: parseInt(formData.get('sessions')),
-                schedule: schedule, // Now a structured array of day/time objects
-                status: status
-            };
-
-            console.log("Creating New Program Level:", programData);
+            btn.innerHTML = '<span>Synchronizing Registry...</span>';
+            btn.classList.add('opacity-80', 'pointer-events-none');
             
-            showSnackbar(`Program "${programData.name}" has been created!`);
-            
-            // Redirect back after a short delay
             setTimeout(() => {
-                window.history.back();
-            }, 2000);
+                showSnackbar("Program Registered Successfully!");
+                setTimeout(() => window.history.back(), 1500);
+            }, 1000);
         };
 
-        function showSnackbar(message, isError = false) {
-            const old = document.querySelector('.snackbar');
-            if (old) old.remove();
-
+        function showSnackbar(message) {
             const snackbar = document.createElement('div');
             snackbar.textContent = message;
-            snackbar.className = `snackbar fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-2xl shadow-2xl text-white ${isError ? 'bg-red-500' : 'bg-blue-600'} z-[100] font-bold text-sm transition-all animate-bounce`;
+            snackbar.className = "fixed top-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] uppercase tracking-widest animate-bounce";
             document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
+            setTimeout(() => snackbar.remove(), 3000);
         }
     </script>
 </body>

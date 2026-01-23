@@ -1,341 +1,222 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Search, MapPin, Clock, ChevronRight, 
-  CheckCircle, ShieldCheck, ChevronLeft, 
-  Calendar as CalendarIcon, Users, Trophy, Zap, 
-  MessageCircle, Star, Share2, Monitor, Target, Award
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Swim 360 - Expert Online Coaches</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .shadow-blueprint { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
+    </style>
+</head>
+<body class="no-scrollbar">
 
-// --- MOCK DATA: ONLINE COACHES & PROGRAMS ---
-const COACHES = [
-    {
-        id: 'c1',
-        name: 'Coach Michael Thorne',
-        specialty: 'Olympic Performance',
-        rating: 5.0,
-        reviews: 128,
-        image: 'https://images.unsplash.com/photo-1548382113-7615065835ee?auto=format&fit=crop&q=80&w=800',
-        bio: 'Former Olympic relay coach with 15+ years experience in biomechanical stroke analysis. Specialized in elite competitive training.',
-        phone: '1234567890',
-        programs: [
-            { id: 'prog1', title: '12-Week Stroke Mastery', price: 199.99, duration: '12 Weeks (24 sessions)', goal: 'Technique', photo_url: 'https://placehold.co/600x400/7c3aed/ffffff?text=STROKE+MASTERY', description: 'Comprehensive training plan focused on maximizing efficiency across all four strokes with weekly video reviews.' },
-            { id: 'prog2', title: 'Power & Explosiveness', price: 145.00, duration: '8 Weeks (16 sessions)', goal: 'Strength', photo_url: 'https://placehold.co/600x400/5b21b6/ffffff?text=POWER+SWIM', description: 'Dryland and in-water drills designed to increase your burst speed and turn power.' }
-        ]
-    },
-    {
-        id: 'c2',
-        name: 'Sarah "The Fin" Wilson',
-        specialty: 'Open Water & Endurance',
-        rating: 4.9,
-        reviews: 95,
-        image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&q=80&w=800',
-        bio: 'Specialist in long-distance open water preparation. Helping swimmers transition from the pool to the sea with confidence.',
-        phone: '9876543210',
-        programs: [
-            { id: 'prog3', title: 'Open Water Confidence', price: 99.50, duration: '4 Weeks (8 sessions)', goal: 'Endurance', photo_url: 'https://placehold.co/600x400/8b5cf6/ffffff?text=OPEN+WATER', description: 'A four-week guide to transitioning from pool swimming to open water confidence and safety.' },
-            { id: 'prog4', title: 'Nutrition for Triathletes', price: 49.00, duration: '6 Sessions', goal: 'Wellness', photo_url: 'https://placehold.co/600x400/a78bfa/ffffff?text=NUTRITION', description: 'Learn how to fuel your body correctly for long-distance endurance events.' }
-        ]
-    }
-];
+    <div class="max-w-md mx-auto min-h-screen relative flex flex-col">
+        
+        <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50 text-left">
+            <div class="flex items-center space-x-4">
+                <button onclick="handleBack()" class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                <div>
+                    <h1 class="text-2xl font-black text-gray-900 tracking-tight uppercase leading-none italic">Coaches</h1>
+                    <p id="header-subtitle" class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1.5">Online Training</p>
+                </div>
+            </div>
+            <div class="w-11 h-11 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100 shadow-inner">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            </div>
+        </header>
 
-const StepIndicator = ({ step }) => {
-    const steps = ['Expert', 'Portfolio', 'Curriculum'];
-    return (
-        <div className="px-6 py-4 bg-white/90 backdrop-blur-md border-b border-gray-100 sticky top-[72px] z-20 shadow-sm">
-            <div className="flex justify-between items-center relative">
-                <div className="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2 z-0"></div>
-                <div 
-                    className="absolute top-1/2 left-0 h-0.5 bg-purple-600 -translate-y-1/2 z-0 transition-all duration-700 ease-out" 
-                    style={{ width: `${(step / (steps.length - 1)) * 100}%` }}
-                ></div>
-                {steps.map((label, idx) => (
-                    <div key={idx} className="relative z-10 flex flex-col items-center">
-                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black transition-all duration-300 ${step >= idx ? 'bg-purple-600 text-white scale-110 shadow-lg shadow-purple-100' : 'bg-white border-2 border-gray-100 text-gray-300'}`}>
-                            {step > idx ? <CheckCircle className="w-4 h-4" /> : idx + 1}
-                        </div>
-                        <span className={`text-[8px] mt-1.5 font-black uppercase tracking-widest ${step >= idx ? 'text-purple-600' : 'text-gray-300'}`}>{label}</span>
-                    </div>
-                ))}
+        <div id="step-indicator" class="px-8 py-5 bg-white border-b border-gray-50 sticky top-[74px] z-20">
+            <div class="flex justify-between items-center relative max-w-[280px] mx-auto text-left">
+                <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2"></div>
+                <div id="step-line" class="absolute top-1/2 left-0 h-0.5 bg-purple-600 -translate-y-1/2 transition-all duration-700 w-0"></div>
+                
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-purple-600 text-white shadow-lg transition-all">1</div>
+                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-purple-600">Expert</span>
+                </div>
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300 transition-all">2</div>
+                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-gray-300">Profile</span>
+                </div>
+                <div class="relative z-10 flex flex-col items-center">
+                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300 transition-all">3</div>
+                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-gray-300">Details</span>
+                </div>
             </div>
         </div>
-    );
-};
 
-export default function App() {
-    const [currentStep, setCurrentStep] = useState(0); 
-    const [bookingData, setBookingData] = useState({
-        coach: null,
-        program: null
-    });
-    const [searchTerm, setSearchTerm] = useState('');
-    const [goalFilter, setGoalFilter] = useState('All');
-
-    // --- UTILITIES ---
-    const showSnackbar = (msg) => {
-        const sn = document.createElement('div');
-        sn.className = "fixed bottom-10 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-10 py-5 rounded-full text-sm font-black shadow-2xl z-[100] animate-bounce text-center min-w-[280px]";
-        sn.textContent = msg;
-        document.body.appendChild(sn);
-        setTimeout(() => sn.remove(), 2500);
-    };
-
-    const handleBack = () => {
-        if (currentStep > 0) setCurrentStep(currentStep - 1);
-        else window.history.back();
-    };
-
-    const handleShare = (coach, e) => {
-        e.stopPropagation();
-        const text = `Check out ${coach.name} on Swim 360! Expert online coaching: https://swim360.app/coaches/${coach.id}`;
-        const dummy = document.createElement('input');
-        document.body.appendChild(dummy);
-        dummy.value = text;
-        dummy.select();
-        document.execCommand('copy');
-        document.body.removeChild(dummy);
-        showSnackbar("Coach profile link copied!");
-    };
-
-    const getWhatsAppLink = (phone, name) => {
-        const message = `Hi ${name}, I saw your online programs on Swim 360 and would like to ask a few questions!`;
-        return `https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-    };
-
-    // --- COMPUTED DATA ---
-    const filteredCoaches = useMemo(() => {
-        const lowSearch = searchTerm.toLowerCase();
-        return COACHES.filter(c => 
-            (c.name.toLowerCase().includes(lowSearch) || c.specialty.toLowerCase().includes(lowSearch)) &&
-            (goalFilter === 'All' || c.programs.some(p => p.goal === goalFilter))
-        );
-    }, [searchTerm, goalFilter]);
-
-    // --- RENDERERS ---
-
-    const renderCoachList = () => (
-        <div className="space-y-6 animate-in">
-            {/* Search & Filters */}
-            <div className="bg-white p-5 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
-                <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300" />
-                    <input 
-                        type="text" 
-                        placeholder="Search by name or specialty..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-4 py-4 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-purple-500 transition-all text-sm font-semibold"
-                    />
-                </div>
-                <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-1">
-                    {['All', 'Technique', 'Endurance', 'Strength', 'Wellness'].map(goal => (
-                        <button 
-                            key={goal}
-                            onClick={() => setGoalFilter(goal)}
-                            className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${goalFilter === goal ? 'bg-purple-600 text-white shadow-md' : 'bg-gray-50 text-gray-400'}`}
-                        >
-                            {goal}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Coach Cards */}
-            <div className="space-y-5 pb-20">
-                {filteredCoaches.map(coach => (
-                    <div key={coach.id} className="bg-white rounded-[36px] overflow-hidden shadow-xl shadow-gray-200/50 border border-white group active:scale-[0.98] transition-all cursor-pointer relative" 
-                         onClick={() => { setBookingData({...bookingData, coach}); setCurrentStep(1); }}>
-                        <div className="relative h-64">
-                            <img src={coach.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" alt={coach.name} />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent"></div>
-                            
-                            <button onClick={(e) => handleShare(coach, e)} className="absolute top-4 left-4 bg-white/90 backdrop-blur p-2.5 rounded-2xl shadow-lg border border-white text-gray-700 hover:bg-white transition-colors">
-                                <Share2 className="w-4 h-4" />
-                            </button>
-
-                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1.5 rounded-2xl flex items-center shadow-lg border border-white">
-                                <Star className="w-3 h-3 text-amber-400 fill-amber-400 mr-1" />
-                                <span className="text-[10px] font-black text-gray-800">{coach.rating} ({coach.reviews})</span>
-                            </div>
-
-                            <div className="absolute bottom-5 left-6 right-6">
-                                <div className="flex items-center space-x-2 mb-2">
-                                    <span className="px-3 py-1 bg-purple-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">Verified Expert</span>
-                                    <span className="px-3 py-1 bg-white/20 backdrop-blur text-white rounded-lg text-[9px] font-black uppercase tracking-widest">{coach.programs.length} Programs</span>
-                                </div>
-                                <h3 className="text-3xl font-black text-white leading-tight tracking-tight">{coach.name}</h3>
-                                <p className="text-purple-200 text-xs font-bold mt-1 uppercase tracking-widest opacity-90">{coach.specialty}</p>
-                            </div>
-                        </div>
-                        <div className="p-6 bg-white flex justify-between items-center">
-                            <div className="flex items-center space-x-2">
-                                <Award className="w-4 h-4 text-purple-600" />
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Performance Specialist</span>
-                            </div>
-                            <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
-                                <ChevronRight className="w-6 h-6" />
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
-    const renderCoachProfile = () => {
-        const { coach } = bookingData;
-        return (
-            <div className="space-y-8 animate-in pb-20">
-                <div className="px-2">
-                    <div className="flex items-center space-x-4 mb-6">
-                        <img src={coach.image} className="w-20 h-20 rounded-3xl object-cover border-4 border-white shadow-xl" />
-                        <div>
-                            <h2 className="text-2xl font-black text-gray-900 leading-tight">{coach.name}</h2>
-                            <p className="text-sm font-bold text-purple-600 uppercase tracking-wider">{coach.specialty}</p>
-                        </div>
-                    </div>
-                    <div className="p-6 bg-white rounded-[32px] border border-gray-100 shadow-sm space-y-3">
-                        <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Coach Background</h4>
-                        <p className="text-sm text-gray-600 font-medium leading-relaxed">{coach.bio}</p>
-                        <div className="pt-4 border-t border-gray-50 flex space-x-4">
-                            <a href={getWhatsAppLink(coach.phone, coach.name)} target="_blank" className="flex-1 py-3 bg-[#25D366] text-white rounded-2xl flex items-center justify-center text-xs font-black shadow-lg hover:brightness-110 transition-all">
-                                <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
-                            </a>
-                            <button onClick={(e) => handleShare(coach, e)} className="p-3 bg-gray-50 text-gray-400 rounded-2xl hover:bg-gray-100">
-                                <Share2 className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="px-2 space-y-4">
-                    <h3 className="text-xl font-black text-gray-900 ml-1 mb-4">Training Programs</h3>
-                    {coach.programs.map(program => (
-                        <div key={program.id} 
-                             onClick={() => { setBookingData({...bookingData, program}); setCurrentStep(2); }}
-                             className="bg-white p-5 rounded-[28px] shadow-lg border border-gray-50 flex items-center space-x-4 active:scale-95 transition-all cursor-pointer">
-                            <img src={program.photo_url} className="w-24 h-24 object-cover rounded-2xl flex-shrink-0" alt={program.title} />
-                            <div className="flex-grow min-w-0">
-                                <span className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded-lg text-[8px] font-black uppercase tracking-tighter">{program.goal}</span>
-                                <h4 className="text-lg font-black text-gray-900 truncate mt-1">{program.title}</h4>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Duration: {program.duration}</p>
-                                <p className="text-xl font-black text-purple-600 mt-2">${program.price.toFixed(2)}</p>
-                            </div>
-                            <div className="p-2 bg-gray-50 rounded-full text-gray-300">
-                                <ChevronRight className="w-5 h-5" />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    const renderProgramDetails = () => {
-        const { program } = bookingData;
-        return (
-            <div className="space-y-8 animate-in pb-32">
-                <div className="relative h-64 -mx-5 -mt-8 overflow-hidden">
-                    <img src={program.photo_url} className="w-full h-full object-cover" alt={program.title} />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#F8FAFC] to-transparent"></div>
-                    <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-                         <span className="px-4 py-1.5 bg-purple-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl">Enrollment Open</span>
-                         <div className="bg-white/90 backdrop-blur p-4 rounded-3xl shadow-xl text-center min-w-[80px]">
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Price</p>
-                            <p className="text-xl font-black text-gray-900">${program.price}</p>
-                         </div>
-                    </div>
-                </div>
-
-                <div className="space-y-6">
-                    <div className="px-2">
-                        <h2 className="text-4xl font-black text-gray-900 tracking-tighter leading-none">{program.title}</h2>
-                        <div className="flex items-center mt-3 space-x-3">
-                            <div className="flex items-center bg-gray-100 px-3 py-1.5 rounded-xl">
-                                <Monitor className="w-4 h-4 text-gray-500 mr-2" />
-                                <span className="text-[10px] font-black text-gray-500 uppercase">Online Course</span>
-                            </div>
-                            <div className="flex items-center bg-purple-50 px-3 py-1.5 rounded-xl">
-                                <Zap className="w-4 h-4 text-purple-500 mr-2" />
-                                <span className="text-[10px] font-black text-purple-500 uppercase">{program.goal} Focused</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="p-6 bg-white rounded-[32px] border border-gray-100 shadow-sm space-y-4 mx-2">
-                        <h4 className="text-lg font-black text-gray-900">What's Included</h4>
-                        <div className="space-y-3">
-                            <div className="flex items-start space-x-3">
-                                <div className="p-1.5 bg-purple-50 rounded-lg text-purple-600 mt-0.5"><Clock className="w-4 h-4" /></div>
-                                <div><p className="text-sm font-bold text-gray-800">{program.duration} Program</p><p className="text-xs text-gray-400 font-medium">Self-paced with weekly milestones</p></div>
-                            </div>
-                            <div className="flex items-start space-x-3">
-                                <div className="p-1.5 bg-rose-50 rounded-lg text-rose-600 mt-0.5"><Trophy className="w-4 h-4" /></div>
-                                <div><p className="text-sm font-bold text-gray-800">Expert Feedback</p><p className="text-xs text-gray-400 font-medium">Monthly video stroke review included</p></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="px-2 space-y-3">
-                        <h4 className="text-lg font-black text-gray-900">Curriculum Overview</h4>
-                        <p className="text-sm text-gray-600 font-medium leading-relaxed">{program.description}</p>
-                    </div>
-                </div>
-
-                {/* Final join Momentum Bar */}
-                <div className="fixed bottom-0 left-0 right-0 p-8 bg-white/95 backdrop-blur-md border-t border-gray-100 max-w-md mx-auto rounded-t-[40px] shadow-2xl z-40 flex items-center justify-between">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Full Access</p>
-                        <p className="text-3xl font-black text-gray-900 tracking-tighter">${program.price}</p>
-                    </div>
-                    <button 
-                        onClick={() => {
-                            showSnackbar("Starting your enrollment...");
-                            setTimeout(() => { window.location.href = 'checkout_screen.html'; }, 1500);
-                        }}
-                        className="bg-purple-600 text-white px-10 py-5 rounded-3xl font-black shadow-2xl shadow-purple-200 flex items-center active:scale-95 transition-all text-sm tracking-widest"
-                    >
-                        JOIN PROGRAM
-                        <ChevronRight className="w-5 h-5 ml-2" />
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC]">
-            {/* Header */}
-            <header className="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50">
-                <div className="flex items-center space-x-4">
-                    <button onClick={handleBack} 
-                        className={`p-2.5 rounded-2xl transition-all border bg-white border-gray-100 text-gray-900 shadow-sm active:scale-90 hover:bg-gray-50`}
-                    >
-                        <ChevronLeft className="w-6 h-6" />
-                    </button>
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">Expert Coaches</h1>
-                </div>
-                <div className="w-11 h-11 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 border border-purple-100 shadow-inner">
-                    <Monitor className="w-6 h-6" />
-                </div>
-            </header>
-
-            {currentStep < 3 && <StepIndicator step={currentStep} />}
-
-            <main className="px-5 py-8">
-                <div className="view-container">
-                    {currentStep === 0 && renderCoachList()}
-                    {currentStep === 1 && renderCoachProfile()}
-                    {currentStep === 2 && renderProgramDetails()}
-                </div>
+        <main id="view-port" class="p-6 flex-grow overflow-y-auto no-scrollbar animate-in text-left">
             </main>
 
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-            `}</style>
-        </div>
-    );
-}
+    </div>
+
+    <script>
+        const COACHES = [
+            {
+                id: 'c1', name: 'Michael Thorne', spec: 'Olympic Performance', rating: 5.0, reviews: 128,
+                image: 'https://images.unsplash.com/photo-1548382113-7615065835ee?auto=format&fit=crop&q=80&w=800',
+                bio: 'Former Olympic relay coach specializing in biomechanical analysis.',
+                programs: [
+                    { 
+                        id: 'p1', 
+                        title: 'Stroke Mastery', 
+                        price: 199, 
+                        dur: '12 Weeks', 
+                        goal: 'Technique', 
+                        videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                        image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=800',
+                        desc: 'Complete biomechanical breakdown of all four competitive strokes. Includes weekly video calls and a personalized drill curriculum.'
+                    }
+                ]
+            }
+        ];
+
+        let state = { step: 0, coach: null, program: null };
+
+        function render() {
+            const port = document.getElementById('view-port');
+            updateStepper();
+
+            if (state.step === 0) {
+                port.innerHTML = `
+                    <div class="space-y-6">
+                        <div class="bg-white p-5 rounded-[32px] shadow-sm border border-gray-100">
+                            <div class="relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                <input type="text" placeholder="Search online experts..." class="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none shadow-inner">
+                            </div>
+                        </div>
+                        ${COACHES.map(c => `
+                            <div onclick="selectCoach('${c.id}')" class="bg-white rounded-[32px] overflow-hidden shadow-blueprint border border-white group active:scale-[0.98] transition-all cursor-pointer">
+                                <div class="relative h-60">
+                                    <img src="${c.image}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000">
+                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                                    <div class="absolute bottom-6 left-6">
+                                        <h3 class="text-2xl font-black text-white uppercase italic tracking-tighter">${c.name}</h3>
+                                        <p class="text-purple-200 text-[10px] font-bold uppercase tracking-widest mt-1">${c.spec}</p>
+                                    </div>
+                                </div>
+                                <div class="p-6 flex justify-between items-center">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shadow-inner">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20m0-20c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8z"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                        </div>
+                                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Enrollment Open</span>
+                                    </div>
+                                    <div class="p-2.5 bg-purple-600 text-white rounded-xl shadow-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (state.step === 1) {
+                port.innerHTML = `
+                    <div class="space-y-8 pb-10">
+                        <div class="flex items-center space-x-5 px-2">
+                            <div class="w-20 h-20 rounded-[28px] border-4 border-white shadow-xl rotate-3 overflow-hidden">
+                                <img src="${state.coach.image}" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <h2 class="text-2xl font-black text-gray-900 leading-tight">${state.coach.name}</h2>
+                                <p class="text-xs font-bold text-purple-600 uppercase tracking-widest mt-1 italic">${state.coach.spec}</p>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-4">
+                            <p class="text-sm font-bold text-gray-400 uppercase tracking-[0.2em]">Expert Bio</p>
+                            <p class="text-sm text-gray-600 font-medium leading-relaxed">${state.coach.bio}</p>
+                            <div class="pt-4 border-t border-gray-50 flex space-x-4">
+                                <button onclick="window.open('https://wa.me/20123456789', '_blank')" class="flex-1 py-4 bg-[#25D366] text-white rounded-2xl flex items-center justify-center font-black text-[10px] uppercase tracking-widest shadow-xl active:scale-95 transition-all">
+                                    WhatsApp Coach
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <h3 class="text-xl font-black text-gray-900 ml-2 italic uppercase">Curriculum</h3>
+                            ${state.coach.programs.map(p => `
+                                <div onclick="selectProgram('${p.id}')" class="bg-white p-5 rounded-[28px] border border-gray-100 flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer shadow-sm">
+                                    <div class="flex items-center space-x-4">
+                                        <div class="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shadow-inner"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+                                        <div><h4 class="font-black text-gray-900 leading-none uppercase">${p.title}</h4><p class="text-[9px] text-gray-400 font-bold uppercase mt-1.5 tracking-widest">${p.dur} • ${p.goal}</p></div>
+                                    </div>
+                                    <p class="text-sm font-black text-purple-600">$${p.price}</p>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            } else if (state.step === 2) {
+                port.innerHTML = `
+                    <div class="space-y-8 animate-in text-left pb-40">
+                        <div class="relative h-64 -mx-6 -mt-6 overflow-hidden shadow-lg">
+                            <img src="${state.program.image}" class="w-full h-full object-cover">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                            <button onclick="window.open('${state.program.videoUrl}', '_blank')" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/40 active:scale-90 transition-all shadow-2xl">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white fill-white ml-1" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
+                            </button>
+                        </div>
+
+                        <div class="px-2">
+                             <div class="flex items-center space-x-2 mb-3">
+                                <span class="px-3 py-1 bg-purple-50 text-purple-600 rounded-lg text-[10px] font-black uppercase tracking-widest">${state.program.goal}</span>
+                                <span class="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Instant Access</span>
+                            </div>
+                            <h2 class="text-3xl font-black text-gray-900 leading-tight tracking-tight uppercase italic">${state.program.title}</h2>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-4">
+                            <p class="text-xs font-black text-gray-900 uppercase tracking-widest border-b border-gray-50 pb-2">Program Overview</p>
+                            <p class="text-xs font-bold text-gray-400 leading-relaxed">${state.program.desc}</p>
+                        </div>
+
+                        <div class="fixed bottom-0 left-0 right-0 p-8 bg-white/95 backdrop-blur-md border-t border-gray-50 max-w-md mx-auto rounded-t-[40px] shadow-2xl flex items-center justify-between z-40">
+                            <div>
+                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Enrollment Fee</p>
+                                <p class="text-3xl font-black text-gray-900 tracking-tighter italic">$${state.program.price}</p>
+                            </div>
+                            <button onclick="location.href='checkout_screen.html'" class="bg-purple-600 text-white px-10 py-5 rounded-3xl font-black text-xs uppercase tracking-widest shadow-xl active:scale-95 transition-all">Enroll Now</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function updateStepper() {
+            const dots = document.querySelectorAll('.step-dot');
+            const labels = document.querySelectorAll('.step-dot + span');
+            const line = document.getElementById('step-line');
+            line.style.width = (state.step / 2) * 100 + '%';
+            
+            dots.forEach((dot, i) => {
+                if(i <= state.step) {
+                    dot.className = "step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-purple-600 text-white shadow-lg transition-all scale-110";
+                    labels[i].classList.replace('text-gray-300', 'text-purple-600');
+                } else {
+                    dot.className = "step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300 transition-all scale-100";
+                    labels[i].classList.replace('text-purple-600', 'text-gray-300');
+                }
+            });
+        }
+
+        function selectCoach(id) { state.coach = COACHES.find(c => c.id === id); state.step = 1; render(); }
+        function selectProgram(id) { state.program = state.coach.programs.find(p => p.id === id); state.step = 2; render(); }
+        function handleBack() { 
+            if (state.step > 0) { state.step--; render(); }
+            else window.history.back();
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>

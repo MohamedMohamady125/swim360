@@ -1,561 +1,344 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Events Management</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
-        /* Card styling updated for a cleaner, flatter look */
-        .card-shadow {
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-        }
-        .event-card {
-            background-color: white;
-            border-radius: 10px;
-            transition: transform 0.1s, box-shadow 0.1s;
-        }
-        .event-card:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-                        0 2px 4px -2px rgba(0, 0, 0, 0.06);
-        }
-        .modal-content-wrapper {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
-                        0 4px 6px -4px rgba(0, 0, 0, 0.05);
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        /* Input styling for consistency */
-        .input-group {
-            display: flex;
-            align-items: center;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            padding: 0 12px;
-            background-color: #FAFAFA;
-        }
-        .input-group input, .input-group select, .input-group textarea {
-            border: none;
-            outline: none;
-            padding: 12px 0;
-            flex-grow: 1;
-            background-color: transparent;
-        }
-        .input-group-readonly {
-            background-color: #E5E7EB;
-            cursor: not-allowed;
-            color: #6B7280;
-        }
-        .input-group-readonly input, .input-group-readonly select, .input-group-readonly textarea {
-            cursor: not-allowed;
-            color: #6B7280;
-        }
-        .detail-item {
-            display: flex;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #F3F4F6;
-            font-size: 0.9rem;
-        }
-        .detail-label {
-            font-weight: 500;
-            color: #4B5563;
-        }
-        .detail-value {
-            font-weight: 600;
-            color: #1F2937;
-        }
-        /* Specific styling for Duration split inputs */
-        .duration-input {
-            display: flex;
-            align-items: center;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            padding: 0;
-            background-color: #FAFAFA;
-            width: 100%;
-        }
-        .duration-input input {
-            border-right: 1px solid #E5E7EB;
-            padding: 12px;
-        }
-        .duration-input select {
-            padding: 12px;
-            flex-grow: 0;
-            width: auto;
-            min-width: 100px;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body class="p-4 md:p-8">
+import React, { useState, useMemo } from 'react';
+import { 
+  Plus, Calendar, ChevronDown, Check, 
+  Building2, X, Info, ArrowLeft, ArrowRight,
+  ShieldOff, RotateCcw, CheckCircle, AlertCircle,
+  Clock, Layers, MapPin, Activity, Video, 
+  Tag, Users, DollarSign, Camera, Globe, 
+  Trophy, UserCheck, Navigation, Layout, Edit3, Eye, Trash2,
+  ChevronLeft // تم إضافة الأيقونة المفقودة لإصلاح الخطأ
+} from 'lucide-react';
 
-    <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-2">My Events</h1>
-        <p class="text-gray-500 mb-6">Manage details and logistics for your upcoming events.</p>
+// --- الثوابت والقوائم ---
+const EVENT_TYPES = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
+const AUDIENCES = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
 
-        <div id="event-list" class="space-y-4">
-            <!-- Event Cards will be injected here -->
-        </div>
-    </div>
+const INITIAL_EVENTS = [
+    { 
+        id: 'e1', name: 'Regional Championship 2026', 
+        date: '2026-01-23', time: '09:00', duration_value: '3', duration_unit: 'hours', 
+        price: 45.00, tickets: 100, 
+        location_name: 'Central Pool (NYC)', location_url: 'https://maps.google.com/event1',
+        age_range: '12-18', target_audience: 'Swimmers',
+        type: 'Championship', 
+        description: 'The premier swimming event of the season, featuring top athletes from five regions competing for the gold medal.', 
+        video_url: 'https://vimeo.com/event1', 
+        photo_url: 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=400' 
+    },
+    { 
+        id: 'e2', name: 'Open Water Fun Swim', 
+        date: '2026-02-15', time: '08:30', duration_value: '2', duration_unit: 'hours', 
+        price: 0.00, tickets: 50, 
+        location_name: 'Sea Coast (LA)', location_url: 'https://maps.google.com/event2',
+        age_range: 'All Ages', target_audience: 'Parents',
+        type: 'Fun Swim', 
+        description: 'A social and non-competitive open water swimming event perfect for all levels. Wetsuits are encouraged.', 
+        video_url: '', 
+        photo_url: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=400' 
+    }
+];
 
-    <!-- Edit Modal Structure (Hidden by default) -->
-    <div id="edit-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[99] flex items-center justify-center p-4 hidden">
-        <div class="modal-content-wrapper w-full max-w-lg">
-            
-            <div class="p-5 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-xl">
-                <h3 class="text-2xl font-extrabold text-gray-800">Edit Event: <span id="event-edit-title" class="text-blue-600"></span></h3>
-                <button id="close-edit-modal-btn" class="text-gray-500 hover:text-gray-800 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
+export default function App() {
+    const [events, setEvents] = useState(INITIAL_EVENTS);
+    const [view, setView] = useState('list'); // 'list', 'edit', 'details'
+    const [editingEvent, setEditingEvent] = useState(null);
+    const [notification, setNotification] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-            <form id="edit-event-form" class="p-5 space-y-6">
-                
-                <input type="hidden" id="edit-event-id">
+    // --- أدوات مساعدة ---
+    const showNotify = (msg, type = 'success') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
 
-                <!-- Location and Time Details -->
-                <div class="space-y-6">
-                    <h4 class="font-bold text-gray-700 pt-2 border-t">Event Information</h4>
-                    
-                    <!-- Event Name (READ-ONLY) -->
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Event Name</label>
-                        <p class="text-lg font-semibold text-gray-600" id="edit-name-display"></p>
-                    </div>
+    const formatTime24to12 = (time24) => {
+        if (!time24) return '';
+        const [hr24, min] = time24.split(':');
+        let hr = parseInt(hr24);
+        const ampm = hr >= 12 ? 'PM' : 'AM';
+        hr = hr % 12 || 12;
+        return `${String(hr).padStart(2, '0')}:${min} ${ampm}`;
+    };
 
-                    <!-- Event Type Dropdown (Editable) -->
-                    <div>
-                        <label for="edit-type" class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                        <div class="input-group">
-                            <input type="text" id="edit-type" name="type" placeholder="e.g., Championship" required>
-                        </div>
-                    </div>
+    const handleEditClick = (event) => {
+        setEditingEvent({ ...event });
+        setView('edit');
+    };
 
-                    <!-- Detailed Description (Editable) -->
-                    <div>
-                        <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea id="edit-description" name="description" rows="4" required
-                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"></textarea>
-                    </div>
+    const handleDetailsClick = (event) => {
+        setEditingEvent(event);
+        setView('details');
+    };
 
-                    <!-- Intro Video URL (Editable) -->
-                    <div>
-                        <label for="edit-video-url" class="block text-sm font-medium text-gray-700 mb-1">Promo Video URL (Optional)</label>
-                        <div class="input-group">
-                             <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                             <input type="url" id="edit-video-url" name="video_url" placeholder="e.g., https://youtube.com/embed">
-                        </div>
-                    </div>
-
-                </div>
-                
-                <!-- Logistics Card -->
-                <div class="space-y-6">
-                    <h4 class="font-bold text-gray-700 pt-2 border-t">Logistics and Capacity</h4>
-                    
-                     <div class="grid grid-cols-2 gap-4">
-                        <!-- Date Input -->
-                        <div>
-                            <label for="edit-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                            <div class="input-group">
-                                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                <input type="date" id="edit-date" name="date" required>
-                            </div>
-                        </div>
-                        
-                        <!-- Time Input -->
-                        <div>
-                            <label for="edit-time" class="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                            <div class="input-group">
-                                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                                <input type="time" id="edit-time" name="time" required>
-                            </div>
-                        </div>
-
-                        <!-- Duration -->
-                        <div>
-                            <label for="edit-duration-value" class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-                            <div class="duration-input">
-                                <input type="number" id="edit-duration-value" name="duration_value" required min="1" class="w-2/3" placeholder="3">
-                                <select id="edit-duration-unit" name="duration_unit" class="w-1/3">
-                                    <option value="hours">Hours</option>
-                                    <option value="days">Days</option>
-                                    <option value="minutes">Minutes</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Tickets Available -->
-                        <div>
-                            <label for="edit-tickets-available" class="block text-sm font-medium text-gray-700 mb-1">Tickets Available</label>
-                            <div class="input-group">
-                                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h3.586a1 1 0 01.707.293l2.828 2.828a1 1 0 001.414 0l2.828-2.828a1 1 0 01.707-.293H19a2 2 0 002-2v-3a2 2 0 00-2-2H5z"></path></svg>
-                                <input type="number" id="edit-tickets-available" name="tickets" required min="1" placeholder="e.g., 100">
-                            </div>
-                        </div>
-
-                        <!-- Location Name -->
-                        <div class="col-span-2">
-                            <label for="edit-location-name" class="block text-sm font-medium text-gray-700 mb-1">Location Name (Venue)</label>
-                            <div class="input-group">
-                                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                <input type="text" id="edit-location-name" name="location_name" required placeholder="e.g., National Stadium Pool">
-                            </div>
-                        </div>
-
-                        <!-- Google Maps URL -->
-                        <div class="col-span-2">
-                            <label for="edit-location-url" class="block text-sm font-medium text-gray-700 mb-1">Google Maps URL (Venue)</label>
-                            <div class="input-group">
-                                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.135a4 4 0 000-5.656l1.5-1.5a4 4 0 115.656 5.656l-4 4a4 4 0 01-5.656 0z"></path></svg>
-                                <input type="url" id="edit-location-url" name="location_url" required placeholder="e.g., https://maps.app.goo.gl/...">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Audience Card -->
-                <div class="space-y-6">
-                    <h4 class="font-bold text-gray-700 pt-2 border-t">Audience Details</h4>
-                    
-                    <div class="grid grid-cols-2 gap-4">
-                        <!-- Recommended Age Range -->
-                        <div>
-                            <label for="edit-age-range" class="block text-sm font-medium text-gray-700 mb-1">Recommended Age Range</label>
-                            <div class="input-group">
-                                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v13a2 2 0 002 2h2M9 14v6M15 14v6M12 3v18"></path></svg>
-                                <input type="text" id="edit-age-range" name="age_range" placeholder="e.g., 12-18 or All Ages">
-                            </div>
-                        </div>
-
-                        <!-- Target Audience Dropdown -->
-                        <div>
-                            <label for="edit-target-audience" class="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
-                            <div class="input-group">
-                                <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                                <select id="edit-target-audience" name="target_audience" required>
-                                    <option value="swimmers">Swimmers</option>
-                                    <option value="nutritionists">Nutritionists</option>
-                                    <option value="doctors">Doctors</option>
-                                    <option value="parents">Parents</option>
-                                    <option value="coaches">Coaches</option>
-                                    <option value="other">Other</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- PRICE (READ-ONLY) -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Ticket Price</label>
-                    <div class="input-group input-group-readonly">
-                        <span class="font-semibold text-gray-600" id="edit-price-display"></span>
-                    </div>
-                </div>
-
-                <!-- Submit Button -->
-                <button type="submit" class="w-full py-3 text-white font-semibold rounded-lg shadow-lg bg-red-600 hover:bg-red-700 transition">
-                    <span id="edit-submit-text">Update Event</span>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Read-Only Details Modal Structure (Hidden by default) -->
-    <div id="details-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[98] flex items-center justify-center p-4 hidden">
-        <div class="modal-content-wrapper w-full max-w-sm">
-            <div class="p-5 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-xl">
-                <h3 class="text-2xl font-extrabold text-gray-800">Event Details</h3>
-                <button onclick="closeDetailsModal()" class="text-gray-500 hover:text-gray-800 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            
-            <div class="p-5 space-y-4">
-                <div class="text-center mb-4">
-                    <img id="detail-photo" src="" alt="Event Photo" class="w-24 h-24 object-cover rounded-full mx-auto mb-2 border-2 border-blue-400">
-                    <h4 class="text-xl font-extrabold text-gray-900" id="detail-name"></h4>
-                    <p class="text-sm text-gray-600" id="detail-type"></p>
-                </div>
-
-                <div class="space-y-3 p-3 bg-gray-50 rounded-lg">
-                    <div class="detail-item">
-                        <span class="detail-label">Date & Time</span>
-                        <span class="detail-value" id="detail-datetime"></span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Duration</span>
-                        <span class="detail-value" id="detail-duration"></span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Tickets / Price</span>
-                        <span class="detail-value" id="detail-tickets-price"></span>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Location (Venue)</span>
-                        <a id="detail-location" href="#" target="_blank" class="detail-value text-blue-600 hover:underline"></a>
-                    </div>
-                    <div class="detail-item">
-                        <span class="detail-label">Audience</span>
-                        <span class="detail-value" id="detail-audience"></span>
-                    </div>
-                </div>
-
-                <!-- Description -->
-                 <div class="pt-4">
-                    <h5 class="font-bold text-gray-700 mb-2">Description</h5>
-                    <p class="text-gray-600 text-sm" id="detail-description"></p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <script>
-        // --- MOCK DATA ---
-        let events = [
-            { 
-                id: 'e1', name: 'Regional Championship', 
-                date: '2025-11-10', time: '09:00', duration: '3 hours', 
-                price: 45.00, tickets: 25, 
-                location_name: 'Central Pool (NYC)', location_url: 'https://maps.google.com/event1',
-                age_range: '12-18', target_audience: 'swimmers',
-                type: 'championship', 
-                description: 'Premier swimming event featuring top athletes from multiple regions. All ages welcome to watch.', 
-                video_url: 'https://vimeo.com/event1', 
-                photo_url: 'https://placehold.co/100x100/1D4ED8/ffffff?text=E1' 
-            },
-            { 
-                id: 'e2', name: 'Open Water Fun Swim', 
-                date: '2025-11-15', time: '08:30', duration: '2 hours', 
-                price: 0.00, tickets: 100, 
-                location_name: 'Sea Coast (LA)', location_url: 'https://maps.google.com/event2',
-                age_range: 'All Ages', target_audience: 'parents',
-                type: 'fun-swim', 
-                description: 'A social and non-competitive open water swimming event perfect for all levels. Wetsuits encouraged.', 
-                video_url: null, 
-                photo_url: 'https://placehold.co/100x100/EF4444/ffffff?text=E2' 
-            }
-        ];
-
-        const editModalOverlay = document.getElementById('edit-modal-overlay');
-        const detailsModalOverlay = document.getElementById('details-modal-overlay');
-        const eventListContainer = document.getElementById('event-list');
-        const editForm = document.getElementById('edit-event-form');
-
-        // --- Utility Functions ---
-
-        function formatTime24hrTo12hr(time24hr) {
-            const [hr24, min] = time24hr.split(':');
-            let hr = parseInt(hr24);
-            const ampm = hr >= 12 ? 'PM' : 'AM';
-            hr = hr % 12 || 12;
-            return `${String(hr).padStart(2, '0')}:${min} ${ampm}`;
-        }
+    const handleSave = (e) => {
+        e.preventDefault();
         
-        function showSnackbar(message, isError = false) {
-            const snackbar = document.createElement('div');
-            snackbar.textContent = message;
-            snackbar.className = `fixed top-4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'} z-[60]`;
-            document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
+        if (!editingEvent?.name || !editingEvent?.location_name || !editingEvent?.tickets) {
+            showNotify("Please fill in all required fields", "error");
+            return;
         }
 
-        // --- UI Rendering ---
+        setLoading(true);
+        setTimeout(() => {
+            setEvents(events.map(ev => ev.id === editingEvent.id ? editingEvent : ev));
+            setLoading(false);
+            showNotify("Event details updated successfully!");
+            setView('list');
+        }, 1000);
+    };
 
-        function renderEventList() {
-            if (events.length === 0) {
-                 eventListContainer.innerHTML = '<p class="text-gray-500 text-center mt-8">No events have been created yet.</p>';
-                 return;
-            }
-            
-            eventListContainer.innerHTML = events.map(event => `
-                <div class="event-card p-4 card-shadow flex items-center justify-between space-x-4">
-                    
-                    <!-- Clickable Area for Details Modal -->
-                    <div class="flex items-center space-x-4 flex-grow cursor-pointer" onclick="openDetailsModal('${event.id}')">
-                         <!-- Event Photo -->
-                        <img src="${event.photo_url}" 
-                             alt="${event.name} Cover" 
-                             class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border-2 border-gray-200">
-                        
-                        <!-- Event Info -->
-                        <div class="flex-grow">
-                            <h3 class="text-lg font-extrabold text-gray-900">${event.name}</h3>
-                            <p class="text-xs text-gray-500 mt-0">${event.type.toUpperCase()} | ${event.location_name}</p>
-                            <p class="text-sm font-semibold text-teal-600 mt-1">$${event.price.toFixed(2)}</p>
-                            <p class="text-xs text-gray-500">Date: ${event.date} @ ${formatTime24hrTo12hr(event.time)}</p>
+    // --- واجهات العرض ---
+
+    const renderList = () => (
+        <div className="p-6 space-y-8 animate-in text-left">
+            <header className="space-y-1">
+                <h1 className="text-3xl font-black text-gray-900 tracking-tight">My Events</h1>
+                <p className="text-sm text-gray-400 font-medium">Manage and promote your upcoming listings</p>
+            </header>
+
+            <div className="space-y-4 pb-20">
+                {events.map(event => (
+                    <div key={event.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-4 flex items-center space-x-4 hover:shadow-md transition-all group">
+                        <div className="w-20 h-20 rounded-2xl bg-gray-50 overflow-hidden flex-shrink-0 relative">
+                            <img src={event.photo_url} className="w-full h-full object-cover" alt="event" />
+                            <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-white/90 backdrop-blur rounded text-[8px] font-black uppercase text-blue-600 border border-blue-100">
+                                {event.type}
+                            </div>
+                        </div>
+                        <div className="flex-grow min-w-0">
+                            <h3 className="text-lg font-black text-gray-900 truncate leading-tight group-hover:text-blue-600 transition-colors">{event.name}</h3>
+                            <div className="flex items-center text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+                                <Calendar className="w-3 h-3 mr-1" /> {event.date} • {formatTime24to12(event.time)}
+                            </div>
+                            <div className="flex items-center space-x-3 mt-2">
+                                <span className="text-sm font-black text-emerald-600">{event.price === 0 ? 'FREE' : `$${event.price.toFixed(2)}`}</span>
+                                <span className="text-gray-200">|</span>
+                                <span className="text-[10px] text-gray-400 font-bold uppercase flex items-center">
+                                    <MapPin className="w-3 h-3 mr-1" /> {event.location_name}
+                                </span>
+                            </div>
+                        </div>
+                        <div className="flex flex-col space-y-1.5">
+                            <button onClick={() => handleDetailsClick(event)} className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm" title="View Details">
+                                <Eye className="w-4 h-4" />
+                            </button>
+                            <button onClick={() => handleEditClick(event)} className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Edit Event">
+                                <Edit3 className="w-4 h-4" />
+                            </button>
                         </div>
                     </div>
+                ))}
+            </div>
+        </div>
+    );
 
-                    <!-- Edit Button (Pen Icon) -->
-                    <button onclick="openEditModal('${event.id}')" 
-                            class="p-2 text-blue-600 hover:bg-blue-100 rounded-full transition flex-shrink-0" title="Edit Event">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z"></path>
-                        </svg>
+    const renderEditForm = () => (
+        <div className="animate-in flex flex-col min-h-screen pb-12 text-left">
+            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30 flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                    <button onClick={() => setView('list')} className="p-2.5 bg-gray-50 rounded-2xl text-gray-500 active:scale-90 transition-transform">
+                        <ArrowLeft className="w-6 h-6" />
                     </button>
+                    <h1 className="text-2xl font-black tracking-tight leading-tight truncate max-w-[200px]">{editingEvent?.name}</h1>
                 </div>
-            `).join('');
-        }
+                <button 
+                    onClick={handleSave}
+                    disabled={loading}
+                    className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-all"
+                >
+                    {loading ? 'Saving...' : 'Update'}
+                </button>
+            </header>
 
-        // --- Read-Only Details Modal Logic ---
+            <main className="p-6 space-y-6">
+                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
+                    <div className="flex items-center space-x-2">
+                        <Layout className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Information</h3>
+                    </div>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Name</label>
+                            <div className="w-full mt-1.5 p-4 bg-gray-100 border-none rounded-2xl text-sm font-bold text-gray-500 select-none">
+                                {editingEvent?.name}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Type</label>
+                            <select value={editingEvent?.type} onChange={e => setEditingEvent({...editingEvent, type: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none">
+                                {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Description</label>
+                            <textarea value={editingEvent?.description} onChange={e => setEditingEvent({...editingEvent, description: e.target.value})} rows="4" className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Promo Video URL (Optional)</label>
+                            <input type="url" value={editingEvent?.video_url} onChange={e => setEditingEvent({...editingEvent, video_url: e.target.value})} placeholder="https://..." className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                        </div>
+                    </div>
+                </div>
 
-        function openDetailsModal(eventId) {
-            const event = events.find(e => e.id === eventId);
-            if (!event) return showSnackbar('Event data not found.', true);
+                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
+                    <div className="flex items-center space-x-2">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Time & Location</h3>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Date</label>
+                                <input type="date" value={editingEvent?.date} onChange={e => setEditingEvent({...editingEvent, date: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Time</label>
+                                <input type="time" value={editingEvent?.time} onChange={e => setEditingEvent({...editingEvent, time: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Duration</label>
+                                <div className="flex mt-1.5 bg-gray-50 rounded-2xl overflow-hidden">
+                                    <input type="number" value={editingEvent?.duration_value} onChange={e => setEditingEvent({...editingEvent, duration_value: e.target.value})} className="w-2/3 p-4 bg-transparent border-none text-sm font-bold outline-none" />
+                                    <select value={editingEvent?.duration_unit} onChange={e => setEditingEvent({...editingEvent, duration_unit: e.target.value})} className="w-1/3 bg-gray-100 p-2 text-[10px] font-black uppercase outline-none">
+                                        <option value="hours">Hrs</option>
+                                        <option value="days">Days</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Total Seats</label>
+                                <input type="number" value={editingEvent?.tickets} onChange={e => setEditingEvent({...editingEvent, tickets: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Venue Name</label>
+                            <input type="text" value={editingEvent?.location_name} onChange={e => setEditingEvent({...editingEvent, location_name: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Google Maps URL</label>
+                            <input type="url" value={editingEvent?.location_url} onChange={e => setEditingEvent({...editingEvent, location_url: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                    </div>
+                </div>
 
-            // Populate Modal
-            document.getElementById('detail-photo').src = event.photo_url;
-            document.getElementById('detail-name').textContent = event.name;
-            document.getElementById('detail-type').textContent = event.type.toUpperCase();
-            
-            document.getElementById('detail-datetime').textContent = `${event.date} @ ${formatTime24hrTo12hr(event.time)}`;
-            document.getElementById('detail-duration').textContent = event.duration;
-            document.getElementById('detail-tickets-price').textContent = `${event.tickets} Tickets | $${event.price.toFixed(2)}`;
-            
-            document.getElementById('detail-location').textContent = event.location_name;
-            document.getElementById('detail-location').href = event.location_url;
-            document.getElementById('detail-audience').textContent = `${event.age_range} (${event.target_audience})`;
-            
-            document.getElementById('detail-description').textContent = event.description;
+                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
+                    <div className="flex items-center space-x-2">
+                        <Tag className="w-4 h-4 text-blue-600" />
+                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Audience & Price</h3>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Price ($)</label>
+                            <div className="w-full mt-1.5 p-4 bg-gray-100 border-none rounded-2xl text-sm font-bold text-gray-400 select-none">
+                                ${editingEvent?.price.toFixed(2)}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Age Range</label>
+                            <input type="text" value={editingEvent?.age_range} onChange={e => setEditingEvent({...editingEvent, age_range: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Primary Audience</label>
+                        <select value={editingEvent?.target_audience} onChange={e => setEditingEvent({...editingEvent, target_audience: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none">
+                            {AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
 
-            detailsModalOverlay.classList.remove('hidden');
-        }
+    const renderDetailsView = () => (
+        <div className="animate-in flex flex-col min-h-screen bg-white pb-12 text-left">
+            <header className="px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-30">
+                <button onClick={() => setView('list')} className="p-2.5 bg-gray-50 rounded-2xl text-gray-600 active:scale-90 transition-transform">
+                    <ChevronLeft className="w-6 h-6" />
+                </button>
+                <h1 className="text-xl font-black tracking-tight leading-tight">Event Summary</h1>
+                <div className="w-10 h-10"></div>
+            </header>
 
-        function closeDetailsModal() {
-            detailsModalOverlay.classList.add('hidden');
-        }
+            <div className="px-6 space-y-8">
+                <div className="relative h-60 rounded-[32px] overflow-hidden shadow-2xl">
+                    <img src={editingEvent?.photo_url} className="w-full h-full object-cover" alt="cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                    <div className="absolute bottom-6 left-6 right-6">
+                        <span className="px-3 py-1 bg-rose-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">{editingEvent?.type}</span>
+                        <h2 className="text-2xl font-black text-white mt-2 leading-tight">{editingEvent?.name}</h2>
+                    </div>
+                </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-5 bg-gray-50 rounded-3xl flex items-center space-x-4 border border-gray-100">
+                        <Calendar className="w-6 h-6 text-rose-500" />
+                        <div>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Date</p>
+                            <p className="text-sm font-black text-gray-900">{editingEvent?.date}</p>
+                        </div>
+                    </div>
+                    <div className="p-5 bg-gray-50 rounded-3xl flex items-center space-x-4 border border-gray-100">
+                        <Clock className="w-6 h-6 text-blue-500" />
+                        <div>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Start Time</p>
+                            <p className="text-sm font-black text-gray-900">{formatTime24to12(editingEvent?.time)}</p>
+                        </div>
+                    </div>
+                </div>
 
-        // --- Edit Modal Logic ---
+                <div className="space-y-4">
+                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] ml-1">About the Event</h3>
+                    <p className="text-sm text-gray-600 leading-relaxed font-medium bg-gray-50 p-6 rounded-[28px] border border-gray-100">{editingEvent?.description}</p>
+                </div>
 
-        function openEditModal(eventId) {
-            const event = events.find(e => e.id === eventId);
-            if (!event) return showSnackbar('Event data not found.', true);
+                <div className="bg-blue-600 p-8 rounded-[32px] text-white space-y-6 shadow-xl shadow-blue-100">
+                    <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest">Entry Fee</span>
+                        <span className="text-3xl font-black">${editingEvent?.price.toFixed(2)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-6 pt-2">
+                        <div>
+                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1">Audience</p>
+                            <p className="text-xs font-bold">{editingEvent?.target_audience}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1">Capacity</p>
+                            <p className="text-xs font-bold">{editingEvent?.tickets} Tickets Total</p>
+                        </div>
+                    </div>
+                </div>
 
-            // Populate Edit Modal
-            document.getElementById('event-edit-title').textContent = event.name;
-            document.getElementById('edit-event-id').value = event.id;
-            
-            // --- NON-EDITABLE FIELD ---
-            document.getElementById('edit-name-display').textContent = event.name;
-            // Removed (Read-Only) label here
-            document.getElementById('edit-price-display').textContent = `$${event.price.toFixed(2)}`;
-            
-            // --- EDITABLE FIELDS ---
-            document.getElementById('edit-date').value = event.date;
-            document.getElementById('edit-time').value = event.time;
-            
-            // Duration Split
-            const [durationValue, durationUnit] = event.duration.split(' ');
-            document.getElementById('edit-duration-value').value = parseInt(durationValue);
-            document.getElementById('edit-duration-unit').value = durationUnit.toLowerCase();
+                <div className="pt-2 pb-10">
+                    <a href={editingEvent?.location_url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center py-5 bg-gray-900 text-white rounded-[24px] font-black text-sm uppercase tracking-widest active:scale-95 transition-all">
+                        <MapPin className="w-5 h-5 mr-3 text-blue-400" /> Open Venue in Maps
+                    </a>
+                </div>
+            </div>
+        </div>
+    );
 
-            document.getElementById('edit-tickets-available').value = event.tickets;
-            document.getElementById('edit-location-name').value = event.location_name;
-            document.getElementById('edit-location-url').value = event.location_url;
-            document.getElementById('edit-age-range').value = event.age_range;
-            document.getElementById('edit-target-audience').value = event.target_audience;
-            
-            document.getElementById('edit-type').value = event.type;
-            document.getElementById('edit-description').value = event.description;
-            document.getElementById('edit-video-url').value = event.video_url || '';
+    return (
+        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
+            {view === 'list' && renderList()}
+            {view === 'edit' && renderEditForm()}
+            {view === 'details' && renderDetailsView()}
 
-            editModalOverlay.classList.remove('hidden');
-        }
+            {notification && (
+                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
+                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    <span>{notification.msg}</span>
+                </div>
+            )}
 
-        function closeEditModal() {
-            editModalOverlay.classList.add('hidden');
-            editForm.reset();
-        }
-
-        // --- Event Handlers (Update/Edit) ---
-        
-        editForm.addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            const eventId = form.elements['edit-event-id'].value;
-            const eventIndex = events.findIndex(e => e.id === eventId);
-
-            if (eventIndex === -1) {
-                showSnackbar('Error: Event ID mismatch.', true);
-                return;
-            }
-            
-            // Validation: Date cannot be in the past
-            const eventDate = new Date(form.elements.date.value);
-            const today = new Date();
-            today.setHours(0,0,0,0);
-
-            if (eventDate < today) {
-                showSnackbar("Error: Event date cannot be in the past.", true);
-                return;
-            }
-            
-            // Update the event data (Note: Price is read-only)
-            events[eventIndex].date = form.elements.date.value;
-            events[eventIndex].time = form.elements.time.value;
-            events[eventIndex].duration = `${form.elements.duration_value.value} ${form.elements.duration_unit.value}`;
-            events[eventIndex].tickets = parseInt(form.elements.tickets.value);
-            events[eventIndex].location_name = form.elements.location_name.value;
-            events[eventIndex].location_url = form.elements.location_url.value;
-            events[eventIndex].age_range = form.elements.age_range.value;
-            events[eventIndex].target_audience = form.elements.target_audience.value;
-            events[eventIndex].type = form.elements.type.value;
-            events[eventIndex].description = form.elements.description.value;
-            events[eventIndex].video_url = form.elements.video_url.value;
-            
-            showSnackbar(`Changes saved for: ${events[eventIndex].name}`, false);
-            
-            // Re-render the list and close modal
-            renderEventList();
-            closeEditModal();
-        });
-
-        // --- Initialization ---
-
-        window.onload = () => {
-            renderEventList();
-            document.getElementById('close-edit-modal-btn').onclick = closeEditModal;
-            detailsModalOverlay.onclick = (e) => {
-                if (e.target.id === 'details-modal-overlay') {
-                    closeDetailsModal();
-                }
-            };
-            
-            // Set min date for the edit modal date picker
-            const today = new Date().toISOString().split('T')[0];
-            const editDateInput = document.getElementById('edit-date');
-            if (editDateInput) editDateInput.min = today;
-        };
-    </script>
-</body>
-</html>
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+            `}</style>
+        </div>
+    );
+}

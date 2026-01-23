@@ -1,474 +1,324 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add New Product to Inventory</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
-        /* Custom blue submit button style */
-        .btn-submit {
-            background-color: #3B82F6; 
-            color: white;
-            transition: background-color 0.2s, transform 0.2s;
-        }
-        .btn-submit:hover {
-            background-color: #2563EB;
-            transform: translateY(-1px);
-        }
-        .form-card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-            padding: 1.5rem;
-        }
-        /* Input styling for consistency */
-        .input-group {
-            display: flex;
-            align-items: center;
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            padding: 0 12px;
-            background-color: #FAFAFA;
-        }
-        .input-group:focus-within {
-            border-color: #3B82F6;
-            box-shadow: 0 0 0 1px #3B82F6;
-            background-color: white;
-        }
-        .input-group input, .input-group select, .input-group textarea {
-            border: none;
-            outline: none;
-            padding: 12px 0;
-            flex-grow: 1;
-            background-color: transparent;
-        }
-        .checklist-group {
-            border: 1px solid #E5E7EB;
-            border-radius: 8px;
-            padding: 1rem;
-        }
-        /* Color Swatch Styling */
-        .color-swatch-label {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .color-swatch-box {
-            width: 20px;
-            height: 20px;
-            border-radius: 9999px;
-            border: 2px solid white;
-            box-shadow: 0 0 0 1px #ccc;
-        }
-        .color-swatch-label input:checked + .color-swatch-box {
-            box-shadow: 0 0 0 2px #3B82F6; /* Blue ring when selected */
-        }
-        /* Style for the Sizes Checklist */
-        .size-tag {
-            padding: 0.3rem 0.6rem; /* Made padding smaller for a thinner look */
-            border-radius: 6px;
-            border: 1px solid #D1D5DB;
-            background-color: white;
-            transition: all 0.1s;
-            cursor: pointer;
-            font-size: 0.8rem; /* Slightly smaller font */
-            position: relative;
-            display: block;
-            text-align: center;
-        }
-        .size-tag input:checked + span {
-            background-color: #3B82F6;
-            color: white;
-            border-color: #3B82F6;
-        }
-        .size-tag.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-    </style>
-</head>
-<body class="p-4 md:p-8">
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Plus, UploadCloud, ChevronDown, Check, 
+  Layers, Package, Ruler, Palette, Building2, 
+  X, Info, ArrowLeft, Camera
+} from 'lucide-react';
 
-    <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Add New Product</h1>
-        <p class="text-gray-500 mb-8">Define details, variants, and branch allocation for your new retail product.</p>
+// --- DATA DEFINITIONS ---
+const BRANDS = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
+const CATEGORIES = ["Cap", "Goggles", "Suit", "Kickboard", "Paddles", "Parachute", "Fins", "Snorkels", "Deflectors", "Apparel", "Other"];
+const SIZES = ["XS", "S", "M", "L", "XL", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "ONE SIZE", "OTHER"];
+const COLORS = [
+    { name: 'Red', code: '#EF4444' },
+    { name: 'Blue', code: '#3B82F6' },
+    { name: 'Yellow', code: '#FACC15' },
+    { name: 'Orange', code: '#F97316' },
+    { name: 'Gold', code: '#FFD700' },
+    { name: 'Green', code: '#10B981' },
+    { name: 'Black', code: '#000000' },
+    { name: 'White', code: '#FFFFFF' },
+    { name: 'Pink', code: '#EC4899' },
+    { name: 'Purple', code: '#8B5CF6' }
+];
+const BRANCHES = ["Zamalek Main", "New Cairo Hub", "Alexandria Branch", "Giza Outlet"];
 
-        <form id="product-form" class="space-y-6">
-            
-            <!-- Product Identification Card -->
-            <div class="form-card space-y-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Product Identification</h3>
-                
-                <!-- Product Name -->
-                <div>
-                    <label for="product-name" class="block text-sm font-medium text-gray-700 mb-1">Product Name</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <input type="text" id="product-name" name="name" required placeholder="e.g., Pro Racing Goggles">
-                    </div>
-                </div>
-                
-                <!-- Category Dropdown (Granular) -->
-                <div>
-                    <label for="product-category" class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        <select id="product-category" name="category" required>
-                            <option value="" disabled selected>Select Product Category</option>
-                            <option value="cap">Cap</option>
-                            <option value="goggles">Goggles</option>
-                            <option value="suit">Suit</option>
-                            <option value="kickboard">Kickboard</option>
-                            <option value="paddles">Paddles</option>
-                            <option value="parachute">Parachute</option>
-                            <option value="fins">Fins</option>
-                            <option value="snorkels">Snorkels</option>
-                            <option value="deflectors">Deflectors</option>
-                            <option value="apparel">Apparel (Non-Suit)</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                </div>
+export default function App() {
+    const [notification, setNotification] = useState(null);
+    const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
+    
+    // Form State
+    const [form, setForm] = useState({
+        name: '',
+        price: '',
+        brand: 'Speedo',
+        category: 'Suit',
+        description: '',
+        selectedSizes: [],
+        selectedColors: [],
+        selectedBranches: [],
+        photos: [],
+        sizeGuide: null
+    });
 
-                <!-- Brand Dropdown -->
-                <div>
-                    <label for="product-brand" class="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4L5 13l2 5z"></path></svg>
-                        <select id="product-brand" name="brand" required>
-                            <option value="" disabled selected>Select Brand</option>
-                            <option value="speedo">Speedo</option>
-                            <option value="arena">Arena</option>
-                            <option value="tyr">TYR</option>
-                            <option value="finis">FINIS</option>
-                            <option value="mizuno">Mizuno</option>
-                            <option value="de_boer">De Boer</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                </div>
+    // --- UTILITIES ---
+    const showNotify = (msg, type = 'success') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
 
-                <!-- Product Description -->
-                <div>
-                    <label for="product-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea id="product-description" name="description" rows="3" required
-                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-                              placeholder="Brief description of material, fit, and use."></textarea>
-                </div>
-
-                <!-- Product Photo Upload (Up to 10 photos) -->
-                <div>
-                    <label for="product-photo" class="block text-sm font-medium text-gray-700 mb-1">Product Photos (Max 10)</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <input type="file" id="product-photo" name="photo" accept="image/*" multiple max="10" required class="w-full">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Variants & Pricing Card -->
-            <div class="form-card space-y-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Variants & Inventory</h3>
-
-                <!-- Price -->
-                <div>
-                    <label for="product-price" class="block text-sm font-medium text-gray-700 mb-1">Price (USD)</label>
-                    <div class="input-group">
-                        <span class="text-gray-400 font-semibold mr-1">$</span>
-                        <input type="number" id="product-price" name="price" required min="1" step="0.01" placeholder="39.99">
-                    </div>
-                </div>
-                
-                <!-- Colors (Visual Checklist) -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Available Colors</label>
-                    <div id="color-allocation-checklist" class="flex flex-wrap gap-4">
-                        <!-- Colors populated by JS -->
-                    </div>
-                </div>
-
-                <!-- Sizes (Checklist with Exclusion Logic) -->
-                <div>
-                    <label for="product-sizes" class="block text-sm font-medium text-gray-700 mb-2">Available Sizes</label>
-                    <div id="size-allocation-checklist" class="flex flex-wrap gap-2 checklist-group">
-                        <!-- Sizes populated by JS -->
-                    </div>
-                </div>
-
-                <!-- Branches Available (Checklist) -->
-                <div>
-                    <h3 class="text-sm font-medium text-gray-700 mb-2">Branches to Stock</h3>
-                    <div id="branch-allocation-checklist" class="checklist-group grid grid-cols-2 gap-3">
-                        <!-- Branches populated by JS -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" class="w-full py-3 text-white font-semibold rounded-lg shadow-lg btn-submit">
-                <span id="submit-text">Register Product</span>
-            </button>
-            
-        </form>
-    </div>
-
-    <script>
-        // MOCK DATA for existing branches, colors, and sizes
-        const mockBranches = [
-            { id: 'b1', name: 'Al Malaz Store (Riyadh)' },
-            { id: 'b2', name: 'Red Sea Mall Branch (Jeddah)' },
-            { id: 'b3', name: 'Dammam City Center' },
-        ];
-        
-        // FINAL COLOR PALETTE
-        const mockColors = [
-            { name: 'Red', code: '#EF4444' },
-            { name: 'Blue', code: '#3B82F6' },
-            { name: 'Yellow', code: '#FACC15' },
-            { name: 'Orange', code: '#F97316' },
-            { name: 'Gold', code: '#FFD700' },
-            { name: 'Green', code: '#10B981' },
-            { name: 'Black', code: '#000000' },
-            { name: 'White', code: '#FFFFFF' },
-            { name: 'Pink', code: '#EC4899' },
-            { name: 'Purple', code: '#8B5CF6' }
-        ];
-
-        // FINAL SIZE LIST
-        const mockSizes = ['XS', 'S', 'M', 'L', 'XL', '22', '24', '26', '28', '30', '32', '34', '36', '38', '40', 'ONE SIZE', 'OTHER'];
-
-
-        // --- Utility Functions ---
-
-        function showSnackbar(message, isError = false) {
-            const snackbar = document.createElement('div');
-            snackbar.textContent = message;
-            snackbar.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'} z-[60]`;
-            document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
-        }
-
-        // --- Checklists Population ---
-
-        function populateBranchChecklist() {
-            const checklistContainer = document.getElementById('branch-allocation-checklist');
-            if (!checklistContainer) return;
-
-            checklistContainer.innerHTML = mockBranches.map(branch => `
-                <label class="flex items-center space-x-3 text-sm font-medium text-gray-700">
-                    <input type="checkbox" name="branch_allocation" value="${branch.id}" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
-                    <span>${branch.name}</span>
-                </label>
-            `).join('');
-        }
-
-        function populateColorChecklist() {
-            const checklistContainer = document.getElementById('color-allocation-checklist');
-            if (!checklistContainer) return;
-
-            // Display 5 columns for better layout
-            checklistContainer.className = 'grid grid-cols-4 sm:grid-cols-5 gap-2';
-
-            checklistContainer.innerHTML = mockColors.map(color => `
-                <label class="color-swatch-label space-x-2">
-                    <input type="checkbox" name="product_colors" value="${color.name}" class="hidden">
-                    <div class="color-swatch-box" style="background-color: ${color.code}; border-color: ${color.name === 'White' ? '#ccc' : 'white'};"></div>
-                    <span class="text-xs text-gray-700">${color.name}</span>
-                </label>
-            `).join('');
-        }
-        
-        function populateSizeChecklist() {
-            const checklistContainer = document.getElementById('size-allocation-checklist');
-            if (!checklistContainer) return;
-
-            // Use a grid layout for better spacing and visibility
-            checklistContainer.className = 'grid grid-cols-4 gap-2 checklist-group';
-
-            checklistContainer.innerHTML = mockSizes.map(size => {
-                const isOneSize = size === 'ONE SIZE' || size === 'OTHER';
-                return `
-                    <label class="size-tag relative ${isOneSize ? 'one-size-option' : 'standard-size-option'}">
-                        <input type="checkbox" name="product_sizes" value="${size}" class="hidden" data-size-type="${isOneSize ? 'one' : 'standard'}">
-                        <span class="block">${size}</span>
-                    </label>
-                `;
-            }).join('');
-            
-            // Attach exclusion logic listener
-            attachSizeExclusionListener();
-        }
-
-        function attachSizeExclusionListener() {
-            const sizeCheckboxes = document.querySelectorAll('#size-allocation-checklist input[type="checkbox"]');
-            
-            sizeCheckboxes.forEach(checkbox => {
-                checkbox.addEventListener('change', function() {
-                    const isOneSize = this.getAttribute('data-size-type') === 'one';
-                    const isChecked = this.checked;
-                    const standardOptions = document.querySelectorAll('.standard-size-option');
-                    const oneSizeOptions = document.querySelectorAll('.one-size-option');
-                    
-                    if (isOneSize) {
-                        // If ONE SIZE or OTHER is checked, disable and uncheck all standard options
-                        standardOptions.forEach(stdLabel => {
-                            const stdInput = stdLabel.querySelector('input');
-                            if (isChecked) {
-                                stdInput.checked = false;
-                                stdLabel.classList.add('disabled');
-                            } else {
-                                stdLabel.classList.remove('disabled');
-                            }
-                        });
-                    } else {
-                        // If any standard size is checked, disable and uncheck all 'one-size-option' options
-                        if (isChecked) {
-                            oneSizeOptions.forEach(oneLabel => {
-                                const oneInput = oneLabel.querySelector('input');
-                                oneInput.checked = false;
-                                oneLabel.classList.add('disabled');
-                            });
-                        }
-                        
-                        // If NO standard sizes are checked, re-enable 'one-size-option' options
-                        const anyStandardChecked = Array.from(standardOptions).some(stdLabel => stdLabel.querySelector('input').checked);
-                        if (!anyStandardChecked) {
-                            oneSizeOptions.forEach(oneLabel => oneLabel.classList.remove('disabled'));
-                        }
-                    }
-                });
-            });
-        }
-        
-        // --- Searchable Modal Logic ---
-
-        function openSearchableModal(type) {
-            currentSearchType = type;
-            const modal = document.getElementById('searchable-modal-overlay');
-            const title = document.getElementById('searchable-modal-title');
-            
-            title.textContent = `Select ${type.charAt(0).toUpperCase() + type.slice(1)}`;
-            document.getElementById('searchable-input').value = '';
-
-            modal.classList.remove('hidden');
-            filterSearchableOptions();
-        }
-
-        function closeSearchableModal() {
-            document.getElementById('searchable-modal-overlay').classList.add('hidden');
-        }
-
-        function filterSearchableOptions() {
-            const query = document.getElementById('searchable-input').value.toLowerCase();
-            const listContainer = document.getElementById('searchable-options-list');
-            
-            const options = currentSearchType === 'category' ? mockCategories : mockBrands;
-            
-            listContainer.innerHTML = options
-                .filter(opt => opt.label.toLowerCase().includes(query))
-                .map(opt => `
-                    <div class="searchable-option" data-value="${opt.value}" onclick="selectSearchableOption('${opt.value}', '${opt.label}')">
-                        ${opt.label}
-                    </div>
-                `).join('');
-        }
-
-        function selectSearchableOption(value, label) {
-            if (currentSearchType === 'category') {
-                document.getElementById('product-category-display').value = label;
-                document.getElementById('product-category').value = value;
-            } else if (currentSearchType === 'brand') {
-                document.getElementById('product-brand-display').value = label;
-                document.getElementById('product-brand').value = value;
+    const toggleSize = (size) => {
+        const isOneSize = size === 'ONE SIZE' || size === 'OTHER';
+        setForm(prev => {
+            let newSizes = [...prev.selectedSizes];
+            if (newSizes.includes(size)) {
+                newSizes = newSizes.filter(s => s !== size);
+            } else {
+                if (isOneSize) {
+                    newSizes = [size]; // Clear others if one-size/other is picked
+                } else {
+                    newSizes = newSizes.filter(s => s !== 'ONE SIZE' && s !== 'OTHER');
+                    newSizes.push(size);
+                }
             }
-            closeSearchableModal();
-        }
-
-        // --- Form Submission Logic ---
-
-        document.getElementById('product-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            
-            // Collect all necessary values (including the hidden ones from searchable modals)
-            const selectedBranches = Array.from(form.elements.branch_allocation)
-                .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.value);
-            
-            const selectedColors = Array.from(form.elements.product_colors)
-                .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.value);
-
-            const selectedSizes = Array.from(form.elements.product_sizes)
-                .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.value);
-
-            if (selectedBranches.length === 0 || selectedColors.length === 0 || selectedSizes.length === 0) {
-                 showSnackbar("Please complete all required variant selections (Branch, Color, Size).", true);
-                 return;
-            }
-            
-            if (!form.elements.category_value.value || !form.elements.brand_value.value) {
-                 showSnackbar("Please select a Category and Brand.", true);
-                 return;
-            }
-
-
-            const data = {
-                name: form.elements.name.value,
-                category: form.elements.category_value.value,
-                brand: form.elements.brand_value.value,
-                description: form.elements.description.value,
-                price: parseFloat(form.elements.price.value),
-                colors: selectedColors,
-                sizes: selectedSizes,
-                branches_allocated: selectedBranches,
-                photo_count: form.elements.photo.files.length, // Count of photos
-            };
-
-            console.log("New Product Registration Data:", data);
-            
-            // Show success message (Mock behavior)
-            const submitButton = document.getElementById('submit-text');
-            submitButton.textContent = 'Registering...';
-            
-            setTimeout(() => {
-                submitButton.textContent = 'Product Registered!';
-                showSnackbar(`Product "${data.name}" registered successfully to ${data.branches_allocated.length} branches.`, false);
-                
-                // Reset form
-                setTimeout(() => {
-                    submitButton.textContent = 'Register Product';
-                    form.reset();
-                    // Re-initialize dynamic lists
-                    populateBranchChecklist();
-                    populateColorChecklist();
-                    populateSizeChecklist(); 
-                }, 2000);
-            }, 1000);
+            return { ...prev, selectedSizes: newSizes };
         });
+    };
 
-        // --- Initialization ---
+    const toggleColor = (colorName) => {
+        setForm(prev => {
+            const newColors = prev.selectedColors.includes(colorName)
+                ? prev.selectedColors.filter(c => c !== colorName)
+                : [...prev.selectedColors, colorName];
+            return { ...prev, selectedColors: newColors };
+        });
+    };
 
-        window.onload = () => {
-            populateBranchChecklist();
-            populateColorChecklist();
-            populateSizeChecklist();
-        };
-    </script>
-</body>
-</html>
+    const toggleBranch = (branch) => {
+        setForm(prev => {
+            const newBranches = prev.selectedBranches.includes(branch)
+                ? prev.selectedBranches.filter(b => b !== branch)
+                : [...prev.selectedBranches, branch];
+            return { ...prev, selectedBranches: newBranches };
+        });
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!form.name || !form.price || form.selectedSizes.length === 0 || form.selectedColors.length === 0) {
+            showNotify("Please complete all required fields and variants", "error");
+            return;
+        }
+        showNotify("Product Published Successfully!");
+        // Reset Logic or redirection would go here
+    };
+
+    return (
+        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 pb-12">
+            
+            {/* Header */}
+            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
+                            <Plus className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black tracking-tight">Add Product</h1>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Official Inventory</p>
+                        </div>
+                    </div>
+                    <button onClick={() => window.history.back()} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
+            </header>
+
+            <main className="p-6 space-y-6 animate-in">
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    
+                    {/* 1. Identification Section */}
+                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <Layers className="w-4 h-4 text-blue-600" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">General Information</h3>
+                        </div>
+
+                        <div className="space-y-4 text-left">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Product Title</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    placeholder="e.g. FINA Competition Suit" 
+                                    value={form.name} 
+                                    onChange={e => setForm({...form, name: e.target.value})}
+                                    className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
+                                />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Brand</label>
+                                    <select 
+                                        value={form.brand} 
+                                        onChange={e => setForm({...form, brand: e.target.value})}
+                                        className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none"
+                                    >
+                                        {BRANDS.map(b => <option key={b}>{b}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Category</label>
+                                    <select 
+                                        value={form.category} 
+                                        onChange={e => setForm({...form, category: e.target.value})}
+                                        className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none"
+                                    >
+                                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Base Price ($)</label>
+                                <input 
+                                    type="number" 
+                                    required
+                                    step="0.01"
+                                    placeholder="0.00" 
+                                    value={form.price} 
+                                    onChange={e => setForm({...form, price: e.target.value})}
+                                    className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" 
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Description</label>
+                                <textarea 
+                                    required
+                                    placeholder="Enter materials, features, and care instructions..." 
+                                    rows="4" 
+                                    value={form.description} 
+                                    onChange={e => setForm({...form, description: e.target.value})}
+                                    className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. Media Section */}
+                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <Camera className="w-4 h-4 text-blue-600" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Media Gallery</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-8 bg-gray-50 rounded-[28px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 cursor-pointer hover:bg-blue-50 transition-colors">
+                                <Plus className="w-6 h-6 mb-1 text-blue-600" />
+                                <span className="text-[8px] font-black uppercase text-center">Add Photos<br/>(Max 10)</span>
+                            </div>
+                            <div className={`p-8 rounded-[28px] flex flex-col items-center justify-center border-2 border-dashed transition-colors cursor-pointer ${form.sizeGuide ? 'bg-blue-50 border-blue-600 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                                <Ruler className="w-6 h-6 mb-1" />
+                                <span className="text-[8px] font-black uppercase">Size Guide<br/>(Optional)</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. Variants Section */}
+                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <Palette className="w-4 h-4 text-blue-600" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Variants</h3>
+                        </div>
+
+                        {/* CUSTOM SIZE DROPDOWN WITH CHECKBOXES */}
+                        <div className="relative text-left">
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Available Sizes</label>
+                            <button 
+                                type="button"
+                                onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
+                                className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold flex items-center justify-between group active:bg-gray-100 transition-all"
+                            >
+                                <span className={form.selectedSizes.length > 0 ? 'text-blue-600' : 'text-gray-400'}>
+                                    {form.selectedSizes.length > 0 
+                                        ? `${form.selectedSizes.length} Sizes Selected` 
+                                        : 'Choose Sizes'}
+                                </span>
+                                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isSizeDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isSizeDropdownOpen && (
+                                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[24px] shadow-2xl border border-gray-100 z-50 p-4 max-h-60 overflow-y-auto no-scrollbar space-y-2">
+                                    {SIZES.map(size => {
+                                        const isOneSize = size === 'ONE SIZE' || size === 'OTHER';
+                                        const isDisabled = !isOneSize && (form.selectedSizes.includes('ONE SIZE') || form.selectedSizes.includes('OTHER'));
+                                        
+                                        return (
+                                            <button 
+                                                key={size}
+                                                type="button"
+                                                disabled={isDisabled}
+                                                onClick={() => toggleSize(size)}
+                                                className={`w-full p-3.5 rounded-xl flex items-center justify-between transition-all ${form.selectedSizes.includes(size) ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-700'} ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                            >
+                                                <span className="text-xs font-bold uppercase">{size}</span>
+                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 ${form.selectedSizes.includes(size) ? 'bg-white border-white' : 'border-gray-200 bg-white'}`}>
+                                                    {form.selectedSizes.includes(size) && <Check className="w-4 h-4 text-blue-600" />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Colors Picker */}
+                        <div className="space-y-4 pt-2 text-left">
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Color Palette</label>
+                            <div className="flex flex-wrap gap-4">
+                                {COLORS.map(color => (
+                                    <button 
+                                        key={color.name}
+                                        type="button"
+                                        onClick={() => toggleColor(color.name)}
+                                        className={`w-11 h-11 rounded-full border-4 transition-all relative ${form.selectedColors.includes(color.name) ? 'border-blue-600 scale-110 shadow-lg' : 'border-white shadow-sm'}`}
+                                        style={{ backgroundColor: color.code }}
+                                    >
+                                        {form.selectedColors.includes(color.name) && <Check className="w-5 h-5 text-white absolute inset-0 m-auto" />}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 4. Branch Allocation Section */}
+                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4 text-left">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <Building2 className="w-4 h-4 text-blue-600" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Branch Stock Allocation</h3>
+                        </div>
+                        <div className="space-y-2">
+                            {BRANCHES.map(branch => (
+                                <button 
+                                    key={branch}
+                                    type="button"
+                                    onClick={() => toggleBranch(branch)}
+                                    className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border ${form.selectedBranches.includes(branch) ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-50' : 'bg-gray-50 border-transparent'}`}
+                                >
+                                    <span className={`text-sm font-bold ${form.selectedBranches.includes(branch) ? 'text-blue-700' : 'text-gray-500'}`}>{branch}</span>
+                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${form.selectedBranches.includes(branch) ? 'bg-blue-600 border-blue-600' : 'border-gray-200 bg-white'}`}>
+                                        {form.selectedBranches.includes(branch) && <Check className="w-3.5 h-3.5 text-white" />}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Submit Button */}
+                    <div className="pt-4">
+                        <button 
+                            type="submit" 
+                            className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-[0.2em]"
+                        >
+                            Publish to Inventory
+                        </button>
+                    </div>
+                </form>
+            </main>
+
+            {notification && (
+                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
+                    <span>{notification.msg}</span>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+        </div>
+    );
+}

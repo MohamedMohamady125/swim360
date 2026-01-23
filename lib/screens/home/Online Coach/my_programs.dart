@@ -3,282 +3,141 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>My Programs List</title>
-    <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Swim 360 - My Programs</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(15px); } 
+            to { opacity: 1; transform: translateY(0); } 
         }
-        /* Custom green submit button style */
-        .btn-submit {
-            background-color: #4CAF50; /* Green shade */
-            color: white;
-            transition: background-color 0.2s, transform 0.2s;
-        }
-        .btn-submit:hover {
-            background-color: #45A049;
-            transform: translateY(-1px);
-        }
-        .card-shadow {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-        }
-        .program-card {
-            background-color: white;
-            border-radius: 12px;
-            transition: transform 0.2s;
-        }
-        .program-card:hover {
-            transform: translateY(-2px);
-        }
-        /* Style for Edit Modal (reusing input-group styles from previous request) */
-        .input-group {
-            display: flex;
-            align-items: center;
-            border: 1px solid #E5E7EB; /* Light grey border */
-            border-radius: 8px;
-            padding: 0 12px;
-            background-color: #FAFAFA;
-        }
-        .input-group:focus-within {
-            border-color: #3B82F6;
-            box-shadow: 0 0 0 1px #3B82F6;
-            background-color: white;
-        }
-        .input-group input, .input-group textarea, .input-group select {
-            border: none;
-            outline: none;
-            padding: 12px 0;
-            flex-grow: 1;
-            background-color: transparent;
-        }
-        .file-upload-box {
-            position: relative;
-            border: 2px dashed #D1D5DB;
-            background-color: #F9FAFB;
-        }
-        .file-upload-box:hover {
-            border-color: #60A5FA;
-        }
+        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .shadow-soft { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="bg-[#F8FAFC]">
 
-    <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-2">My Programs</h1>
-        <p class="text-gray-500 mb-6">Manage your live and self-paced coaching programs.</p>
-
-        <div id="program-list" class="space-y-4">
-            <!-- Program Cards will be injected here -->
-        </div>
-    </div>
-
-    <!-- Edit Modal Structure (Hidden by default) -->
-    <div id="edit-modal-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-[99] flex items-center justify-center p-4 hidden">
-        <div id="edit-modal-content" class="bg-white rounded-xl card-shadow w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            
-            <div class="p-5 border-b flex justify-between items-center sticky top-0 bg-white rounded-t-xl">
-                <h3 class="text-2xl font-extrabold text-gray-800">Edit Program: <span id="modal-program-title" class="text-blue-600"></span></h3>
-                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 transition">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+    <div class="max-w-md mx-auto min-h-screen bg-[#F8FAFC] text-gray-900 pb-12 relative overflow-x-hidden">
+        
+        <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50">
+            <div class="flex items-center space-x-4 text-left">
+                <button class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
                 </button>
+                <div>
+                    <h1 class="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase">My Programs</h1>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Official Inventory</p>
+                </div>
             </div>
+            <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            </div>
+        </header>
 
-            <form id="edit-program-form" class="p-5 space-y-6">
+        <main class="p-6 space-y-6 animate-in">
+            <div id="program-list" class="space-y-4 pb-20">
+                </div>
+        </main>
+
+        <div id="edit-modal-overlay" class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-10 bg-slate-900/60 backdrop-blur-sm hidden transition-opacity">
+            <div class="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl animate-in relative overflow-hidden text-left">
+                <button id="close-modal-btn" class="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400 active:scale-90">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
                 
-                <input type="hidden" id="edit-program-id">
-
-                <!-- Editable Fields Card -->
-                <div class="space-y-6">
-                    <!-- Detailed Description -->
-                    <div>
-                        <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-1">Detailed Description</label>
-                        <textarea id="edit-description" name="description" rows="4" required
-                                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-                                  placeholder="Outline the goals, weekly workload, and target audience."></textarea>
-                    </div>
-
-                    <!-- Intro Video URL (Optional) -->
-                    <div>
-                        <label for="edit-intro-video-url" class="block text-sm font-medium text-gray-700 mb-1">Intro Video URL (Optional)</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            <input type="url" id="edit-intro-video-url" name="intro_video_url"
-                                   placeholder="e.g., https://youtube.com/watch?v=...">
-                        </div>
-                    </div>
-
-                    <!-- End Date (Optional) -->
-                    <div>
-                        <label for="edit-program-end-date" class="block text-sm font-medium text-gray-700 mb-1">Program End Date (Optional)</label>
-                         <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            <input type="date" id="edit-program-end-date" name="end_date">
-                        </div>
-                    </div>
+                <div class="mb-6">
+                    <h3 class="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase">Edit Details</h3>
+                    <p id="modal-program-title" class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-2"></p>
                 </div>
 
-                <!-- Submit Button -->
-                <button type="submit" class="w-full py-3 text-white font-semibold rounded-lg shadow-lg btn-submit">
-                    <span id="edit-submit-text">Save Changes</span>
-                </button>
-            </form>
+                <form id="edit-program-form" class="space-y-5">
+                    <input type="hidden" id="edit-program-id">
+
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Detailed Description</label>
+                        <textarea id="edit-description" rows="4" required
+                                  class="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner transition-all"></textarea>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1 tracking-widest">Video URL (YouTube/Vimeo)</label>
+                        <div class="relative mt-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            <input type="url" id="edit-intro-video-url" placeholder="Paste link..." 
+                                   class="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Campaign End Date</label>
+                        <div class="relative mt-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <input type="date" id="edit-program-end-date" 
+                                   class="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner">
+                        </div>
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
+                            Save Changes
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- MOCK PROGRAM DATA ---
         let programs = [
-            { id: 'prog1', title: '12-Week Stroke Mastery', price: 199.99, duration_value: 12, duration_unit: 'weeks', end_date: '2024-12-31', video_url: 'https://youtube.com/mastery', photo_url: 'https://placehold.co/400x160/2563eb/ffffff?text=STROKE+MASTERY', description: 'Comprehensive training plan focused on maximizing efficiency across all four strokes.' },
-            { id: 'prog2', title: 'Nutrition for Triathletes', price: 49.00, duration_value: 8, duration_unit: 'sessions', end_date: null, video_url: 'https://vimeo.com/tri-nutri', photo_url: 'https://placehold.co/400x160/10b981/ffffff?text=NUTRITION+PLAN', description: 'Learn how to fuel your body correctly for endurance events with weekly video modules.' },
-            { id: 'prog3', title: 'Beginner Open Water Prep', price: 99.50, duration_value: 4, duration_unit: 'weeks', end_date: '2024-10-15', video_url: null, photo_url: 'https://placehold.co/400x160/f97316/ffffff?text=OPEN+WATER+PREP', description: 'A four-week guide to transitioning from pool swimming to open water confidence.' },
+            { id: 'prog1', title: '12-Week Stroke Mastery', price: 199.99, duration: '12 Weeks', end_date: '2026-12-31', photo_url: 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=800', description: 'Comprehensive stroke mastery curriculum.' },
+            { id: 'prog2', title: 'Nutrition for Triathletes', price: 49.00, duration: '8 Sessions', end_date: '', photo_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800', description: 'Fueling endurance athletes.' }
         ];
 
-        const programListContainer = document.getElementById('program-list');
-        const modalOverlay = document.getElementById('edit-modal-overlay');
-        const modalTitle = document.getElementById('modal-program-title');
-        const editForm = document.getElementById('edit-program-form');
-
-        // --- Core Functions ---
-
-        function showSnackbar(message, isError = false) {
-            const snackbar = document.createElement('div');
-            snackbar.textContent = message;
-            snackbar.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'} z-[60]`;
-            document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
-        }
-
-        // --- UI Rendering ---
-
-        function renderProgramList() {
-            programListContainer.innerHTML = programs.map(program => `
-                <div class="program-card p-4 card-shadow flex items-center space-x-4 cursor-pointer">
-                    <!-- Program Photo -->
-                    <img src="${program.photo_url}" alt="${program.title} Cover" 
-                         class="w-20 h-20 object-cover rounded-lg flex-shrink-0">
-                    
-                    <!-- Program Details -->
-                    <div class="flex-grow">
-                        <h3 class="text-lg font-extrabold text-gray-900">${program.title}</h3>
-                        <p class="text-sm font-semibold text-teal-600">$${program.price.toFixed(2)}</p>
-                        <p class="text-xs text-gray-500 mt-1">
-                            Duration: ${program.duration_value} ${program.duration_unit} 
-                            ${program.end_date ? `| Ends: ${program.end_date}` : ''}
+        function render() {
+            const list = document.getElementById('program-list');
+            list.innerHTML = programs.map(p => `
+                <div onclick="openEditModal('${p.id}')" class="bg-white p-4 rounded-[32px] shadow-soft border border-gray-50 flex items-center space-x-4 active:scale-[0.98] transition-all cursor-pointer">
+                    <img src="${p.photo_url}" class="w-20 h-20 object-cover rounded-[24px] shadow-inner flex-shrink-0">
+                    <div class="flex-grow text-left">
+                        <h3 class="text-lg font-black text-gray-900 leading-tight">${p.title}</h3>
+                        <p class="text-sm font-black text-blue-600 mt-0.5">$${p.price.toFixed(2)}</p>
+                        <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                            ${p.duration} ${p.end_date ? `• Ends ${p.end_date}` : '• Ongoing'}
                         </p>
                     </div>
-
-                    <!-- Edit Button -->
-                    <button data-program-id="${program.id}" 
-                            class="edit-program-btn p-2 text-blue-600 hover:bg-blue-100 rounded-full transition flex-shrink-0" title="Edit Program">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 
-                                  113.536 3.536L6.5 21.036H3v-3.536L15.232 5.232z"></path>
-                        </svg>
-                    </button>
+                    <div class="p-2.5 bg-gray-50 text-gray-300 rounded-xl group-hover:bg-blue-50 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    </div>
                 </div>
             `).join('');
         }
 
-        function openEditModal(programId) {
-            const program = programs.find(p => p.id === programId);
-            if (!program) return showSnackbar('Program not found.', true);
-
-            // Populate the modal fields
-            modalTitle.textContent = program.title;
-            document.getElementById('edit-program-id').value = program.id;
-            document.getElementById('edit-description').value = program.description;
-            document.getElementById('edit-intro-video-url').value = program.video_url || '';
-            document.getElementById('edit-program-end-date').value = program.end_date || '';
-
-            // Show modal
-            modalOverlay.classList.remove('hidden');
+        function openEditModal(id) {
+            const p = programs.find(x => x.id === id);
+            document.getElementById('edit-program-id').value = p.id;
+            document.getElementById('modal-program-title').textContent = p.title;
+            document.getElementById('edit-description').value = p.description;
+            document.getElementById('edit-program-end-date').value = p.end_date;
+            document.getElementById('edit-modal-overlay').classList.remove('hidden');
         }
 
-        function closeEditModal() {
-            modalOverlay.classList.add('hidden');
-            editForm.reset();
-        }
-
-        // --- Event Handlers ---
-
-        function handleFormSubmit(event) {
-            event.preventDefault();
-
-            console.log('Form submit triggered');
-
-            const programId = document.getElementById('edit-program-id').value;
-            const programIndex = programs.findIndex(p => p.id === programId);
-
-            if (programIndex === -1) {
-                showSnackbar('Error: Program ID mismatch.', true);
-                return;
-            }
-
-            const endDateValue = document.getElementById('edit-program-end-date').value || null;
-
-            // Date Validation (End Date must be greater than today)
-            if (endDateValue) {
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const endDate = new Date(endDateValue);
-
-                if (endDate < today) {
-                    showSnackbar("Error: End Date cannot be in the past.", true);
-                    return;
-                }
-            }
-
-            // Update the program data
-            programs[programIndex].description = document.getElementById('edit-description').value;
-            programs[programIndex].video_url = document.getElementById('edit-intro-video-url').value;
-            programs[programIndex].end_date = endDateValue;
-
-            showSnackbar(`Changes saved for: ${programs[programIndex].title}`, false);
-
-            // Re-render the list and close modal
-            renderProgramList();
-            closeEditModal();
-        }
-
-        // Event delegation for edit buttons inside program list container
-        programListContainer.addEventListener('click', (e) => {
-            const editBtn = e.target.closest('.edit-program-btn');
-            if (editBtn) {
-                const progId = editBtn.getAttribute('data-program-id');
-                openEditModal(progId);
-            }
-        });
-
-        window.onload = () => {
-            // Attach form submit handler
-            if (editForm) {
-                editForm.addEventListener('submit', handleFormSubmit);
-            }
-
-            // Attach close button handler
-            const closeBtn = document.getElementById('close-modal-btn');
-            if (closeBtn) {
-                closeBtn.onclick = closeEditModal;
-            }
-
-            // Close modal when clicking overlay
-            if (modalOverlay) {
-                modalOverlay.onclick = (e) => {
-                    if (e.target.id === 'edit-modal-overlay') {
-                        closeEditModal();
-                    }
-                };
-            }
-
-            // Initial render of the program list
-            renderProgramList();
+        document.getElementById('edit-program-form').onsubmit = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-program-id').value;
+            const index = programs.findIndex(x => x.id === id);
+            programs[index].description = document.getElementById('edit-description').value;
+            programs[index].end_date = document.getElementById('edit-program-end-date').value;
+            
+            // Mock Success logic
+            render();
+            document.getElementById('edit-modal-overlay').classList.add('hidden');
         };
+
+        document.getElementById('close-modal-btn').onclick = () => document.getElementById('edit-modal-overlay').classList.add('hidden');
+
+        window.onload = render;
     </script>
 </body>
 </html>

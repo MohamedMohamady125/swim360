@@ -1,1022 +1,470 @@
-import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
+import { getFirestore, doc, addDoc, deleteDoc, onSnapshot, collection, query, Timestamp, updateDoc } from 'firebase/firestore';
+import { 
+  Search, Plus, Trash2, List, Phone, 
+  UploadCloud, X, CheckCircle, MapPin, 
+  ChevronLeft, MessageSquare, MessageCircle, 
+  ArrowLeft, ChevronRight, Share2, Star
+} from 'lucide-react';
 
-class MarketplaceItem {
-  final String id;
-  final String title;
-  final double price;
-  final String photo;
-  final String description;
-  final String condition;
-  final String size;
-  final String contact;
-  final String userId;
-  bool isSold;
-  final List<String> photos;
+// --- Global Context/Setup ---
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-  MarketplaceItem({
-    required this.id,
-    required this.title,
-    required this.price,
-    required this.photo,
-    required this.description,
-    required this.condition,
-    required this.size,
-    required this.contact,
-    required this.userId,
-    this.isSold = false,
-    this.photos = const [],
-  });
+let app, db, auth;
+if (Object.keys(firebaseConfig).length) {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
 }
 
-class MarketplaceFilters {
-  String searchTerm;
-  String? condition;
-  String? size;
-  double? maxPrice;
+const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/usedItems`;
 
-  MarketplaceFilters({
-    this.searchTerm = '',
-    this.condition,
-    this.size,
-    this.maxPrice,
-  });
+// --- DATA DEFINITIONS ---
+const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Luxor", "Matrouh", "Minya", "Monufia", "New Valley", "North Sinai", "Port Said", "Qalyubia", "Qena", "Sharqia", "Sohag", "South Sinai", "Suez"];
+const BRANDS = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
+const SIZES = ["Adult (One Size)", "Youth (One Size)", "Small (S)", "Medium (M)", "Large (L)", "XL", "22", "24", "26", "28", "30", "32", "34", "36"];
 
-  MarketplaceFilters copyWith({
-    String? searchTerm,
-    String? condition,
-    String? size,
-    double? maxPrice,
-  }) {
-    return MarketplaceFilters(
-      searchTerm: searchTerm ?? this.searchTerm,
-      condition: condition ?? this.condition,
-      size: size ?? this.size,
-      maxPrice: maxPrice ?? this.maxPrice,
-    );
-  }
-}
-
-class UsedScreen extends StatefulWidget {
-  const UsedScreen({Key? key}) : super(key: key);
-
-  @override
-  State<UsedScreen> createState() => _UsedScreenState();
-}
-
-class _UsedScreenState extends State<UsedScreen> with SingleTickerProviderStateMixin {
-  static const String currentUserId = 'user123';
-  
-  String currentView = 'home';
-  String? selectedItemId;
-  MarketplaceFilters filters = MarketplaceFilters();
-  late AnimationController _animationController;
-  late List<Animation<double>> _animations;
-  
-  final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _contactController = TextEditingController();
-  
-  String _selectedCondition = 'New';
-  String _selectedSize = 'M';
-
-  List<MarketplaceItem> items = [
-    MarketplaceItem(
-      id: 'item1',
-      title: 'Speedo Fastskin LZR Racer',
-      price: 299.99,
-      photo: 'https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit',
-      description: 'Elite racing suit, used once. Hydrodynamic compression.',
-      condition: 'Excellent',
-      size: 'M',
-      contact: '966512345678',
-      userId: 'user123',
-      isSold: false,
-      photos: ['https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit+1', 'https://placehold.co/400x300/1e40af/ffffff?text=LZR+Suit+2'],
-    ),
-    MarketplaceItem(
-      id: 'item2',
-      title: 'Zoggs Predator Goggles',
-      price: 15.00,
-      photo: 'https://placehold.co/400x300/06b6d4/ffffff?text=Goggles',
-      description: 'Good condition, anti-fog coating still strong. Blue lenses.',
-      condition: 'Good',
-      size: 'One Size',
-      contact: '966598765432',
-      userId: 'user456',
-      isSold: false,
-      photos: ['https://placehold.co/400x300/06b6d4/ffffff?text=Goggles+1'],
-    ),
-    MarketplaceItem(
-      id: 'item3',
-      title: 'Arena Powerfin Pro',
-      price: 35.50,
-      photo: 'https://placehold.co/400x300/0f766e/ffffff?text=Fins',
-      description: 'Size L training fins. Great for leg power and ankle flexibility.',
-      condition: 'Fair',
-      size: 'L',
-      contact: '966511122233',
-      userId: 'user123',
-      isSold: false,
-      photos: ['https://placehold.co/400x300/0f766e/ffffff?text=Fins+1', 'https://placehold.co/400x300/0f766e/ffffff?text=Fins+2', 'https://placehold.co/400x300/0f766e/ffffff?text=Fins+3'],
-    ),
-    MarketplaceItem(
-      id: 'item4',
-      title: 'FINIS Snorkel',
-      price: 25.00,
-      photo: 'https://placehold.co/400x300/22c55e/ffffff?text=Snorkel',
-      description: 'Excellent centre-mount snorkel, clear tube. Used lightly.',
-      condition: 'Excellent',
-      size: 'S',
-      contact: '966554433221',
-      userId: 'user789',
-      isSold: true,
-      photos: ['https://placehold.co/400x300/22c55e/ffffff?text=Snorkel+1'],
-    ),
-    MarketplaceItem(
-      id: 'item5',
-      title: 'Water Polo Ball',
-      price: 50.00,
-      photo: 'https://placehold.co/400x300/f97316/ffffff?text=Ball',
-      description: 'Official size 5 water polo ball. Barely used.',
-      condition: 'New',
-      size: 'M',
-      contact: '966512345678',
-      userId: 'user123',
-      isSold: false,
-      photos: ['https://placehold.co/400x300/f97316/ffffff?text=Ball+1', 'https://placehold.co/400x300/f97316/ffffff?text=Ball+2'],
-    ),
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _setupAnimations();
-    _searchController.addListener(_onSearchChanged);
-  }
-
-  void _setupAnimations() {
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1000),
-      vsync: this,
-    );
-
-    _animations = List.generate(6, (index) {
-      double start = (index * 0.1).clamp(0.0, 1.0);
-      double end = (start + 0.3).clamp(start, 1.0);
-      
-      return Tween<double>(begin: 0.0, end: 1.0).animate(
-        CurvedAnimation(
-          parent: _animationController,
-          curve: Interval(start, end, curve: Curves.easeOut),
-        ),
-      );
-    });
-
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    _searchController.dispose();
-    _titleController.dispose();
-    _priceController.dispose();
-    _descriptionController.dispose();
-    _contactController.dispose();
-    super.dispose();
-  }
-
-  void _onSearchChanged() {
-    setState(() {
-      filters = filters.copyWith(searchTerm: _searchController.text);
-    });
-  }
-
-  void _navigate(String view, [String? itemId]) {
-    setState(() {
-      currentView = view;
-      selectedItemId = itemId;
-    });
-  }
-
-  List<MarketplaceItem> get filteredItems {
-    return items.where((item) {
-      if (item.isSold) return false;
-      if (filters.searchTerm.isNotEmpty && 
-          !item.title.toLowerCase().contains(filters.searchTerm.toLowerCase())) {
-        return false;
-      }
-      if (filters.condition != null && item.condition != filters.condition) {
-        return false;
-      }
-      if (filters.size != null && item.size != filters.size) {
-        return false;
-      }
-      if (filters.maxPrice != null && item.price > filters.maxPrice!) {
-        return false;
-      }
-      return true;
-    }).toList();
-  }
-
-  List<MarketplaceItem> get myItems {
-    return items.where((item) => item.userId == currentUserId).toList();
-  }
-
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF7F9FB),
-      body: SafeArea(
-        child: _buildCurrentView(),
-      ),
-      floatingActionButton: currentView == 'home' ? _buildFABs() : null,
-    );
-  }
-
-  Widget _buildCurrentView() {
-    switch (currentView) {
-      case 'details':
-        return _buildItemDetailView();
-      case 'sell':
-        return _buildSellItemForm();
-      case 'my-items':
-        return _buildMyItemsView();
-      default:
-        return _buildHomeView();
-    }
-  }
-
-  Widget _buildFABs() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FloatingActionButton(
-          heroTag: "my-items",
-          backgroundColor: Colors.amber,
-          onPressed: () => _navigate('my-items'),
-          child: const Icon(Icons.shopping_bag, color: Colors.white),
-        ),
-        const SizedBox(height: 16),
-        FloatingActionButton(
-          heroTag: "sell-item",
-          backgroundColor: Colors.teal,
-          onPressed: () => _navigate('sell'),
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHomeView() {
-    final filtered = filteredItems;
-    
-    return Column(
-      children: [
-        // Header
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              const Text(
-                'Used Swimming Gear',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: _showFilterDialog,
-                    icon: const Icon(Icons.filter_list),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.grey[200],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: _resetFilters,
-                    child: const Text('Reset'),
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[200],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        // Items Grid
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: filtered.isEmpty
-                ? const Center(
-                    child: Text(
-                      'No items found.',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                  )
-                : GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.75,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) {
-                      return AnimatedBuilder(
-                        animation: _animations[index % _animations.length],
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _animations[index % _animations.length].value,
-                            child: Opacity(
-                              opacity: _animations[index % _animations.length].value,
-                              child: _buildItemCard(filtered[index]),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildItemCard(MarketplaceItem item) {
-    return GestureDetector(
-      onTap: () => _navigate('details', item.id),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
-              spreadRadius: 2,
-              blurRadius: 6,
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                child: Image.network(
-                  item.photo,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      width: double.infinity,
-                      color: Colors.grey[300],
-                      child: const Center(
-                        child: Text('No Image', style: TextStyle(color: Colors.grey)),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        item.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '\$${item.price.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        color: Colors.blue,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showFilterDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filters'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<String>(
-              value: filters.condition,
-              decoration: const InputDecoration(labelText: 'Condition'),
-              items: const [
-                DropdownMenuItem(value: null, child: Text('All Conditions')),
-                DropdownMenuItem(value: 'New', child: Text('New')),
-                DropdownMenuItem(value: 'Excellent', child: Text('Excellent')),
-                DropdownMenuItem(value: 'Good', child: Text('Good')),
-                DropdownMenuItem(value: 'Fair', child: Text('Fair')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  filters = filters.copyWith(condition: value);
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: filters.size,
-              decoration: const InputDecoration(labelText: 'Size'),
-              items: const [
-                DropdownMenuItem(value: null, child: Text('All Sizes')),
-                DropdownMenuItem(value: 'XS', child: Text('XS')),
-                DropdownMenuItem(value: 'S', child: Text('S')),
-                DropdownMenuItem(value: 'M', child: Text('M')),
-                DropdownMenuItem(value: 'L', child: Text('L')),
-                DropdownMenuItem(value: 'XL', child: Text('XL')),
-                DropdownMenuItem(value: 'One Size', child: Text('One Size')),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  filters = filters.copyWith(size: value);
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              decoration: const InputDecoration(labelText: 'Max Price (\$)'),
-              keyboardType: TextInputType.number,
-              onChanged: (value) {
-                final price = double.tryParse(value);
-                setState(() {
-                  filters = filters.copyWith(maxPrice: price);
-                });
-              },
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Apply'),
-          ),
+// --- Mock Data ---
+const GLOBAL_TEST_ITEMS = [
+    {
+        id: 'test-1',
+        title: 'Speedo Fastskin LZR Pure Intent',
+        description: 'Used for one championship only. Perfect compression and water repellency.',
+        condition: 'Excellent',
+        governorate: 'Cairo',
+        brand: 'Speedo',
+        size: '26',
+        price: 320.00,
+        contactNumber: '1234567890',
+        photos: [
+            'https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?q=80&w=800&auto=format&fit=crop',
+            'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=800&auto=format&fit=crop'
         ],
-      ),
-    );
-  }
-
-  void _resetFilters() {
-    setState(() {
-      filters = MarketplaceFilters();
-      _searchController.clear();
-    });
-  }
-  Widget _buildItemDetailView() {
-    final item = items.firstWhere((i) => i.id == selectedItemId);
-    
-    return Column(
-      children: [
-        // Header
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  item.title,
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Content
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image
-                Container(
-                  height: 250,
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      item.photos.isNotEmpty ? item.photos[0] : item.photo,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Center(
-                          child: Text('No Image', style: TextStyle(color: Colors.grey)),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Title and Price
-                Text(
-                  item.title,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  '\$${item.price.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.blue,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Condition and Size
-                Wrap(
-                  spacing: 16,
-                  children: [
-                    Chip(
-                      label: Text('Condition: ${item.condition}'),
-                      backgroundColor: Colors.grey[200],
-                    ),
-                    Chip(
-                      label: Text('Size: ${item.size}'),
-                      backgroundColor: Colors.grey[200],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                // Description
-                const Text(
-                  'Description',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  item.description,
-                  style: const TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-                const SizedBox(height: 24),
-                // Contact Button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _launchWhatsApp(item),
-                    icon: const Icon(Icons.message, color: Colors.white),
-                    label: const Text(
-                      'Contact Seller (WhatsApp)',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSellItemForm() {
-    return Column(
-      children: [
-        // Header
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const SizedBox(width: 16),
-              const Text(
-                'Sell Your Item',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        // Form
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _priceController,
-                  decoration: const InputDecoration(
-                    labelText: 'Price',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _contactController,
-                  decoration: const InputDecoration(
-                    labelText: 'Contact Number',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: TextInputType.phone,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedCondition,
-                  decoration: const InputDecoration(
-                    labelText: 'Condition',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'New', child: Text('New')),
-                    DropdownMenuItem(value: 'Excellent', child: Text('Excellent')),
-                    DropdownMenuItem(value: 'Good', child: Text('Good')),
-                    DropdownMenuItem(value: 'Fair', child: Text('Fair')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedCondition = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedSize,
-                  decoration: const InputDecoration(
-                    labelText: 'Size',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'XS', child: Text('XS')),
-                    DropdownMenuItem(value: 'S', child: Text('S')),
-                    DropdownMenuItem(value: 'M', child: Text('M')),
-                    DropdownMenuItem(value: 'L', child: Text('L')),
-                    DropdownMenuItem(value: 'XL', child: Text('XL')),
-                    DropdownMenuItem(value: 'One Size', child: Text('One Size')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedSize = value!;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    children: [
-                      const Icon(Icons.add_photo_alternate, size: 48, color: Colors.grey),
-                      const SizedBox(height: 8),
-                      const Text('Add up to 10 photos'),
-                      TextButton(
-                        onPressed: () {
-                          // TODO: Implement photo picker
-                          _showSnackBar('Photo picker not implemented yet');
-                        },
-                        child: const Text('Choose Photos'),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _postItem,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: const Text(
-                      'Post Item',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-  Widget _buildMyItemsView() {
-    final myItemsList = myItems;
-    
-    return Column(
-      children: [
-        // Header
-        Container(
-          color: Colors.white,
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back),
-              ),
-              const SizedBox(width: 16),
-              const Text(
-                'My Posted Items',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-            ],
-          ),
-        ),
-        // Items List
-        Expanded(
-          child: myItemsList.isEmpty
-              ? const Center(
-                  child: Text(
-                    'You have no posted items.',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: myItemsList.length,
-                  itemBuilder: (context, index) {
-                    final item = myItemsList[index];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.2),
-                              spreadRadius: 2,
-                              blurRadius: 6,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.title,
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    item.isSold ? 'Sold' : 'Available',
-                                    style: TextStyle(
-                                      color: item.isSold ? Colors.red : Colors.green,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Row(
-                              children: [
-                                IconButton(
-                                  onPressed: () => _toggleSoldStatus(item.id),
-                                  icon: Icon(
-                                    item.isSold ? Icons.refresh : Icons.check,
-                                    color: item.isSold ? Colors.blue : Colors.green,
-                                  ),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: item.isSold 
-                                        ? Colors.blue.withOpacity(0.1)
-                                        : Colors.green.withOpacity(0.1),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                IconButton(
-                                  onPressed: () => _confirmDelete(item.id),
-                                  icon: const Icon(Icons.delete, color: Colors.red),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: Colors.red.withOpacity(0.1),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  void _postItem() {
-    if (_titleController.text.isEmpty ||
-        _priceController.text.isEmpty ||
-        _descriptionController.text.isEmpty ||
-        _contactController.text.isEmpty) {
-      _showSnackBar('Please fill all required fields', isError: true);
-      return;
+        postedBy: 'system',
+        status: 'available',
+        createdAt: Timestamp.now()
+    },
+    {
+        id: 'test-2',
+        title: 'Arena Powerfin Pro - Black/Gold',
+        description: 'Elite training fins. Brand new, never used in water.',
+        condition: 'New',
+        governorate: 'Alexandria',
+        brand: 'Arena',
+        size: 'Large',
+        price: 75.00,
+        contactNumber: '9876543210',
+        photos: ['https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?q=80&w=800&auto=format&fit=crop'],
+        postedBy: 'user-456',
+        status: 'available',
+        createdAt: Timestamp.now()
     }
+];
 
-    final newItem = MarketplaceItem(
-      id: 'item_${DateTime.now().millisecondsSinceEpoch}',
-      title: _titleController.text,
-      price: double.tryParse(_priceController.text) ?? 0.0,
-      description: _descriptionController.text,
-      contact: _contactController.text,
-      condition: _selectedCondition,
-      size: _selectedSize,
-      photo: 'https://placehold.co/400x300/cccccc/ffffff?text=New+Item',
-      photos: [],
-      userId: currentUserId,
-      isSold: false,
+// --- Custom Sub-Components ---
+
+const PhotoCarousel = ({ photos }) => {
+    const [index, setIndex] = useState(0);
+    const scrollRef = useRef(null);
+
+    const handleScroll = (e) => {
+        const scrollPos = e.target.scrollLeft;
+        const width = e.target.offsetWidth;
+        const newIndex = Math.round(scrollPos / width);
+        setIndex(newIndex);
+    };
+
+    return (
+        <div className="relative aspect-square bg-gray-100 overflow-hidden">
+            <div 
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar h-full"
+            >
+                {photos.map((src, i) => (
+                    <div key={i} className="flex-shrink-0 w-full h-full snap-center">
+                        <img src={src} className="w-full h-full object-cover" alt={`Product ${i}`} />
+                    </div>
+                ))}
+            </div>
+            {photos.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5 px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full">
+                    {photos.map((_, i) => (
+                        <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${index === i ? 'bg-white w-4' : 'bg-white/50'}`} />
+                    ))}
+                </div>
+            )}
+        </div>
     );
+};
 
-    setState(() {
-      items.add(newItem);
+// --- Main App ---
+export default function App() {
+    const [view, setView] = useState('home'); 
+    const [items, setItems] = useState([]);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [userId, setUserId] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [notification, setNotification] = useState(null);
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeFilter, setActiveFilter] = useState('All');
+
+    const [sellForm, setSellForm] = useState({ 
+        title: '', price: '', description: '', governorate: 'Cairo', 
+        condition: 'New', size: 'Medium (M)', brand: 'Speedo', contactNumber: '' 
     });
 
-    _titleController.clear();
-    _priceController.clear();
-    _descriptionController.clear();
-    _contactController.clear();
+    useEffect(() => {
+        if (!auth) return;
+        const initAuth = async () => {
+            if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
+            else await signInAnonymously(auth);
+        };
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            setUserId(user ? user.uid : null);
+            setLoading(false);
+        });
+        initAuth();
+        return () => unsubscribe();
+    }, []);
 
-    _showSnackBar('Item posted successfully!');
-    _navigate('home');
-  }
+    useEffect(() => {
+        if (!db || !userId) return;
+        const unsubscribe = onSnapshot(collection(db, PUBLIC_COLLECTION_PATH), (snapshot) => {
+            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            
+            // Generate some mock items specific to the CURRENT USER for the demo
+            const myMockItems = [
+                {
+                    id: 'my-mock-1',
+                    title: 'Your Pro Training Snorkel',
+                    description: 'This is a mock item assigned to your account to test "Your Listings". Excellent condition.',
+                    condition: 'Excellent',
+                    governorate: 'Cairo',
+                    brand: 'Finis',
+                    size: 'Adult (One Size)',
+                    price: 25.00,
+                    contactNumber: '0100000000',
+                    photos: ['https://images.unsplash.com/photo-1544923246-77307dd654ca?q=80&w=800&auto=format&fit=crop'],
+                    postedBy: userId, // Assigned to you
+                    status: 'available',
+                    createdAt: Timestamp.now()
+                },
+                {
+                    id: 'my-mock-2',
+                    title: 'Your Elite Kickboard (Blue)',
+                    description: 'Used for one season. Minor wear on edges but perfect for drill work.',
+                    condition: 'Good',
+                    governorate: 'Giza',
+                    brand: 'Arena',
+                    size: 'Standard',
+                    price: 15.00,
+                    contactNumber: '0100000000',
+                    photos: ['https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=800&auto=format&fit=crop'],
+                    postedBy: userId, // Assigned to you
+                    status: 'available',
+                    createdAt: Timestamp.now()
+                }
+            ];
 
-  void _launchWhatsApp(MarketplaceItem item) async {
-    final message = Uri.encodeComponent('Is this item still available? (Item: ${item.title})');
-    final url = Uri.parse('https://wa.me/${item.contact}?text=$message');
-    
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url);
-    } else {
-      _showSnackBar('Could not launch WhatsApp', isError: true);
-    }
-  }
+            setItems([...GLOBAL_TEST_ITEMS, ...myMockItems, ...fetched]);
+        });
+        return () => unsubscribe();
+    }, [userId]);
 
-  void _toggleSoldStatus(String itemId) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final item = items.firstWhere((i) => i.id == itemId);
-        final actionText = item.isSold ? 'mark as Available' : 'mark as Sold';
-        
-        return AlertDialog(
-          title: const Text('Confirm Status Change'),
-          content: Text('Are you sure you want to $actionText this item?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  item.isSold = !item.isSold;
-                });
-                Navigator.of(context).pop();
-                _showSnackBar('Item marked as ${item.isSold ? 'Sold' : 'Available'}.');
-              },
-              child: const Text('Confirm'),
-            ),
-          ],
-        );
-      },
+    const showNotify = (msg, type = 'success') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
+
+    const handlePost = async () => {
+        if (!sellForm.title || !sellForm.price || !sellForm.contactNumber) {
+            showNotify("Please fill in required fields", "error");
+            return;
+        }
+        try {
+            await addDoc(collection(db, PUBLIC_COLLECTION_PATH), {
+                ...sellForm,
+                price: parseFloat(sellForm.price),
+                photos: ['https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?q=80&w=800&auto=format&fit=crop'],
+                postedBy: userId,
+                status: 'available',
+                createdAt: Timestamp.now()
+            });
+            showNotify("Listing published!");
+            setView('home');
+        } catch (e) { showNotify("Error posting item", 'error'); }
+    };
+
+    const handleMarkSold = async (id) => {
+        // If it's a local mock item, we just update state for the demo
+        if (id.startsWith('my-mock')) {
+            setItems(items.map(i => i.id === id ? { ...i, status: 'sold' } : i));
+            showNotify("Marked as sold");
+            return;
+        }
+        try {
+            await updateDoc(doc(db, PUBLIC_COLLECTION_PATH, id), { status: 'sold' });
+            showNotify("Marked as sold");
+        } catch (e) { showNotify("Error updating item", 'error'); }
+    };
+
+    const handleDelete = async (id) => {
+        // If it's a local mock item, we just update state for the demo
+        if (id.startsWith('my-mock')) {
+            setItems(items.filter(i => i.id !== id));
+            showNotify("Item removed");
+            return;
+        }
+        try {
+            await deleteDoc(doc(db, PUBLIC_COLLECTION_PATH, id));
+            showNotify("Item removed");
+        } catch (e) { showNotify("Error deleting item", 'error'); }
+    };
+
+    const filteredItems = useMemo(() => {
+        return items.filter(item => {
+            const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesCategory = activeFilter === 'All' || item.condition === activeFilter;
+            return matchesSearch && matchesCategory && item.status === 'available';
+        }).sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+    }, [items, searchTerm, activeFilter]);
+
+    const myItems = useMemo(() => items.filter(i => i.postedBy === userId), [items, userId]);
+
+    // --- RENDERING ---
+
+    const renderHome = () => (
+        <div className="flex flex-col animate-in">
+            <div className="sticky top-0 z-20 bg-white border-b border-gray-100 p-4 pb-2 space-y-4">
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">Marketplace</h1>
+                    <button onClick={() => setView('my-items')} className="p-2.5 bg-gray-50 rounded-full text-gray-700 active:scale-90 transition-transform">
+                        <List className="w-6 h-6" />
+                    </button>
+                </div>
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input 
+                        type="text" 
+                        placeholder="Search items, brands, or cities..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full bg-gray-100 border-none rounded-full py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none"
+                    />
+                </div>
+                <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-2">
+                    {['All', 'New', 'Excellent', 'Good'].map(cat => (
+                        <button key={cat} onClick={() => setActiveFilter(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeFilter === cat ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600'}`}>{cat}</button>
+                    ))}
+                </div>
+            </div>
+
+            <div className="p-2 grid grid-cols-2 gap-2 pb-24">
+                {filteredItems.map(item => (
+                    <div key={item.id} className="bg-white rounded-lg overflow-hidden group cursor-pointer active:opacity-80 transition-all shadow-sm"
+                         onClick={() => { setSelectedItem(item); setView('details'); }}>
+                        <div className="aspect-square relative overflow-hidden bg-gray-100">
+                            <img src={item.photos[0]} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700" />
+                        </div>
+                        <div className="p-2.5 space-y-0.5 text-left">
+                            <p className="text-sm font-black text-gray-900">${item.price}</p>
+                            <h3 className="text-xs text-gray-700 line-clamp-1 font-medium">{item.title}</h3>
+                            <div className="flex items-center text-[9px] text-gray-400 font-bold uppercase tracking-tighter">
+                                <MapPin className="w-2.5 h-2.5 mr-1" /> {item.governorate}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
-  }
 
-  void _confirmDelete(String itemId) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Deletion'),
-        content: const Text('Are you sure you want to delete this item? This cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                items.removeWhere((item) => item.id == itemId);
-              });
-              Navigator.of(context).pop();
-              _showSnackBar('Item deleted successfully.');
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+    const renderDetails = () => (
+        <div className="flex flex-col bg-white min-h-screen pb-24 animate-in">
+            <div className="relative">
+                <button onClick={() => setView('home')} className="absolute top-10 left-4 z-10 p-2.5 bg-black/30 backdrop-blur rounded-full text-white active:scale-90 transition-transform">
+                    <ChevronLeft className="w-6 h-6" />
+                </button>
+                <PhotoCarousel photos={selectedItem.photos} />
+            </div>
+
+            <div className="p-6 space-y-8 text-left">
+                <div className="space-y-4">
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-black text-gray-900 tracking-tight leading-tight">{selectedItem.title}</h1>
+                        <p className="text-3xl font-black text-blue-600">${selectedItem.price}</p>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 pt-2">
+                        <div className="px-4 py-2 bg-blue-50 border border-blue-100 rounded-2xl flex items-center text-blue-700">
+                            <MapPin className="w-4 h-4 mr-2" />
+                            <span className="text-xs font-black uppercase tracking-widest">{selectedItem.governorate}</span>
+                        </div>
+                        <div className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-2xl flex items-center text-gray-600">
+                            <Star className="w-4 h-4 mr-2" />
+                            <span className="text-xs font-black uppercase tracking-widest">{selectedItem.condition}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 border-y border-gray-50 py-6">
+                    <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Brand</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedItem.brand}</p>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Size</p>
+                        <p className="text-sm font-bold text-gray-900">{selectedItem.size}</p>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <h2 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Description</h2>
+                    <p className="text-sm text-gray-600 leading-relaxed font-medium">{selectedItem.description}</p>
+                </div>
+
+                <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/95 backdrop-blur border-t border-gray-100 max-w-md mx-auto rounded-t-[32px] shadow-2xl z-40">
+                    <a href={`https://wa.me/${selectedItem.contactNumber}`} target="_blank" className="w-full flex items-center justify-center py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm shadow-xl hover:brightness-110 transition-all tracking-widest">
+                        <MessageCircle className="w-6 h-6 mr-2" />
+                        MESSAGE SELLER
+                    </a>
+                </div>
+            </div>
+        </div>
     );
-  }
+
+    const renderSell = () => (
+        <div className="p-6 animate-in space-y-8 pb-32 text-left">
+            <div className="flex items-center space-x-4">
+                <button onClick={() => setView('home')} className="p-2.5 bg-gray-100 rounded-2xl active:scale-90 transition-transform"><ArrowLeft className="w-6 h-6" /></button>
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">New Listing</h2>
+            </div>
+
+            <div className="space-y-6 bg-white p-6 rounded-[32px] shadow-sm border border-gray-100">
+                <div className="space-y-6">
+                    <div className="p-8 bg-gray-50 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 cursor-pointer hover:border-blue-300 transition-colors">
+                        <UploadCloud className="w-10 h-10 mb-2 text-blue-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-center">Add Photos<br/><span className="lowercase font-medium opacity-60">Maximum 10 images</span></span>
+                    </div>
+
+                    <div className="space-y-5">
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">What are you selling?</label>
+                            <input type="text" placeholder="Title" value={sellForm.title} onChange={e => setSellForm({...sellForm, title: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Price ($)</label>
+                                <input type="number" placeholder="Amount" value={sellForm.price} onChange={e => setSellForm({...sellForm, price: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Condition</label>
+                                <select value={sellForm.condition} onChange={e => setSellForm({...sellForm, condition: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option>New</option><option>Excellent</option><option>Good</option><option>Fair</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Governorate</label>
+                            <select value={sellForm.governorate} onChange={e => setSellForm({...sellForm, governorate: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                                {GOVERNORATES.map(g => <option key={g}>{g}</option>)}
+                            </select>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Brand</label>
+                                <select value={sellForm.brand} onChange={e => setSellForm({...sellForm, brand: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                                    {BRANDS.map(b => <option key={b}>{b}</option>)}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Size</label>
+                                <select value={sellForm.size} onChange={e => setSellForm({...sellForm, size: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
+                                    {SIZES.map(s => <option key={s}>{s}</option>)}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">WhatsApp Number</label>
+                            <input type="tel" placeholder="+20" value={sellForm.contactNumber} onChange={e => setSellForm({...sellForm, contactNumber: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Description</label>
+                            <textarea placeholder="Describe the condition, usage, and special features..." rows="4" value={sellForm.description} onChange={e => setSellForm({...sellForm, description: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button onClick={handlePost} className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-widest">Publish Listing</button>
+        </div>
+    );
+
+    const renderMyItems = () => (
+        <div className="p-6 animate-in space-y-8 text-left pb-24">
+            <div className="flex items-center space-x-4">
+                <button onClick={() => setView('home')} className="p-2.5 bg-gray-100 rounded-2xl active:scale-90 transition-transform"><ChevronLeft className="w-6 h-6" /></button>
+                <h2 className="text-3xl font-black text-gray-900 tracking-tight">Your Listings</h2>
+            </div>
+            <div className="space-y-4">
+                {myItems.map(item => (
+                    <div key={item.id} className="bg-white p-5 rounded-[32px] shadow-lg border border-gray-50 flex items-center space-x-4">
+                        <img src={item.photos[0]} className="w-20 h-20 rounded-2xl object-cover shadow-sm" />
+                        <div className="flex-grow min-w-0">
+                            <h3 className="font-black text-gray-900 truncate leading-tight">{item.title}</h3>
+                            <p className="text-blue-600 font-bold text-sm mt-1">${item.price}</p>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full mt-2 inline-block ${item.status === 'sold' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>{item.status}</span>
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                            {item.status !== 'sold' && (
+                                <button onClick={() => handleMarkSold(item.id)} className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl active:scale-90 transition-transform shadow-sm"><CheckCircle className="w-5 h-5" /></button>
+                            )}
+                            <button onClick={() => handleDelete(item.id)} className="p-3 bg-rose-50 text-rose-600 rounded-2xl active:scale-90 transition-transform shadow-sm"><Trash2 className="w-5 h-5" /></button>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse uppercase tracking-[0.3em]">Swim 360</div>;
+
+    return (
+        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative selection:bg-blue-100">
+            {view === 'home' && renderHome()}
+            {view === 'details' && renderDetails()}
+            {view === 'sell' && renderSell()}
+            {view === 'my-items' && renderMyItems()}
+
+            {view === 'home' && (
+                <button onClick={() => setView('sell')} className="fixed bottom-8 right-6 z-30 flex items-center space-x-2 bg-blue-600 text-white px-7 py-4 rounded-[28px] font-black shadow-2xl active:scale-90 transition-all border-4 border-white/20 uppercase text-xs tracking-widest">
+                    <Plus className="w-6 h-6" /> <span>Sell</span>
+                </button>
+            )}
+
+            {notification && (
+                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
+                    <span>{notification.msg}</span>
+                </div>
+            )}
+
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
+        </div>
+    );
 }
-

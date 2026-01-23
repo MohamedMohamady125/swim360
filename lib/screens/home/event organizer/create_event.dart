@@ -1,332 +1,284 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create New Event</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
-        /* Custom green submit button style */
-        .btn-submit {
-            background-color: #4CAF50; /* Green shade */
-            color: white;
-            transition: background-color 0.2s, transform 0.2s;
-        }
-        .btn-submit:hover {
-            background-color: #45A049;
-            transform: translateY(-1px);
-        }
-        .form-card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-            padding: 1.5rem;
-        }
-        /* Style similar to the clean list items in the provided UI screenshots */
-        .input-group {
-            display: flex;
-            align-items: center;
-            border: 1px solid #E5E7EB; /* Light grey border */
-            border-radius: 8px;
-            padding: 0 12px;
-            background-color: #FAFAFA; /* Very light background for contrast */
-            transition: border-color 0.2s, box-shadow 0.2s;
-            width: 100%; /* Ensure full width when not in a grid */
-        }
-        .input-group:focus-within {
-            border-color: #3B82F6;
-            box-shadow: 0 0 0 1px #3B82F6;
-            background-color: white;
-        }
-        .input-group input, .input-group textarea, .input-group select {
-            border: none;
-            outline: none;
-            padding: 12px 0; /* Increased vertical padding for space */
-            flex-grow: 1;
-            background-color: transparent;
-        }
-        /* Specific styling for Duration split inputs */
-        .duration-input input {
-            border-right: 1px solid #E5E7EB;
-            padding-right: 12px;
-        }
-        .duration-input select {
-            padding-left: 12px;
-            width: auto;
-            flex-grow: 0;
-            cursor: pointer;
-        }
-        .file-upload-box {
-            position: relative;
-            border: 2px dashed #D1D5DB;
-            background-color: #F9FAFB;
-            transition: border-color 0.2s;
-        }
-        .file-upload-box:hover {
-            border-color: #60A5FA;
-        }
-    </style>
-</head>
-<body class="p-4 md:p-8">
+import React, { useState, useEffect } from 'react';
+import { 
+  Plus, Calendar, ChevronDown, Check, 
+  Building2, X, Info, ArrowLeft, ArrowRight,
+  ShieldOff, RotateCcw, CheckCircle, AlertCircle,
+  Clock, Layers, MapPin, Activity, Video, 
+  Tag, Users, DollarSign, Camera, Globe, 
+  Trophy, UserCheck, Navigation, Layout
+} from 'lucide-react';
 
-    <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Create New Event</h1>
-        <p class="text-gray-500 mb-8">Define details, capacity, and audience for your event.</p>
+// --- الثوابت والقوائم ---
+const EVENT_TYPES = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
+const AUDIENCES = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
 
-        <form id="event-form" class="space-y-6">
+export default function App() {
+    const [notification, setNotification] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    // حالة النموذج لإنشاء الفعالية (مطابقة تماماً لما يراه المستخدم)
+    const [form, setForm] = useState({
+        name: '',
+        type: 'Championship',
+        description: '',
+        date: '',
+        time: '',
+        duration_value: '',
+        duration_unit: 'hours',
+        tickets: '',
+        location_name: '',
+        location_url: '',
+        price: '',
+        age_range: '',
+        target_audience: 'Swimmers',
+        video_url: '' // رابط نصي فقط
+    });
+
+    // --- أدوات مساعدة ---
+    const showNotify = (msg, type = 'success') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 3000);
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        
+        // التحقق من صحة البيانات الأساسية
+        if (!form.name || !form.price || !form.location_name || !form.tickets) {
+            showNotify("Please fill in all required fields.", "error");
+            return;
+        }
+
+        setLoading(true);
+        // محاكاة عملية الحفظ
+        setTimeout(() => {
+            setLoading(false);
+            showNotify("Event Published Successfully!");
+            console.log("Event Data Published:", form);
+            // إعادة ضبط النموذج
+            setForm({
+                name: '', type: 'Championship', description: '', date: '', time: '',
+                duration_value: '', duration_unit: 'hours', tickets: '',
+                location_name: '', location_url: '', price: '', age_range: '',
+                target_audience: 'Swimmers', video_url: ''
+            });
+        }, 1500);
+    };
+
+    return (
+        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 pb-12">
             
-            <!-- Event & Media Details Card -->
-            <div class="form-card space-y-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Event Details & Media</h3>
-                
-                <!-- Event Name -->
-                <div>
-                    <label for="event-name" class="block text-sm font-medium text-gray-700 mb-1">Event Name</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <input type="text" id="event-name" name="name" required
-                               placeholder="e.g., Grand Prix 2026">
+            {/* Header */}
+            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30">
+                <div className="flex items-center justify-between text-left">
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
+                            <Plus className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-black tracking-tight">Post Event</h1>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">New Listing</p>
+                        </div>
                     </div>
+                    <button onClick={() => window.history.back()} className="p-2 text-gray-400 active:scale-90 transition-transform">
+                        <X className="w-6 h-6" />
+                    </button>
                 </div>
+            </header>
 
-                <!-- Event Type Dropdown -->
-                <div>
-                    <label for="event-type" class="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        <select id="event-type" name="type" required>
-                            <option value="" disabled selected>Select Event Type</option>
-                            <option value="championship">Championship</option>
-                            <option value="clinic">Clinic</option>
-                            <option value="seminar">Seminar</option>
-                            <option value="zoom">Zoom Meeting</option>
-                            <option value="other">Other</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Cover Photo Upload (Required) -->
-                <div>
-                    <label for="cover-photo" class="block text-sm font-medium text-gray-700 mb-1">Cover Photo (Required)</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <input type="file" id="cover-photo" name="cover_photo" accept="image/*" required class="w-full">
-                    </div>
-                </div>
-
-                <!-- Intro Video URL (Optional) -->
-                <div>
-                    <label for="intro-video-url" class="block text-sm font-medium text-gray-700 mb-1">Promo Video URL (Optional)</label>
-                    <div class="input-group">
-                         <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                         <input type="url" id="intro-video-url" name="video_url"
-                               placeholder="e.g., https://youtube.com/watch?v=...">
-                    </div>
-                </div>
-
-                <!-- Detailed Description -->
-                <div>
-                    <label for="event-description" class="block text-sm font-medium text-gray-700 mb-1">Detailed Description</label>
-                    <textarea id="event-description" name="description" rows="4" required
-                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-                              placeholder="Outline the schedule, importance, and requirements."></textarea>
-                </div>
-            </div>
-
-            <!-- Time, Location, and Capacity Card (Two Columns) -->
-            <div class="form-card">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Time, Location, and Capacity</h3>
-                
-                <div class="grid grid-cols-2 gap-4">
+            <main className="p-6 space-y-6 animate-in">
+                <form onSubmit={handleSubmit} className="space-y-6">
                     
-                    <!-- Date Input -->
-                    <div>
-                        <label for="event-date" class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            <input type="date" id="event-date" name="date" required>
+                    {/* 1. Event Details & Media Section */}
+                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5 text-left">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <Layout className="w-4 h-4 text-blue-600" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Details & Media</h3>
                         </div>
-                    </div>
-                    
-                    <!-- Time Input (New Field) -->
-                    <div>
-                        <label for="event-time" class="block text-sm font-medium text-gray-700 mb-1">Time</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <input type="time" id="event-time" name="time" required>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Name</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    placeholder="e.g. Regional Championship 2026" 
+                                    value={form.name} 
+                                    onChange={e => setForm({...form, name: e.target.value})}
+                                    className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Type</label>
+                                <div className="relative">
+                                    <select 
+                                        value={form.type} 
+                                        onChange={e => setForm({...form, type: e.target.value})}
+                                        className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none appearance-none cursor-pointer"
+                                    >
+                                        {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                                    </select>
+                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Cover Photo</label>
+                                <div className="p-8 bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 cursor-pointer hover:bg-blue-50 transition-colors mt-1.5">
+                                    <Camera className="w-8 h-8 mb-2 text-blue-500" />
+                                    <span className="text-[10px] font-black uppercase">Upload Image</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Promo Video URL</label>
+                                <div className="relative">
+                                    <Video className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                                    <input 
+                                        type="url" 
+                                        placeholder="Paste YouTube or Vimeo link..." 
+                                        value={form.video_url} 
+                                        onChange={e => setForm({...form, video_url: e.target.value})}
+                                        className="w-full mt-1.5 pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Detailed Description</label>
+                                <textarea 
+                                    required
+                                    placeholder="Outline the schedule, importance, and requirements..." 
+                                    rows="4" 
+                                    value={form.description} 
+                                    onChange={e => setForm({...form, description: e.target.value})}
+                                    className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Duration -->
-                    <div>
-                        <label for="duration-value" class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
-                        <div class="input-group p-0 duration-input">
-                            <svg class="w-5 h-5 text-gray-400 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <input type="number" id="duration-value" name="duration_value" required min="1" placeholder="3" class="w-2/3">
-                            <select id="duration-unit" name="duration_unit" class="w-1/3">
-                                <option value="hours">Hours</option>
-                                <option value="days">Days</option>
-                                <option value="minutes">Minutes</option>
-                            </select>
+                    {/* 2. Time, Location & Capacity Section */}
+                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6 text-left">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Time & Location</h3>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Date</label>
+                                    <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Start Time</label>
+                                    <input type="time" required value={form.time} onChange={e => setForm({...form, time: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Duration</label>
+                                    <div className="flex mt-1.5 bg-gray-50 rounded-2xl overflow-hidden">
+                                        <input type="number" required placeholder="3" value={form.duration_value} onChange={e => setForm({...form, duration_value: e.target.value})} className="w-2/3 p-4 bg-transparent border-none text-sm font-bold outline-none" />
+                                        <select value={form.duration_unit} onChange={e => setForm({...form, duration_unit: e.target.value})} className="w-1/3 bg-gray-100 p-2 text-[10px] font-black uppercase outline-none">
+                                            <option value="hours">Hrs</option>
+                                            <option value="days">Days</option>
+                                            <option value="mins">Mins</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Total Seats</label>
+                                    <div className="relative mt-1.5">
+                                        <Layers className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                                        <input type="number" required placeholder="100" value={form.tickets} onChange={e => setForm({...form, tickets: e.target.value})} className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Venue Name</label>
+                                <input type="text" required placeholder="e.g. Central Pool (NYC)" value={form.location_name} onChange={e => setForm({...form, location_name: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Google Maps URL (Venue)</label>
+                                <div className="relative mt-1.5">
+                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                                    <input type="url" required placeholder="https://maps.app.goo.gl/..." value={form.location_url} onChange={e => setForm({...form, location_url: e.target.value})} className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Tickets Available -->
-                    <div>
-                        <label for="tickets-available" class="block text-sm font-medium text-gray-700 mb-1">Tickets Available</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 002 2h3.586a1 1 0 01.707.293l2.828 2.828a1 1 0 001.414 0l2.828-2.828a1 1 0 01.707-.293H19a2 2 0 002-2v-3a2 2 0 00-2-2H5z"></path></svg>
-                            <input type="number" id="tickets-available" name="tickets" required min="1" placeholder="e.g., 100">
+                    {/* 3. Audience & Pricing Section */}
+                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4 text-left">
+                        <div className="flex items-center space-x-2 mb-2">
+                            <Tag className="w-4 h-4 text-blue-600" />
+                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Audience & Price</h3>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Ticket Price ($)</label>
+                                <div className="relative mt-1.5">
+                                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+                                    <input type="number" required min="0" step="0.01" placeholder="45.00" value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Age Range</label>
+                                <input type="text" placeholder="e.g. 12-18 or All Ages" value={form.age_range} onChange={e => setForm({...form, age_range: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Primary Audience</label>
+                            <div className="relative mt-1.5">
+                                <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
+                                <select 
+                                    value={form.target_audience} 
+                                    onChange={e => setForm({...form, target_audience: e.target.value})}
+                                    className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none appearance-none cursor-pointer"
+                                >
+                                    {AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
+                                </select>
+                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Location Name -->
-                    <div class="col-span-2">
-                        <label for="location-name" class="block text-sm font-medium text-gray-700 mb-1">Location Name (Venue)</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            <input type="text" id="location-name" name="location_name" required placeholder="e.g., National Stadium Pool">
-                        </div>
+                    {/* Submit Button */}
+                    <div className="pt-4">
+                        <button 
+                            type="submit" 
+                            disabled={loading}
+                            className={`w-full py-5 bg-rose-600 text-white rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-[0.2em] ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110 shadow-rose-100'}`}
+                        >
+                            {loading ? 'Publishing...' : 'Publish Event'}
+                        </button>
                     </div>
+                </form>
+            </main>
 
-                    <!-- Google Maps URL -->
-                    <div class="col-span-2">
-                        <label for="location-url" class="block text-sm font-medium text-gray-700 mb-1">Google Maps URL (Venue)</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.135a4 4 0 000-5.656l1.5-1.5a4 4 0 115.656 5.656l-4 4a4 4 0 01-5.656 0z"></path></svg>
-                            <input type="url" id="location-url" name="location_url" required placeholder="e.g., https://maps.app.goo.gl/...">
-                        </div>
-                    </div>
+            {/* نظام التنبيهات */}
+            {notification && (
+                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
+                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                    <span>{notification.msg}</span>
                 </div>
-            </div>
+            )}
 
-            <!-- Audience & Pricing Card -->
-            <div class="form-card">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Audience & Pricing</h3>
-                
-                <div class="grid grid-cols-2 gap-4">
-                    
-                    <!-- Price -->
-                    <div>
-                        <label for="event-price" class="block text-sm font-medium text-gray-700 mb-1">Ticket Price (USD)</label>
-                        <div class="input-group">
-                            <span class="text-gray-400 font-semibold mr-1">$</span>
-                            <input type="number" id="event-price" name="price" required min="0" step="0.01" placeholder="50.00">
-                        </div>
-                    </div>
-
-                    <!-- Recommended Age Range -->
-                    <div>
-                        <label for="age-range" class="block text-sm font-medium text-gray-700 mb-1">Recommended Age Range</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v13a2 2 0 002 2h2M9 14v6M15 14v6M12 3v18"></path></svg>
-                            <input type="text" id="age-range" name="age_range" placeholder="e.g., 12-18 or All Ages">
-                        </div>
-                    </div>
-
-                    <!-- Target Audience Dropdown -->
-                    <div class="col-span-2">
-                        <label for="target-audience" class="block text-sm font-medium text-gray-700 mb-1">Target Audience</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                            <select id="target-audience" name="target_audience" required>
-                                <option value="" disabled selected>Select Primary Audience</option>
-                                <option value="swimmers">Swimmers</option>
-                                <option value="nutritionists">Nutritionists</option>
-                                <option value="doctors">Doctors</option>
-                                <option value="parents">Parents</option>
-                                <option value="coaches">Coaches</option>
-                                <option value="other">Other</option>
-                            </select>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" class="w-full py-3 text-white font-semibold rounded-lg shadow-lg bg-red-600 hover:bg-red-700 transition">
-                <span id="submit-text">Publish Event</span>
-            </button>
-            
-        </form>
-    </div>
-
-    <script>
-        // --- Utility Functions ---
-
-        function showSnackbar(message, isError = false) {
-            const snackbar = document.createElement('div');
-            snackbar.textContent = message;
-            snackbar.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'} z-[60]`;
-            document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
-        }
-
-        document.getElementById('event-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-
-            // Simple validation check: Date cannot be in the past
-            const eventDate = new Date(form.elements.date.value);
-            const today = new Date();
-            today.setHours(0,0,0,0);
-
-            if (eventDate < today) {
-                showSnackbar("Error: Event date cannot be in the past.", true);
-                return;
-            }
-
-            const data = {
-                event_name: form.elements.name.value,
-                event_type: form.elements.type.value,
-                description: form.elements.description.value,
-                date: form.elements.date.value,
-                time: form.elements.time.value, // Added Time
-                duration: `${form.elements.duration_value.value} ${form.elements.duration_unit.value}`,
-                tickets: parseInt(form.elements.tickets.value),
-                price: parseFloat(form.elements.price.value),
-                location_name: form.elements.location_name.value,
-                location_url: form.elements.location_url.value,
-                age_range: form.elements.age_range.value,
-                target_audience: form.elements.target_audience.value,
-                cover_photo: form.elements.cover_photo.files[0] ? form.elements.cover_photo.files[0].name : null,
-                video_url: form.elements.video_url.value || null
-            };
-
-            console.log("New Event Data:", data);
-            
-            // Show success message (Mock behavior)
-            const submitButton = document.getElementById('submit-text');
-            submitButton.textContent = 'Publishing...';
-            
-            setTimeout(() => {
-                submitButton.textContent = 'Event Published!';
-                showSnackbar(`Successfully published event: ${data.event_name}`, false);
-                
-                // Reset button state
-                setTimeout(() => {
-                    submitButton.textContent = 'Publish Event';
-                    form.reset();
-                }, 2000);
-            }, 1000);
-        });
-
-        // --- Initialization ---
-
-        window.onload = () => {
-             const today = new Date().toISOString().split('T')[0];
-             document.getElementById('event-date').min = today;
-        };
-    </script>
-</body>
-</html>
+            <style>{`
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+                .no-scrollbar::-webkit-scrollbar { display: none; }
+                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+            `}</style>
+        </div>
+    );
+}

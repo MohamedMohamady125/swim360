@@ -1,447 +1,170 @@
-import 'package:flutter/material.dart';
-import '../events/events_screen.dart';
-import '../profile/profile_screen.dart';
-import '../marketplace/used_screen.dart';
-import '../marketplace/stores_screen.dart';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Swim 360 - Dashboard</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; color: #1F2937; }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUpCard {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
 
-class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({Key? key}) : super(key: key);
+        .view-animate { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-card { animation: slideUpCard 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+        .delay-1 { animation-delay: 0.1s; }
+        .delay-2 { animation-delay: 0.2s; }
+        
+        .nav-item { transition: all 0.3s ease; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        
+        /* Premium Category Card Styling */
+        .category-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 28px;
+            aspect-ratio: 1 / 1.15;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .category-card:active { transform: scale(0.96); }
+        
+        .image-bg {
+            position: absolute;
+            inset: 0;
+            background-size: cover;
+            background-position: center;
+            transition: transform 0.6s ease;
+        }
+        .category-card:hover .image-bg { transform: scale(1.08); }
 
-  @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
-}
+        .overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.85) 100%);
+        }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen>
-    with TickerProviderStateMixin {
-  int _currentIndex = 0;
-  String _currentLang = 'en';
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+        .shadow-blueprint { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen no-scrollbar">
 
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 400),
-      vsync: this,
-    );
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOut,
-    ));
-    _animationController.forward();
-  }
+    <main class="flex-grow p-6 pt-10" id="main-content">
+        </main>
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
+    <nav class="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-between items-center rounded-t-[32px] shadow-2xl z-50">
+        <button onclick="changeTab(0)" class="nav-item flex flex-col items-center space-y-1 text-blue-600" id="nav-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            <span class="text-[10px] font-black uppercase tracking-widest">Home</span>
+        </button>
 
-  void _onTabTapped(int index) {
-    if (index != _currentIndex) {
-      setState(() {
-        _currentIndex = index;
-      });
-      _animationController.reset();
-      _animationController.forward();
-    }
-  }
+        <button onclick="changeTab(1)" class="nav-item flex flex-col items-center space-y-1 text-gray-400" id="nav-1">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="text-[10px] font-black uppercase tracking-widest">Events</span>
+        </button>
 
-  void _toggleLanguage() {
-    setState(() {
-      _currentLang = _currentLang == 'en' ? 'ar' : 'en';
-    });
-  }
+        <button onclick="changeTab(2)" class="nav-item flex flex-col items-center space-y-1 text-gray-400" id="nav-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"></path>
+            </svg>
+            <span class="text-[10px] font-black uppercase tracking-widest">Market</span>
+        </button>
 
-  String getText(String key) {
-    final translations = {
-      'en': {
-        'home_title': 'Home',
-        'events_title': 'Events',
-        'marketplace_title': 'Marketplace',
-        'profile_title': 'Profile',
-        'home_greeting': 'Welcome to Swim 360! This is your main dashboard. Check the latest events and marketplace deals.',
-        'stats_title': 'Quick Stats',
-        'stats_content': 'Total Swims: 45 | Average Speed: 1.5 m/s',
-        'toggle_language': 'Toggle Language (العربية)',
-        'events_info': 'Discover and register for upcoming swimming competitions and local meetups!',
-        'event1': 'Regional Championship - Aug 10th',
-        'event2': 'Open Water Fun Swim - Sep 5th',
-        'event3': 'Masters Training Session - Every Tuesday',
-        'marketplace_info': 'Buy and sell swimming gear, equipment, and training services.',
-        'item1': 'Racing Goggles',
-        'item2': 'Used Fins',
-        'item3': 'Stopwatches',
-        'item4': 'Sunscreen Bulk',
-        'profile_info': 'Manage your account details and view your swimming history.',
-        'profile_name': 'Name: John Doe',
-        'profile_level': 'Level: Advanced',
-        'profile_team': 'Team: Blue Sharks',
-        'nav_home': 'Home',
-        'nav_events': 'Events',
-        'nav_marketplace': 'Marketplace',
-        'nav_profile': 'Profile',
-      },
-      'ar': {
-        'home_title': 'الرئيسية',
-        'events_title': 'الفعاليات',
-        'marketplace_title': 'السوق',
-        'profile_title': 'الملف الشخصي',
-        'home_greeting': 'مرحباً بك في Swim 360! هذه هي لوحة القيادة الرئيسية الخاصة بك. اطلع على أحدث الفعاليات وعروض السوق.',
-        'stats_title': 'إحصائيات سريعة',
-        'stats_content': 'إجمالي السباحات: ٤٥ | متوسط السرعة: ١.٥ متر/ثانية',
-        'toggle_language': 'تبديل اللغة (English)',
-        'events_info': 'اكتشف وسجل في مسابقات السباحة القادمة واللقاءات المحلية!',
-        'event1': 'بطولة إقليمية - ١٠ أغسطس',
-        'event2': 'سباحة ممتعة في المياه المفتوحة - ٥ سبتمبر',
-        'event3': 'جلسة تدريب للمحترفين - كل ثلاثاء',
-        'marketplace_info': 'قم بشراء وبيع معدات السباحة والمعدات والخدمات التدريبية.',
-        'item1': 'نظارات سباحة للسباق',
-        'item2': 'زعانف مستعملة',
-        'item3': 'ساعات توقيت',
-        'item4': 'كريم واقي من الشمس بالجملة',
-        'profile_info': 'إدارة تفاصيل حسابك وعرض سجل السباحة الخاص بك.',
-        'profile_name': 'الاسم: جون دو',
-        'profile_level': 'المستوى: متقدم',
-        'profile_team': 'الفريق: أسماك القرش الزرقاء',
-        'nav_home': 'الرئيسية',
-        'nav_events': 'الفعاليات',
-        'nav_marketplace': 'السوق',
-        'nav_profile': 'الملف الشخصي',
-      },
-    };
-    
-    return translations[_currentLang]?[key] ?? key;
-  }
+        <button onclick="changeTab(3)" class="nav-item flex flex-col items-center space-y-1 text-gray-400" id="nav-3">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span class="text-[10px] font-black uppercase tracking-widest">Profile</span>
+        </button>
+    </nav>
 
-  @override
-  Widget build(BuildContext context) {
+    <script>
+        let currentIndex = 0;
 
-    final bool isRTL = _currentLang == 'ar';
-    
-    return Directionality(
-      textDirection: isRTL ? TextDirection.rtl : TextDirection.ltr,
-      child: Scaffold(
-        backgroundColor: const Color(0xFFF3F4F6),
-        body: SafeArea(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 420),
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            child: AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: _buildCurrentView(),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        bottomNavigationBar: _buildBottomNavigationBar(),
-      ),
-    );
-  }
+        function changeTab(index) {
+            currentIndex = index;
+            document.querySelectorAll('.nav-item').forEach((el, i) => {
+                if (i === index) el.classList.replace('text-gray-400', 'text-blue-600');
+                else el.classList.replace('text-blue-600', 'text-gray-400');
+            });
+            renderView();
+        }
 
-  Widget _buildCurrentView() {
-    switch (_currentIndex) {
-      case 0:
-        return _buildHomeView();
-      case 1:
-        return const EventsScreen();
-      case 2:
-        return _buildMarketplaceView();
-      case 3:
-        return const ProfileScreen();
-      default:
-        return _buildHomeView();
-    }
-  }
+        function renderView() {
+            const content = document.getElementById('main-content');
+            content.classList.remove('view-animate');
+            void content.offsetWidth; 
+            content.classList.add('view-animate');
 
-  Widget _buildHomeView() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              getText('home_title'),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2563EB),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              getText('home_greeting'),
-              style: const TextStyle(
-                fontSize: 16,
-                color: Color(0xFF374151),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    getText('stats_title'),
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF1D4ED8),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    getText('stats_content'),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF4B5563),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _toggleLanguage,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3B82F6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(25),
-                  ),
-                ),
-                child: Text(
-                  getText('toggle_language'),
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+            if (currentIndex === 0) {
+                content.innerHTML = `
+                    <div class="bg-white p-8 rounded-[32px] shadow-blueprint border border-gray-50 text-left">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h1 class="text-4xl font-black text-blue-600 uppercase italic tracking-tighter">Dashboard</h1>
+                                <p class="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Welcome back</p>
+                            </div>
+                        </div>
+                        <p class="mt-8 text-sm font-bold text-gray-500 leading-relaxed">
+                            Check the latest events and marketplace deals to stay ahead of the competition.
+                        </p>
+                        <div class="mt-10 p-1 border-2 border-dashed border-blue-100 rounded-[28px]">
+                            <button class="w-full p-6 bg-blue-600 text-white rounded-[24px] shadow-xl active:scale-95 transition-all text-left">
+                                <h4 class="text-xl font-black uppercase italic">Complete Profile</h4>
+                                <div class="mt-6 h-1.5 w-full bg-blue-900/30 rounded-full overflow-hidden">
+                                    <div class="h-full w-[70%] bg-white rounded-full"></div>
+                                </div>
+                                <p class="mt-2 text-[8px] font-black text-blue-100 uppercase tracking-widest">70% Finished</p>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (currentIndex === 2) {
+                content.innerHTML = `
+                    <div class="space-y-8 text-left">
+                        <div class="px-2">
+                            <h1 class="text-4xl font-black text-blue-600 uppercase italic tracking-tighter">Marketplace</h1>
+                            <p class="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-2">Select a category</p>
+                        </div>
 
-  Widget _buildMarketplaceView() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              getText('marketplace_title'),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF2563EB),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Buy and sell swimming gear and equipment.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Color(0xFF374151),
-              ),
-            ),
-            const SizedBox(height: 24),
-            GridView.count(
-              crossAxisCount: 2,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.65,
-              children: [
-                _buildNavigableMarketplaceItem(
-                  const Icon(Icons.storefront_outlined, size: 64, color: Color(0xFF2563EB)),
-                  'Stores',
-                  () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const StoresScreen()),
-                  );
-                }),
-                _buildNavigableMarketplaceItem(
-                  const Icon(Icons.recycling_outlined, size: 64, color: Color(0xFF0EA5E9)),
-                  'Used Items',
-                  () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const UsedScreen()),
-                  );
-                }),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+                        <div class="grid grid-cols-2 gap-5">
+                            <div class="animate-card delay-1 category-card shadow-2xl cursor-pointer group" onclick="console.log('Stores clicked')">
+                                <div class="image-bg" style="background-image: url('https://images.unsplash.com/photo-1596274646574-266971f0dfad?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8NHx8c3BvcnQlMjBzaG9wfGVufDB8fDB8fHww');"></div>
+                                <div class="overlay"></div>
+                                <div class="absolute bottom-0 p-6 w-full">
+                                    <h3 class="text-white font-black text-xl uppercase tracking-tighter leading-none">Stores</h3>
+                                    <p class="text-blue-200 text-[9px] font-bold uppercase tracking-widest mt-2 opacity-90">Official Gear</p>
+                                </div>
+                            </div>
 
-  
+                            <div class="animate-card delay-2 category-card shadow-2xl cursor-pointer group" onclick="console.log('Used Items clicked')">
+                                <div class="image-bg" style="background-image: url('https://plus.unsplash.com/premium_photo-1726848155594-d25e9c776659?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8OXx8c2VsbGluZyUyMGRlYWx8ZW58MHx8MHx8fDA%3D');"></div>
+                                <div class="overlay"></div>
+                                <div class="absolute bottom-0 p-6 w-full">
+                                    <h3 class="text-white font-black text-xl uppercase tracking-tighter leading-none">Used Items</h3>
+                                    <p class="text-sky-200 text-[9px] font-bold uppercase tracking-widest mt-2 opacity-90">Community Market</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                content.innerHTML = `<div class="text-center py-20 text-gray-300 uppercase font-black text-xs tracking-widest">Section Coming Soon</div>`;
+            }
+        }
 
-  Widget _buildNavigableMarketplaceItem(Widget icon, String title, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE5E7EB)),
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            icon,
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF374151),
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 8),
-            const Icon(
-              Icons.arrow_forward_ios,
-              size: 14,
-              color: Color(0xFF6B7280),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-
-
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      height: 64,
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(0, Icons.home, getText('nav_home')),
-          _buildNavItem(1, Icons.event, getText('nav_events')),
-          _buildNavItem(2, Icons.shopping_cart, getText('nav_marketplace')),
-          _buildNavItem(3, Icons.person, getText('nav_profile')),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(int index, IconData icon, String label) {
-    final isActive = _currentIndex == index;
-    return GestureDetector(
-      onTap: () => _onTabTapped(index),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 24,
-              color: isActive ? const Color(0xFF3B82F6) : const Color(0xFF6B7280),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-                color: isActive ? const Color(0xFF3B82F6) : const Color(0xFF6B7280),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-
+        window.onload = renderView;
+    </script>
+</body>
+</html>

@@ -3,292 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create New Program</title>
-    <!-- Tailwind CSS CDN for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Swim 360 - Build Program Preview</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
+        body { font-family: 'Inter', sans-serif; }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(15px); } 
+            to { opacity: 1; transform: translateY(0); } 
         }
-        /* Custom green submit button style (matching the Submit button in the provided UI) */
-        .btn-submit {
-            background-color: #4CAF50; /* Green shade */
-            color: white;
-            transition: background-color 0.2s, transform 0.2s;
-        }
-        .btn-submit:hover {
-            background-color: #45A049;
-            transform: translateY(-1px);
-        }
-        .form-card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-            padding: 1.5rem;
-        }
-        /* Style similar to the clean list items in the provided UI screenshots */
-        .input-group {
-            display: flex;
-            align-items: center;
-            border: 1px solid #E5E7EB; /* Light grey border */
-            border-radius: 8px;
-            padding: 0 12px;
-            background-color: #FAFAFA; /* Very light background for contrast */
-            transition: border-color 0.2s, box-shadow 0.2s;
-            width: 100%; /* Ensure full width when not in a grid */
-        }
-        .input-group:focus-within {
-            border-color: #3B82F6;
-            box-shadow: 0 0 0 1px #3B82F6;
-            background-color: white;
-        }
-        .input-group input, .input-group textarea, .input-group select {
-            border: none;
-            outline: none;
-            padding: 12px 0; /* Increased vertical padding for space */
-            flex-grow: 1;
-            background-color: transparent;
-        }
-        /* Specific styling for the Duration split inputs */
-        .duration-input input {
-            border-right: 1px solid #E5E7EB;
-            padding-right: 12px;
-        }
-        .duration-input select {
-            padding-left: 12px;
-            width: auto;
-            flex-grow: 0;
-            cursor: pointer;
-        }
-        .file-upload-box {
-            position: relative;
-            border: 2px dashed #D1D5DB;
-            background-color: #F9FAFB;
-            transition: border-color 0.2s;
-        }
-        .file-upload-box:hover {
-            border-color: #60A5FA;
-        }
+        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="bg-[#F8FAFC]">
 
-    <div class="max-w-xl mx-auto">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Build New Program</h1>
-        <p class="text-gray-500 mb-8">Define the curriculum, media, and pricing for your professional online coaching service.</p>
-
-        <form id="program-form" class="space-y-6">
-            
-            <!-- Program Details Card -->
-            <div class="form-card space-y-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Program Details</h3>
-                
-                <!-- Program Title -->
-                <div>
-                    <label for="program-title" class="block text-sm font-medium text-gray-700 mb-1">Program Title</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        <input type="text" id="program-title" name="title" required
-                               placeholder="e.g., Elite Performance Coaching">
+    <div class="max-w-md mx-auto min-h-screen bg-[#F8FAFC] text-gray-900 pb-20 relative selection:bg-blue-100">
+        
+        <header class="px-6 pt-12 pb-6 bg-white/90 backdrop-blur-md border-b border-gray-50 sticky top-0 z-30">
+            <div class="flex items-center justify-between text-left">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     </div>
-                </div>
-
-                <!-- Delivery Method -->
-                <div>
-                    <label for="program-type" class="block text-sm font-medium text-gray-700 mb-1">Delivery Method</label>
-                    <div class="input-group">
-                        <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        <select id="program-type" name="type" required>
-                            <option value="live">Live / Scheduled Sessions</option>
-                            <option value="self-paced">Self-Paced (Video/Content Only)</option>
-                            <option value="hybrid">Hybrid (Content + Check-ins)</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Media & Description Card -->
-            <div class="form-card space-y-6">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Media & Description</h3>
-
-                <!-- Cover Photo Upload (Required) -->
-                <div>
-                    <label for="cover-photo" class="block text-sm font-medium text-gray-700 mb-1">Cover Photo (Required)</label>
-                    <div class="file-upload-box flex flex-col items-center justify-center p-6 rounded-lg text-gray-500">
-                        <svg class="w-8 h-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <p class="text-sm font-medium">Upload Image</p>
-                        <p id="cover-file-name" class="text-xs mt-1 text-gray-400">No file selected.</p>
-                        
-                        <!-- Actual file input must be transparent and cover the box -->
-                        <input type="file" id="cover-photo" name="cover_photo" accept="image/*" required
-                               class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
-                    </div>
-                </div>
-
-                <!-- Intro Video URL (Optional) -->
-                <div>
-                    <label for="intro-video-url" class="block text-sm font-medium text-gray-700 mb-1">Intro Video URL (Optional)</label>
-                    <div class="input-group">
-                         <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                         <input type="url" id="intro-video-url" name="intro_video_url"
-                               placeholder="e.g., https://youtube.com/watch?v=...">
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">Embed videos from YouTube or Vimeo by pasting the share URL.</p>
-                </div>
-
-                <!-- Detailed Description -->
-                <div>
-                    <label for="program-description" class="block text-sm font-medium text-gray-700 mb-1">Detailed Description</label>
-                    <textarea id="program-description" name="description" rows="4" required
-                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 transition duration-150"
-                              placeholder="Outline the goals, weekly workload, and target audience."></textarea>
-                </div>
-            </div>
-
-
-            <!-- Pricing & Duration Card -->
-            <div class="form-card">
-                <h3 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">Pricing & Duration</h3>
-                
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    
-                    <!-- Price -->
                     <div>
-                        <label for="program-price" class="block text-sm font-medium text-gray-700 mb-1">Price (USD)</label>
-                        <div class="input-group">
-                            <span class="text-gray-400 font-semibold mr-1">$</span>
-                            <input type="number" id="program-price" name="price" required min="1" step="0.01"
-                                   placeholder="199.99">
-                        </div>
+                        <h1 class="text-2xl font-black tracking-tight leading-none uppercase">Build Program</h1>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">Curriculum & Pricing</p>
+                    </div>
+                </div>
+                <button class="p-2 bg-gray-50 rounded-full text-gray-400 active:scale-90 transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-6 space-y-6 animate-in">
+            <form id="program-form" class="space-y-6">
+
+                <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5 text-left">
+                    <div class="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">General Info</h3>
                     </div>
 
-                    <!-- Duration (Split Input) -->
-                    <div>
-                        <label for="duration-value" class="block text-sm font-medium text-gray-700 mb-1">Program Duration</label>
-                        <div class="input-group p-0 duration-input">
-                            <svg class="w-5 h-5 text-gray-400 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <input type="number" id="duration-value" name="duration_value" required min="1"
-                                   placeholder="e.g., 12" class="w-2/3">
-                            <select id="duration-unit" name="duration_unit" class="w-1/3">
-                                <option value="weeks">Weeks</option>
-                                <option value="sessions">Sessions</option>
-                                <option value="days">Days</option>
-                                <option value="months">Months</option>
-                            </select>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Program Title</label>
+                            <input type="text" name="title" required placeholder="e.g. Elite Performance Coaching" 
+                                   class="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner transition-all">
                         </div>
-                    </div>
-                    
-                    <!-- End Date (Optional) -->
-                    <div class="col-span-2">
-                        <label for="program-end-date" class="block text-sm font-medium text-gray-700 mb-1">Program End Date (Optional)</label>
-                         <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            <input type="date" id="program-end-date" name="end_date">
-                        </div>
-                        <p class="text-xs text-gray-500 mt-1">If the program has a fixed end date (e.g., a specific camp). Otherwise, leave blank.</p>
-                    </div>
-                    
-                    <!-- Max Participants -->
-                    <div class="col-span-2">
-                        <label for="program-max-participants" class="block text-sm font-medium text-gray-700 mb-1">Maximum Participants (Optional)</label>
-                        <div class="input-group">
-                            <svg class="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h2a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v13a2 2 0 002 2h2M9 14v6M15 14v6M12 3v18"></path></svg>
-                            <input type="number" id="program-max-participants" name="max_participants" min="1"
-                                   placeholder="e.g., 20 (Leave blank for unlimited)">
+
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Delivery Method</label>
+                            <div class="relative mt-1.5">
+                                <select name="type" required class="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none cursor-pointer">
+                                    <option value="live">Live / Scheduled Sessions</option>
+                                    <option value="self-paced">Self-Paced (Video Only)</option>
+                                    <option value="hybrid">Hybrid (Mixed)</option>
+                                </select>
+                                <svg xmlns="http://www.w3.org/2000/svg" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Submit Button -->
-            <button type="submit" class="w-full py-3 text-white font-semibold rounded-lg shadow-lg btn-submit">
-                <span id="submit-text">Publish Program</span>
-            </button>
-            
-        </form>
+                <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5 text-left">
+                    <div class="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Media & Description</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="block">
+                            <span class="text-[10px] font-black text-gray-400 uppercase ml-1">Cover Photo</span>
+                            <div class="p-8 bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 mt-1.5 hover:bg-blue-50 transition-all cursor-pointer group relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 mb-2 text-blue-500 group-hover:scale-110 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                                <span id="cover-file-name" class="text-[10px] font-black uppercase tracking-widest text-center">Upload Image</span>
+                                <input type="file" id="cover-photo" class="absolute inset-0 opacity-0 cursor-pointer">
+                            </div>
+                        </label>
+
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Intro Video URL</label>
+                            <div class="relative mt-1.5">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                                <input type="url" placeholder="YouTube/Vimeo Link" class="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none transition-all">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Detailed Description</label>
+                            <textarea rows="4" placeholder="Goals, workload, and target audience..." 
+                                      class="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none shadow-inner"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6 text-left">
+                    <div class="flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Pricing & Duration</h3>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Price ($)</label>
+                            <div class="relative mt-1.5">
+                                <input type="number" step="0.01" placeholder="199.99" class="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none shadow-inner">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Duration</label>
+                            <div class="flex mt-1.5 bg-gray-50 rounded-2xl overflow-hidden shadow-inner">
+                                <input type="number" placeholder="12" class="w-1/2 p-4 bg-transparent border-none text-sm font-bold outline-none">
+                                <select class="w-1/2 bg-gray-100 p-2 text-[10px] font-black uppercase outline-none">
+                                    <option>Weeks</option>
+                                    <option>Sessions</option>
+                                    <option>Months</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="col-span-1">
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Max Clients</label>
+                            <input type="number" placeholder="Unlimited" class="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none shadow-inner">
+                        </div>
+                        <div class="col-span-1">
+                            <label class="text-[10px] font-black text-gray-400 uppercase ml-1">End Date</label>
+                            <input type="date" class="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none shadow-inner">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" id="submit-btn" class="w-full py-5 bg-emerald-500 text-white rounded-[24px] font-black text-sm shadow-xl shadow-emerald-500/20 active:scale-95 transition-all uppercase tracking-[0.2em]">
+                        Publish Program
+                    </button>
+                </div>
+            </form>
+        </main>
     </div>
 
     <script>
-        // Helper function for displaying file names
-        function updateFileName(inputId, nameDisplayId) {
-            const input = document.getElementById(inputId);
-            const nameDisplay = document.getElementById(nameDisplayId);
-            if (input.files && input.files.length > 0) {
-                nameDisplay.textContent = `File Selected: ${input.files[0].name}`;
-                nameDisplay.classList.remove('text-gray-400');
-                nameDisplay.classList.add('text-green-600');
-            } else {
-                nameDisplay.textContent = 'No file selected.';
-                nameDisplay.classList.remove('text-green-600');
-                nameDisplay.classList.add('text-gray-400');
-            }
-        }
-
-        // Attach listener for file input changes (Cover Photo)
-        document.getElementById('cover-photo').addEventListener('change', () => updateFileName('cover-photo', 'cover-file-name'));
-        
-
-        document.getElementById('program-form').addEventListener('submit', function(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            const data = {
-                title: form.elements.title.value,
-                description: form.elements.description.value,
-                type: form.elements.type.value,
-                price: parseFloat(form.elements.price.value),
-                duration_value: parseInt(form.elements.duration_value.value),
-                duration_unit: form.elements.duration_unit.value,
-                end_date: form.elements.end_date.value || null, // Capture optional end date
-                max_participants: form.elements.max_participants.value ? parseInt(form.elements.max_participants.value) : null,
-                cover_photo: form.elements.cover_photo.files.length > 0 ? form.elements.cover_photo.files[0].name : null,
-                intro_video_url: form.elements.intro_video_url.value // Now collecting the URL
-            };
-
-            // Basic validation: End date validation (If provided, must be greater than today)
-            if (data.end_date) {
-                const today = new Date();
-                today.setHours(0,0,0,0);
-                const endDate = new Date(data.end_date);
-
-                if (endDate < today) {
-                    showSnackbar("Error: End Date cannot be in the past.", true);
-                    return;
-                }
-            }
-            
-            console.log("New Program Data:", data);
-            
-            // Show success message (Mock behavior)
-            const submitButton = document.getElementById('submit-text');
-            submitButton.textContent = 'Publishing...';
-            
-            setTimeout(() => {
-                submitButton.textContent = 'Program Published!';
-                showSnackbar(`Successfully created program: ${data.title}`, false);
-                
-                // Reset button text after delay
-                setTimeout(() => {
-                    submitButton.textContent = 'Publish Program';
-                    form.reset();
-                    // Manually reset file name display
-                    document.getElementById('cover-file-name').textContent = 'No file selected.';
-                }, 2000);
-            }, 1000);
+        // File update logic
+        document.getElementById('cover-photo').addEventListener('change', function(e) {
+            const fileName = e.target.files[0] ? e.target.files[0].name : "Upload Image";
+            document.getElementById('cover-file-name').textContent = fileName;
+            document.getElementById('cover-file-name').classList.add('text-blue-600');
         });
-        
-        // Helper function (already defined, but included for completeness)
-        function showSnackbar(message, isError = false) {
-            const snackbar = document.createElement('div');
-            snackbar.textContent = message;
-            snackbar.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white ${isError ? 'bg-red-500' : 'bg-green-500'} z-[60]`;
-            document.body.appendChild(snackbar);
+
+        // Form Submit mock
+        document.getElementById('program-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            btn.textContent = "Publishing...";
+            btn.style.opacity = "0.7";
+            
             setTimeout(() => {
-                snackbar.remove();
-            }, 3000);
-        }
+                btn.textContent = "Published!";
+                btn.classList.replace('bg-emerald-500', 'bg-blue-600');
+                btn.style.opacity = "1";
+            }, 1500);
+        });
     </script>
 </body>
 </html>
