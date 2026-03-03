@@ -1,344 +1,853 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Plus, Calendar, ChevronDown, Check, 
-  Building2, X, Info, ArrowLeft, ArrowRight,
-  ShieldOff, RotateCcw, CheckCircle, AlertCircle,
-  Clock, Layers, MapPin, Activity, Video, 
-  Tag, Users, DollarSign, Camera, Globe, 
-  Trophy, UserCheck, Navigation, Layout, Edit3, Eye, Trash2,
-  ChevronLeft // تم إضافة الأيقونة المفقودة لإصلاح الخطأ
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-// --- الثوابت والقوائم ---
-const EVENT_TYPES = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
-const AUDIENCES = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
+class MyEventsScreen extends StatefulWidget {
+  const MyEventsScreen({super.key});
 
-const INITIAL_EVENTS = [
-    { 
-        id: 'e1', name: 'Regional Championship 2026', 
-        date: '2026-01-23', time: '09:00', duration_value: '3', duration_unit: 'hours', 
-        price: 45.00, tickets: 100, 
-        location_name: 'Central Pool (NYC)', location_url: 'https://maps.google.com/event1',
-        age_range: '12-18', target_audience: 'Swimmers',
-        type: 'Championship', 
-        description: 'The premier swimming event of the season, featuring top athletes from five regions competing for the gold medal.', 
-        video_url: 'https://vimeo.com/event1', 
-        photo_url: 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=400' 
-    },
-    { 
-        id: 'e2', name: 'Open Water Fun Swim', 
-        date: '2026-02-15', time: '08:30', duration_value: '2', duration_unit: 'hours', 
-        price: 0.00, tickets: 50, 
-        location_name: 'Sea Coast (LA)', location_url: 'https://maps.google.com/event2',
-        age_range: 'All Ages', target_audience: 'Parents',
-        type: 'Fun Swim', 
-        description: 'A social and non-competitive open water swimming event perfect for all levels. Wetsuits are encouraged.', 
-        video_url: '', 
-        photo_url: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=400' 
+  @override
+  State<MyEventsScreen> createState() => _MyEventsScreenState();
+}
+
+class _MyEventsScreenState extends State<MyEventsScreen> {
+  final List<String> _eventTypes = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
+  final List<String> _audiences = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
+
+  List<Event> _events = [];
+
+  String _view = 'list'; // 'list', 'edit', 'details'
+  Event? _editingEvent;
+  String? _notification;
+  String _notificationType = 'success';
+  bool _loading = false;
+
+  void _showNotify(String msg, [String type = 'success']) {
+    setState(() {
+      _notification = msg;
+      _notificationType = type;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _notification = null);
+      }
+    });
+  }
+
+  String _formatTime24to12(String time24) {
+    if (time24.isEmpty) return '';
+    final parts = time24.split(':');
+    int hr = int.parse(parts[0]);
+    final min = parts[1];
+    final ampm = hr >= 12 ? 'PM' : 'AM';
+    hr = hr % 12;
+    if (hr == 0) hr = 12;
+    return '${hr.toString().padLeft(2, '0')}:$min $ampm';
+  }
+
+  void _handleEditClick(Event event) {
+    setState(() {
+      _editingEvent = Event(
+        id: event.id,
+        name: event.name,
+        date: event.date,
+        time: event.time,
+        durationValue: event.durationValue,
+        durationUnit: event.durationUnit,
+        price: event.price,
+        tickets: event.tickets,
+        locationName: event.locationName,
+        locationUrl: event.locationUrl,
+        ageRange: event.ageRange,
+        targetAudience: event.targetAudience,
+        type: event.type,
+        description: event.description,
+        videoUrl: event.videoUrl,
+        photoUrl: event.photoUrl,
+      );
+      _view = 'edit';
+    });
+  }
+
+  void _handleDetailsClick(Event event) {
+    setState(() {
+      _editingEvent = event;
+      _view = 'details';
+    });
+  }
+
+  void _handleSave() {
+    if (_editingEvent!.name.isEmpty || _editingEvent!.locationName.isEmpty || _editingEvent!.tickets == 0) {
+      _showNotify("Please fill in all required fields", "error");
+      return;
     }
-];
 
-export default function App() {
-    const [events, setEvents] = useState(INITIAL_EVENTS);
-    const [view, setView] = useState('list'); // 'list', 'edit', 'details'
-    const [editingEvent, setEditingEvent] = useState(null);
-    const [notification, setNotification] = useState(null);
-    const [loading, setLoading] = useState(false);
+    setState(() => _loading = true);
 
-    // --- أدوات مساعدة ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) {
+        setState(() {
+          _events = _events.map((ev) => ev.id == _editingEvent!.id ? _editingEvent! : ev).toList();
+          _loading = false;
+          _showNotify("Event details updated successfully!");
+          _view = 'list';
+        });
+      }
+    });
+  }
 
-    const formatTime24to12 = (time24) => {
-        if (!time24) return '';
-        const [hr24, min] = time24.split(':');
-        let hr = parseInt(hr24);
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        hr = hr % 12 || 12;
-        return `${String(hr).padStart(2, '0')}:${min} ${ampm}`;
-    };
-
-    const handleEditClick = (event) => {
-        setEditingEvent({ ...event });
-        setView('edit');
-    };
-
-    const handleDetailsClick = (event) => {
-        setEditingEvent(event);
-        setView('details');
-    };
-
-    const handleSave = (e) => {
-        e.preventDefault();
-        
-        if (!editingEvent?.name || !editingEvent?.location_name || !editingEvent?.tickets) {
-            showNotify("Please fill in all required fields", "error");
-            return;
-        }
-
-        setLoading(true);
-        setTimeout(() => {
-            setEvents(events.map(ev => ev.id === editingEvent.id ? editingEvent : ev));
-            setLoading(false);
-            showNotify("Event details updated successfully!");
-            setView('list');
-        }, 1000);
-    };
-
-    // --- واجهات العرض ---
-
-    const renderList = () => (
-        <div className="p-6 space-y-8 animate-in text-left">
-            <header className="space-y-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">My Events</h1>
-                <p className="text-sm text-gray-400 font-medium">Manage and promote your upcoming listings</p>
-            </header>
-
-            <div className="space-y-4 pb-20">
-                {events.map(event => (
-                    <div key={event.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-4 flex items-center space-x-4 hover:shadow-md transition-all group">
-                        <div className="w-20 h-20 rounded-2xl bg-gray-50 overflow-hidden flex-shrink-0 relative">
-                            <img src={event.photo_url} className="w-full h-full object-cover" alt="event" />
-                            <div className="absolute top-1 right-1 px-1.5 py-0.5 bg-white/90 backdrop-blur rounded text-[8px] font-black uppercase text-blue-600 border border-blue-100">
-                                {event.type}
-                            </div>
-                        </div>
-                        <div className="flex-grow min-w-0">
-                            <h3 className="text-lg font-black text-gray-900 truncate leading-tight group-hover:text-blue-600 transition-colors">{event.name}</h3>
-                            <div className="flex items-center text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
-                                <Calendar className="w-3 h-3 mr-1" /> {event.date} • {formatTime24to12(event.time)}
-                            </div>
-                            <div className="flex items-center space-x-3 mt-2">
-                                <span className="text-sm font-black text-emerald-600">{event.price === 0 ? 'FREE' : `$${event.price.toFixed(2)}`}</span>
-                                <span className="text-gray-200">|</span>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase flex items-center">
-                                    <MapPin className="w-3 h-3 mr-1" /> {event.location_name}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="flex flex-col space-y-1.5">
-                            <button onClick={() => handleDetailsClick(event)} className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-blue-50 hover:text-blue-600 transition-all shadow-sm" title="View Details">
-                                <Eye className="w-4 h-4" />
-                            </button>
-                            <button onClick={() => handleEditClick(event)} className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Edit Event">
-                                <Edit3 className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: _view == 'list'
+                ? _buildListView()
+                : _view == 'edit'
+                    ? _buildEditView()
+                    : _buildDetailsView(),
+          ),
+          if (_notification != null)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: _notificationType == 'error' ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_notificationType == 'success' ? Icons.check_circle : Icons.error, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Text(_notification!.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
 
-    const renderEditForm = () => (
-        <div className="animate-in flex flex-col min-h-screen pb-12 text-left">
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <button onClick={() => setView('list')} className="p-2.5 bg-gray-50 rounded-2xl text-gray-500 active:scale-90 transition-transform">
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <h1 className="text-2xl font-black tracking-tight leading-tight truncate max-w-[200px]">{editingEvent?.name}</h1>
-                </div>
-                <button 
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-all"
-                >
-                    {loading ? 'Saving...' : 'Update'}
-                </button>
-            </header>
-
-            <main className="p-6 space-y-6">
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
-                    <div className="flex items-center space-x-2">
-                        <Layout className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Event Information</h3>
-                    </div>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Name</label>
-                            <div className="w-full mt-1.5 p-4 bg-gray-100 border-none rounded-2xl text-sm font-bold text-gray-500 select-none">
-                                {editingEvent?.name}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Type</label>
-                            <select value={editingEvent?.type} onChange={e => setEditingEvent({...editingEvent, type: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none">
-                                {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Description</label>
-                            <textarea value={editingEvent?.description} onChange={e => setEditingEvent({...editingEvent, description: e.target.value})} rows="4" className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Promo Video URL (Optional)</label>
-                            <input type="url" value={editingEvent?.video_url} onChange={e => setEditingEvent({...editingEvent, video_url: e.target.value})} placeholder="https://..." className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
-                    <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Time & Location</h3>
-                    </div>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Date</label>
-                                <input type="date" value={editingEvent?.date} onChange={e => setEditingEvent({...editingEvent, date: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Time</label>
-                                <input type="time" value={editingEvent?.time} onChange={e => setEditingEvent({...editingEvent, time: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Duration</label>
-                                <div className="flex mt-1.5 bg-gray-50 rounded-2xl overflow-hidden">
-                                    <input type="number" value={editingEvent?.duration_value} onChange={e => setEditingEvent({...editingEvent, duration_value: e.target.value})} className="w-2/3 p-4 bg-transparent border-none text-sm font-bold outline-none" />
-                                    <select value={editingEvent?.duration_unit} onChange={e => setEditingEvent({...editingEvent, duration_unit: e.target.value})} className="w-1/3 bg-gray-100 p-2 text-[10px] font-black uppercase outline-none">
-                                        <option value="hours">Hrs</option>
-                                        <option value="days">Days</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Total Seats</label>
-                                <input type="number" value={editingEvent?.tickets} onChange={e => setEditingEvent({...editingEvent, tickets: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Venue Name</label>
-                            <input type="text" value={editingEvent?.location_name} onChange={e => setEditingEvent({...editingEvent, location_name: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Google Maps URL</label>
-                            <input type="url" value={editingEvent?.location_url} onChange={e => setEditingEvent({...editingEvent, location_url: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
-                    <div className="flex items-center space-x-2">
-                        <Tag className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Audience & Price</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Price ($)</label>
-                            <div className="w-full mt-1.5 p-4 bg-gray-100 border-none rounded-2xl text-sm font-bold text-gray-400 select-none">
-                                ${editingEvent?.price.toFixed(2)}
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Age Range</label>
-                            <input type="text" value={editingEvent?.age_range} onChange={e => setEditingEvent({...editingEvent, age_range: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Primary Audience</label>
-                        <select value={editingEvent?.target_audience} onChange={e => setEditingEvent({...editingEvent, target_audience: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none">
-                            {AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
-                        </select>
-                    </div>
-                </div>
-            </main>
-        </div>
+  Widget _buildListView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('My Events', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          const Text('Manage and promote your upcoming listings', style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+          const SizedBox(height: 32),
+          ..._events.map((event) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: const Color(0xFFF3F4F6)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: const Color(0xFFF9FAFB),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Stack(
+                        children: [
+                          Image.network(event.photoUrl, width: 80, height: 80, fit: BoxFit.cover),
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: const Color(0xFFDEEFFF)),
+                              ),
+                              child: Text(event.type, style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(event.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.calendar_today, size: 12, color: Color(0xFF9CA3AF)),
+                            const SizedBox(width: 4),
+                            Text('${event.date} • ${_formatTime24to12(event.time)}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF))),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text(event.price == 0 ? 'FREE' : '\$${event.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
+                            const SizedBox(width: 12),
+                            const Text('|', style: TextStyle(color: Color(0xFFE5E7EB))),
+                            const SizedBox(width: 12),
+                            const Icon(Icons.location_on, size: 12, color: Color(0xFF9CA3AF)),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(event.locationName, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    children: [
+                      InkWell(
+                        onTap: () => _handleDetailsClick(event),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.visibility, color: Color(0xFF9CA3AF), size: 20),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      InkWell(
+                        onTap: () => _handleEditClick(event),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.edit, color: Color(0xFF2563EB), size: 20),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          )),
+        ],
+      ),
     );
+  }
 
-    const renderDetailsView = () => (
-        <div className="animate-in flex flex-col min-h-screen bg-white pb-12 text-left">
-            <header className="px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-30">
-                <button onClick={() => setView('list')} className="p-2.5 bg-gray-50 rounded-2xl text-gray-600 active:scale-90 transition-transform">
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
-                <h1 className="text-xl font-black tracking-tight leading-tight">Event Summary</h1>
-                <div className="w-10 h-10"></div>
-            </header>
-
-            <div className="px-6 space-y-8">
-                <div className="relative h-60 rounded-[32px] overflow-hidden shadow-2xl">
-                    <img src={editingEvent?.photo_url} className="w-full h-full object-cover" alt="cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div className="absolute bottom-6 left-6 right-6">
-                        <span className="px-3 py-1 bg-rose-600 text-white rounded-lg text-[9px] font-black uppercase tracking-widest">{editingEvent?.type}</span>
-                        <h2 className="text-2xl font-black text-white mt-2 leading-tight">{editingEvent?.name}</h2>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-5 bg-gray-50 rounded-3xl flex items-center space-x-4 border border-gray-100">
-                        <Calendar className="w-6 h-6 text-rose-500" />
-                        <div>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Date</p>
-                            <p className="text-sm font-black text-gray-900">{editingEvent?.date}</p>
-                        </div>
-                    </div>
-                    <div className="p-5 bg-gray-50 rounded-3xl flex items-center space-x-4 border border-gray-100">
-                        <Clock className="w-6 h-6 text-blue-500" />
-                        <div>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Start Time</p>
-                            <p className="text-sm font-black text-gray-900">{formatTime24to12(editingEvent?.time)}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.2em] ml-1">About the Event</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed font-medium bg-gray-50 p-6 rounded-[28px] border border-gray-100">{editingEvent?.description}</p>
-                </div>
-
-                <div className="bg-blue-600 p-8 rounded-[32px] text-white space-y-6 shadow-xl shadow-blue-100">
-                    <div className="flex justify-between items-center border-b border-white/10 pb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest">Entry Fee</span>
-                        <span className="text-3xl font-black">${editingEvent?.price.toFixed(2)}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-6 pt-2">
-                        <div>
-                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1">Audience</p>
-                            <p className="text-xs font-bold">{editingEvent?.target_audience}</p>
-                        </div>
-                        <div>
-                            <p className="text-[9px] font-black text-blue-200 uppercase tracking-widest mb-1">Capacity</p>
-                            <p className="text-xs font-bold">{editingEvent?.tickets} Tickets Total</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="pt-2 pb-10">
-                    <a href={editingEvent?.location_url} target="_blank" rel="noopener noreferrer" className="w-full flex items-center justify-center py-5 bg-gray-900 text-white rounded-[24px] font-black text-sm uppercase tracking-widest active:scale-95 transition-all">
-                        <MapPin className="w-5 h-5 mr-3 text-blue-400" /> Open Venue in Maps
-                    </a>
-                </div>
-            </div>
-        </div>
+  Widget _buildEditView() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () => setState(() => _view = 'list'),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.arrow_back, size: 24, color: Color(0xFF6B7280)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 200,
+                    child: Text(_editingEvent!.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: _loading ? null : _handleSave,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                  ),
+                  child: Text(_loading ? 'SAVING...' : 'UPDATE', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.grid_view, size: 16, color: Color(0xFF2563EB)),
+                          SizedBox(width: 8),
+                          Text('EVENT INFORMATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Text('Event Name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF3F4F6),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(_editingEvent!.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF6B7280))),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Event Type', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _editingEvent!.type,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                          items: _eventTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                          onChanged: (value) => setState(() => _editingEvent!.type = value!),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Description', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: TextEditingController(text: _editingEvent!.description),
+                        onChanged: (value) => _editingEvent!.description = value,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Promo Video URL (Optional)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: TextEditingController(text: _editingEvent!.videoUrl),
+                        onChanged: (value) => _editingEvent!.videoUrl = value,
+                        decoration: InputDecoration(
+                          hintText: 'https://...',
+                          hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.access_time, size: 16, color: Color(0xFF2563EB)),
+                          SizedBox(width: 8),
+                          Text('TIME & LOCATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Date', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: TextEditingController(text: _editingEvent!.date),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                  readOnly: true,
+                                  onTap: () async {
+                                    final date = await showDatePicker(
+                                      context: context,
+                                      initialDate: DateTime.parse(_editingEvent!.date),
+                                      firstDate: DateTime.now(),
+                                      lastDate: DateTime(2030),
+                                    );
+                                    if (date != null) {
+                                      setState(() => _editingEvent!.date = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}');
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Time', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: TextEditingController(text: _editingEvent!.time),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                  readOnly: true,
+                                  onTap: () async {
+                                    final parts = _editingEvent!.time.split(':');
+                                    final time = await showTimePicker(
+                                      context: context,
+                                      initialTime: TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1])),
+                                    );
+                                    if (time != null) {
+                                      setState(() => _editingEvent!.time = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}');
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Venue Name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: TextEditingController(text: _editingEvent!.locationName),
+                        onChanged: (value) => _editingEvent!.locationName = value,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Google Maps URL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: TextEditingController(text: _editingEvent!.locationUrl),
+                        onChanged: (value) => _editingEvent!.locationUrl = value,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.sell, size: 16, color: Color(0xFF2563EB)),
+                          SizedBox(width: 8),
+                          Text('AUDIENCE & PRICE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Price (\$)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                const SizedBox(height: 6),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3F4F6),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Text('\$${_editingEvent!.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Age Range', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: TextEditingController(text: _editingEvent!.ageRange),
+                                  onChanged: (value) => _editingEvent!.ageRange = value,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Primary Audience', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _editingEvent!.targetAudience,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                          items: _audiences.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
+                          onChanged: (value) => setState(() => _editingEvent!.targetAudience = value!),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
+  }
 
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            {view === 'list' && renderList()}
-            {view === 'edit' && renderEditForm()}
-            {view === 'details' && renderDetailsView()}
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-            `}</style>
-        </div>
+  Widget _buildDetailsView() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              InkWell(
+                onTap: () => setState(() => _view = 'list'),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.chevron_left, size: 24, color: Color(0xFF6B7280)),
+                ),
+              ),
+              const Text('Event Summary', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+              const SizedBox(width: 40),
+            ],
+          ),
+        ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  height: 240,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 30, offset: const Offset(0, 10))],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Stack(
+                      children: [
+                        Image.network(_editingEvent!.photoUrl, width: double.infinity, height: 240, fit: BoxFit.cover),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.6)],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 24,
+                          left: 24,
+                          right: 24,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE11D48),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(_editingEvent!.type, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(_editingEvent!.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFFF3F4F6)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_today, color: Color(0xFFE11D48), size: 24),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('DATE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                const SizedBox(height: 4),
+                                Text(_editingEvent!.date, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: const Color(0xFFF3F4F6)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.access_time, color: Color(0xFF2563EB), size: 24),
+                            const SizedBox(width: 16),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('START TIME', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                const SizedBox(height: 4),
+                                Text(_formatTime24to12(_editingEvent!.time), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                const Text('ABOUT THE EVENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                  ),
+                  child: Text(_editingEvent!.description, style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280), height: 1.6)),
+                ),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('ENTRY FEE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                          Text('\$${_editingEvent!.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
+                        ],
+                      ),
+                      const Divider(color: Colors.white24, height: 32),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('AUDIENCE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.blue.shade200, letterSpacing: 3.0)),
+                                const SizedBox(height: 4),
+                                Text(_editingEvent!.targetAudience, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('CAPACITY', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.blue.shade200, letterSpacing: 3.0)),
+                                const SizedBox(height: 4),
+                                Text('${_editingEvent!.tickets} Tickets Total', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                InkWell(
+                  onTap: () {
+                    // Open maps URL
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.location_on, color: Color(0xFF60A5FA), size: 20),
+                        SizedBox(width: 12),
+                        Text('OPEN VENUE IN MAPS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
+  }
+}
+
+class Event {
+  String id;
+  String name;
+  String date;
+  String time;
+  String durationValue;
+  String durationUnit;
+  double price;
+  int tickets;
+  String locationName;
+  String locationUrl;
+  String ageRange;
+  String targetAudience;
+  String type;
+  String description;
+  String videoUrl;
+  String photoUrl;
+
+  Event({
+    required this.id,
+    required this.name,
+    required this.date,
+    required this.time,
+    required this.durationValue,
+    required this.durationUnit,
+    required this.price,
+    required this.tickets,
+    required this.locationName,
+    required this.locationUrl,
+    required this.ageRange,
+    required this.targetAudience,
+    required this.type,
+    required this.description,
+    required this.videoUrl,
+    required this.photoUrl,
+  });
 }

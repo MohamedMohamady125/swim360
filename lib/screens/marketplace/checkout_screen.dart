@@ -1,386 +1,663 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swim 360 - Secure Checkout</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; overflow-x: hidden; }
-        
-        @keyframes successPop { 
-            0% { transform: scale(0.5); opacity: 0; filter: blur(10px); } 
-            50% { transform: scale(1.1); opacity: 1; filter: blur(0px); }
-            100% { transform: scale(1); opacity: 1; } 
-        }
-        @keyframes confettiFall {
-            0% { transform: translateY(-100vh) rotate(0deg); opacity: 1; }
-            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
-        }
-        .animate-success { animation: successPop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        .confetti { position: absolute; width: 10px; height: 10px; animation: confettiFall 3s linear infinite; z-index: 101; }
+import 'package:flutter/material.dart';
 
-        #map { height: 160px; border-radius: 24px; z-index: 10; border: 4px solid #F9FAFB; }
-        .card-visual {
-            width: 100%; max-width: 320px; height: 180px; border-radius: 24px;
-            padding: 24px; font-family: 'JetBrains Mono', monospace;
-            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-            overflow: hidden; position: relative; color: white;
-        }
-        .card-visual.visa { background: linear-gradient(135deg, #1a1f71 0%, #2b3a8c 100%); }
-        .card-visual.mastercard { background: linear-gradient(135deg, #eb001b 0%, #ff5f00 100%); }
-        
-        .chip { width: 40px; height: 30px; background: linear-gradient(135deg, #ffd700 0%, #eab308 100%); border-radius: 6px; margin-bottom: 20px; }
-        select { -webkit-appearance: none; appearance: none; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
+class CheckoutScreen extends StatefulWidget {
+  const CheckoutScreen({super.key});
 
-        /* SLIDE TO PAY STYLES */
-        .slider-container {
-            position: relative;
-            width: 100%;
-            height: 72px;
-            background-color: #E2E8F0;
-            border-radius: 36px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
-        }
-        .slider-container.active { background-color: #2563EB; }
-        .slider-container.disabled { opacity: 0.4; pointer-events: none; }
-        
-        .slider-text {
-            color: #94A3B8;
-            font-size: 14px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            pointer-events: none;
-            transition: opacity 0.3s;
-        }
-        .slider-container.active .slider-text { color: rgba(255,255,255,0.6); }
+  @override
+  State<CheckoutScreen> createState() => _CheckoutScreenState();
+}
 
-        .slider-handle {
-            position: absolute;
-            left: 6px;
-            width: 60px;
-            height: 60px;
-            background-color: white;
-            border-radius: 30px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-            z-index: 10;
-            touch-action: none;
-        }
-    </style>
-</head>
-<body class="pb-10 no-scrollbar">
+class _CheckoutScreenState extends State<CheckoutScreen> with SingleTickerProviderStateMixin {
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _addressController = TextEditingController();
+  final TextEditingController _cardNumberController = TextEditingController();
+  final TextEditingController _cardNameController = TextEditingController();
+  final TextEditingController _expiryController = TextEditingController();
+  final TextEditingController _cvvController = TextEditingController();
 
-    <div class="max-w-md mx-auto min-h-screen relative">
-        <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50 text-left">
-            <div class="flex items-center space-x-4">
-                <button onclick="window.history.back()" class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                </button>
-                <div>
-                    <h1 class="text-2xl font-black text-gray-900 tracking-tight uppercase">Checkout</h1>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Complete Purchase</p>
-                </div>
-            </div>
-            <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            </div>
-        </header>
+  String? _selectedPaymentMethod;
+  bool _showCardForm = false;
+  bool _showSuccess = false;
+  double _sliderPosition = 0.0;
+  late AnimationController _successAnimationController;
 
-        <main id="main-content" class="p-6 space-y-6">
-            <section class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5 text-left">
-                <div class="flex items-center space-x-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                    <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Delivery Address</h3>
-                </div>
-                <div id="map" class="shadow-inner bg-gray-100 mb-4"></div>
-                <div class="space-y-4">
-                    <div>
-                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">City / Region</label>
-                        <div class="relative mt-1.5">
-                            <select id="input-city" onchange="validateCheckout()" class="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold shadow-inner outline-none focus:ring-2 focus:ring-blue-500">
-                                <option value="" disabled selected>Select City</option>
-                                <option>New Cairo</option><option>Maadi</option><option>Zamalek</option><option>Alexandria</option><option>6th of October</option>
-                            </select>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Detailed Address</label>
-                        <textarea id="input-addr" oninput="validateCheckout()" placeholder="Bldg. No, Street, Apartment..." class="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold shadow-inner outline-none h-20 resize-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    </div>
-                </div>
-            </section>
+  @override
+  void initState() {
+    super.initState();
+    _successAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+  }
 
-            <section class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6 text-left">
-                <div class="flex justify-between items-center">
-                    <div class="flex items-center space-x-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                        <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Payment Method</h3>
-                    </div>
-                    <button id="toggle-card" class="text-[10px] font-black text-blue-600 uppercase tracking-widest transition-all hover:text-rose-500">+ New Card</button>
-                </div>
+  @override
+  void dispose() {
+    _cityController.dispose();
+    _addressController.dispose();
+    _cardNumberController.dispose();
+    _cardNameController.dispose();
+    _expiryController.dispose();
+    _cvvController.dispose();
+    _successAnimationController.dispose();
+    super.dispose();
+  }
 
-                <div id="card-ui" class="hidden space-y-6">
-                    <div id="card-preview" class="card-visual mx-auto text-white relative">
-                        <div class="chip"></div>
-                        <div id="p-logo" class="absolute top-6 right-6 font-black italic text-right leading-none max-w-[100px] uppercase">CARD</div>
-                        <div id="p-num" class="text-lg tracking-widest mb-6 pt-2">•••• •••• •••• ••••</div>
-                        <div class="flex justify-between uppercase">
-                            <div class="flex-1 min-w-0 pr-4">
-                                <div class="text-[8px] opacity-60">Card Holder</div>
-                                <div id="p-name" class="text-xs truncate">YOUR NAME</div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-[8px] opacity-60">Expiry</div>
-                                <div id="p-exp" class="text-xs">MM/YY</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="space-y-4">
-                        <input type="text" id="c-num" maxlength="19" placeholder="Card Number" class="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold shadow-inner outline-none focus:ring-2 focus:ring-blue-500">
-                        <input type="text" id="c-name" placeholder="Full Name" class="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold shadow-inner outline-none uppercase focus:ring-2 focus:ring-blue-500">
-                        <div class="grid grid-cols-2 gap-4">
-                            <input type="text" id="c-exp" maxlength="5" placeholder="MM/YY" class="p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold shadow-inner outline-none focus:ring-2 focus:ring-blue-500">
-                            <input type="password" id="c-cvv" maxlength="3" placeholder="CVV" class="p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold shadow-inner outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        <button id="btn-add-card" type="button" onclick="addNewCardToList()" class="w-full py-4 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl opacity-40 pointer-events-none transition-all">Save & Select Card</button>
-                    </div>
-                </div>
+  bool get _canCheckout => _cityController.text.isNotEmpty && _addressController.text.isNotEmpty && _selectedPaymentMethod != null;
 
-                <div id="payment-options" class="space-y-3">
-                    <div id="visa-primary" onclick="selectMethod('visa-primary')" class="p-4 rounded-[24px] bg-gray-50 border-2 border-transparent flex items-center justify-between cursor-pointer active:scale-95 transition-all">
-                        <div class="flex items-center space-x-3">
-                            <div class="bg-white p-2 rounded-xl shadow-sm text-blue-900 font-black italic text-[10px]">VISA</div>
-                            <div><p class="text-sm font-black text-gray-900 leading-none">Visa •••• 4242</p><p class="text-[9px] font-bold text-blue-400 mt-1 uppercase tracking-widest">Saved</p></div>
-                        </div>
-                        <div class="status-dot w-5 h-5 rounded-full border-2 border-gray-200"></div>
-                    </div>
+  String get _cardType {
+    final number = _cardNumberController.text.replaceAll(' ', '');
+    if (number.startsWith('4')) return 'VISA';
+    if (number.startsWith('5')) return 'MASTERCARD';
+    return 'CARD';
+  }
 
-                    <div id="method-cash" onclick="selectMethod('method-cash')" class="p-4 rounded-[24px] bg-gray-50 border-2 border-transparent flex items-center justify-between cursor-pointer active:scale-95 transition-all">
-                        <div class="flex items-center space-x-3">
-                            <div class="bg-white p-2 rounded-xl shadow-sm text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 2v20m0-20c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8z"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
-                            <div><p class="text-sm font-black text-gray-500 leading-none">Cash on Delivery</p><p class="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">Pay at Door</p></div>
-                        </div>
-                        <div class="status-dot w-5 h-5 rounded-full border-2 border-gray-200"></div>
-                    </div>
-                </div>
-            </section>
+  void _completePayment() {
+    setState(() => _showSuccess = true);
+    _successAnimationController.forward();
+  }
 
-            <div class="pt-4 pb-12 space-y-8">
-                <div class="flex justify-between items-center px-4 text-left">
-                    <div><p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Price</p><p class="text-4xl font-black text-gray-900 tracking-tighter mt-1">$75.49</p></div>
-                    <div class="bg-emerald-50 px-4 py-2 rounded-2xl flex items-center text-emerald-600 border border-emerald-100">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                        <span class="text-[10px] font-black uppercase">Secure</span>
-                    </div>
-                </div>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _showSuccess ? const Color(0xFF2563EB) : const Color(0xFFF8FAFC),
+      body: _showSuccess ? _buildSuccessOverlay() : _buildCheckoutContent(),
+    );
+  }
 
-                <div id="checkout-slider" class="slider-container disabled">
-                    <span class="slider-text">Slide to Pay</span>
-                    <div id="slider-handle" class="slider-handle">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
-                </div>
-            </div>
-        </main>
+  Widget _buildCheckoutContent() {
+    return SafeArea(
+      child: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  _buildDeliverySection(),
+                  const SizedBox(height: 24),
+                  _buildPaymentSection(),
+                  const SizedBox(height: 24),
+                  _buildPricingSection(),
+                  const SizedBox(height: 32),
+                  _buildSliderToPay(),
+                  const SizedBox(height: 32),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        <div id="success-overlay" class="fixed inset-0 z-[100] bg-blue-600 flex flex-col items-center justify-center p-10 hidden overflow-hidden">
-            <div id="confetti-container"></div>
-            <div class="animate-success flex flex-col items-center space-y-10 relative z-10">
-                <div class="w-36 h-36 bg-white/20 backdrop-blur-2xl rounded-[48px] flex items-center justify-center border-2 border-white/30 shadow-2xl relative overflow-hidden">
-                     <div class="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/40 to-white/0 translate-y-full transform -skew-y-12 animate-[pulse_2s_infinite]"></div>
-                     <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 15l-2 5L9 9l11-1 5 2z"/><path d="M22 12A10 10 0 1112 2a10 10 0 0110 10z"/><polyline points="9 11 12 14 22 4"/></svg>
-                </div>
-                <div class="space-y-4">
-                    <h2 class="text-6xl font-black text-white tracking-tighter leading-none italic uppercase underline decoration-blue-400 underline-offset-8 text-center">Confirmed!!</h2>
-                    <p class="text-blue-100 text-[10px] font-black uppercase tracking-[0.4em] opacity-80 text-center">Your gear is at the starting block</p>
-                </div>
-                <button onclick="location.reload()" class="bg-white text-blue-600 px-12 py-5 rounded-[28px] font-black text-xs uppercase tracking-widest shadow-2xl active:scale-90 transition-all">
-                    BACK TO HOME
-                </button>
-            </div>
-        </div>
-    </div>
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              InkWell(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new, size: 24),
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('CHECKOUT', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                  Text('COMPLETE PURCHASE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                ],
+              ),
+            ],
+          ),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15)],
+            ),
+            child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 24),
+          ),
+        ],
+      ),
+    );
+  }
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script>
-        let currentSelection = null;
-        let isSliding = false;
+  Widget _buildDeliverySection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.location_on, color: Color(0xFF2563EB), size: 16),
+              SizedBox(width: 8),
+              Text('DELIVERY ADDRESS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Container(
+            height: 160,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: const Color(0xFFF1F5F9), width: 4),
+            ),
+            child: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.map, color: Color(0xFF9CA3AF), size: 48),
+                  SizedBox(height: 8),
+                  Text('Map Preview', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text('CITY / REGION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+            hint: const Text('Select City', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+            items: ['New Cairo', 'Maadi', 'Zamalek', 'Alexandria', '6th of October'].map((city) {
+              return DropdownMenuItem(value: city, child: Text(city, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)));
+            }).toList(),
+            onChanged: (value) => setState(() => _cityController.text = value ?? ''),
+          ),
+          const SizedBox(height: 16),
+          const Text('DETAILED ADDRESS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: _addressController,
+            maxLines: 3,
+            decoration: InputDecoration(
+              hintText: 'Bldg. No, Street, Apartment...',
+              hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            onChanged: (value) => setState(() {}),
+          ),
+        ],
+      ),
+    );
+  }
 
-        window.onload = () => {
-            const map = L.map('map', {zoomControl: false}).setView([30.0444, 31.2357], 14);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            L.marker([30.0444, 31.2357]).addTo(map);
-            initSlider();
-        };
+  Widget _buildPaymentSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.credit_card, color: Color(0xFF2563EB), size: 16),
+                  SizedBox(width: 8),
+                  Text('PAYMENT METHOD', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                ],
+              ),
+              InkWell(
+                onTap: () => setState(() => _showCardForm = !_showCardForm),
+                child: Text(_showCardForm ? 'CANCEL' : '+ NEW CARD', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), letterSpacing: 2.5)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          if (_showCardForm) _buildCardForm() else _buildPaymentOptions(),
+        ],
+      ),
+    );
+  }
 
-        function validateCheckout() {
-            const city = document.getElementById('input-city').value;
-            const addr = document.getElementById('input-addr').value.trim();
-            const slider = document.getElementById('checkout-slider');
-            if (city && addr && currentSelection) {
-                slider.classList.remove('disabled');
-                slider.classList.add('active');
-            } else {
-                slider.classList.add('disabled');
-                slider.classList.remove('active');
+  Widget _buildCardForm() {
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          height: 180,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: _cardType == 'VISA'
+                ? const LinearGradient(colors: [Color(0xFF1a1f71), Color(0xFF2b3a8c)])
+                : _cardType == 'MASTERCARD'
+                    ? const LinearGradient(colors: [Color(0xFFeb001b), Color(0xFFff5f00)])
+                    : const LinearGradient(colors: [Color(0xFF1e293b), Color(0xFF334155)]),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFffd700), Color(0xFFeab308)]),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  Text(_cardType, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, fontStyle: FontStyle.italic)),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                _cardNumberController.text.isEmpty ? '•••• •••• •••• ••••' : _cardNumberController.text,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.white, letterSpacing: 2.0, fontFamily: 'monospace'),
+              ),
+              const Spacer(),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('CARD HOLDER', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.6))),
+                        const SizedBox(height: 2),
+                        Text(
+                          _cardNameController.text.isEmpty ? 'YOUR NAME' : _cardNameController.text.toUpperCase(),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('EXPIRY', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.6))),
+                      const SizedBox(height: 2),
+                      Text(
+                        _expiryController.text.isEmpty ? 'MM/YY' : _expiryController.text,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+        TextField(
+          controller: _cardNumberController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'Card Number',
+            filled: true,
+            fillColor: Color(0xFFF9FAFB),
+            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+            contentPadding: EdgeInsets.all(16),
+          ),
+          onChanged: (value) {
+            final cleaned = value.replaceAll(' ', '');
+            final formatted = cleaned.replaceAllMapped(RegExp(r'.{1,4}'), (match) => '${match.group(0)} ').trim();
+            if (formatted != value) {
+              _cardNumberController.value = _cardNumberController.value.copyWith(
+                text: formatted,
+                selection: TextSelection.collapsed(offset: formatted.length),
+              );
             }
-        }
-
-        function initSlider() {
-            const handle = document.getElementById('slider-handle');
-            const container = document.getElementById('checkout-slider');
-            let startX = 0;
-            let currentX = 0;
-            const maxSlide = container.offsetWidth - handle.offsetWidth - 12;
-
-            function onStart(e) {
-                if (container.classList.contains('disabled')) return;
-                isSliding = true;
-                startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
-                handle.style.transition = 'none';
-            }
-
-            function onMove(e) {
-                if (!isSliding) return;
-                const x = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX;
-                currentX = Math.max(0, Math.min(maxSlide, x - startX));
-                handle.style.transform = `translateX(${currentX}px)`;
-                
-                // Dim text as handle moves
-                const opacity = 1 - (currentX / maxSlide);
-                container.querySelector('.slider-text').style.opacity = opacity;
-            }
-
-            function onEnd() {
-                if (!isSliding) return;
-                isSliding = false;
-                if (currentX >= maxSlide * 0.9) {
-                    handle.style.transform = `translateX(${maxSlide}px)`;
-                    handle.style.transition = 'transform 0.2s';
-                    triggerSuccess();
-                } else {
-                    handle.style.transform = 'translateX(0px)';
-                    handle.style.transition = 'transform 0.3s ease-out';
-                    container.querySelector('.slider-text').style.opacity = 1;
+            setState(() {});
+          },
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: _cardNameController,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            hintText: 'Full Name',
+            filled: true,
+            fillColor: Color(0xFFF9FAFB),
+            border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+            contentPadding: EdgeInsets.all(16),
+          ),
+          onChanged: (value) => setState(() {}),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _expiryController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  hintText: 'MM/YY',
+                  filled: true,
+                  fillColor: Color(0xFFF9FAFB),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                  contentPadding: EdgeInsets.all(16),
+                ),
+                onChanged: (value) {
+                  final cleaned = value.replaceAll('/', '');
+                  if (cleaned.length > 2) {
+                    final formatted = '${cleaned.substring(0, 2)}/${cleaned.substring(2, cleaned.length > 4 ? 4 : cleaned.length)}';
+                    if (formatted != value) {
+                      _expiryController.value = _expiryController.value.copyWith(
+                        text: formatted,
+                        selection: TextSelection.collapsed(offset: formatted.length),
+                      );
+                    }
+                  }
+                  setState(() {});
+                },
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: TextField(
+                controller: _cvvController,
+                keyboardType: TextInputType.number,
+                obscureText: true,
+                maxLength: 3,
+                decoration: const InputDecoration(
+                  hintText: 'CVV',
+                  filled: true,
+                  fillColor: Color(0xFFF9FAFB),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                  contentPadding: EdgeInsets.all(16),
+                  counterText: '',
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        InkWell(
+          onTap: _cardNumberController.text.replaceAll(' ', '').length >= 16
+              ? () {
+                  setState(() {
+                    _selectedPaymentMethod = 'new-card';
+                    _showCardForm = false;
+                  });
                 }
-                currentX = 0;
-            }
+              : null,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _cardNumberController.text.replaceAll(' ', '').length >= 16 ? const Color(0xFF2563EB) : const Color(0xFF111827),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15)],
+            ),
+            child: Text(
+              'SAVE & SELECT CARD',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                color: _cardNumberController.text.replaceAll(' ', '').length >= 16 ? Colors.white : Colors.white.withOpacity(0.4),
+                letterSpacing: 2.5,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-            handle.addEventListener('mousedown', onStart);
-            handle.addEventListener('touchstart', onStart);
-            window.addEventListener('mousemove', onMove);
-            window.addEventListener('touchmove', onMove);
-            window.addEventListener('mouseup', onEnd);
-            window.addEventListener('touchend', onEnd);
-        }
+  Widget _buildPaymentOptions() {
+    return Column(
+      children: [
+        _buildPaymentOption('visa-primary', 'VISA', 'Visa •••• 4242', 'SAVED'),
+        const SizedBox(height: 12),
+        _buildPaymentOption('cash', 'CASH', 'Cash on Delivery', 'PAY AT DOOR'),
+      ],
+    );
+  }
 
-        function selectMethod(id) {
-            currentSelection = id;
-            document.querySelectorAll('#payment-options > div').forEach(el => {
-                el.classList.remove('bg-blue-50', 'border-blue-600');
-                el.classList.add('bg-gray-50', 'border-transparent');
-                el.querySelector('.status-dot').className = 'status-dot w-5 h-5 rounded-full border-2 border-gray-200';
-                el.querySelector('.status-dot').innerHTML = '';
-            });
-            const sel = document.getElementById(id);
-            if (sel) {
-                sel.classList.replace('bg-gray-50', 'bg-blue-50');
-                sel.classList.replace('border-transparent', 'border-blue-600');
-                sel.querySelector('.status-dot').className = 'status-dot w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center';
-                sel.querySelector('.status-dot').innerHTML = '<svg class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>';
-            }
-            validateCheckout();
-        }
+  Widget _buildPaymentOption(String id, String type, String label, String sublabel) {
+    final isSelected = _selectedPaymentMethod == id;
+    return InkWell(
+      onTap: () => setState(() => _selectedPaymentMethod = id),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF9FAFB),
+          border: Border.all(color: isSelected ? const Color(0xFF2563EB) : Colors.transparent, width: 2),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: type == 'CASH'
+                  ? const Icon(Icons.attach_money, color: Color(0xFF9CA3AF), size: 24)
+                  : Text(type, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF1e40af), fontStyle: FontStyle.italic)),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 2),
+                  Text(sublabel, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF93C5FD), letterSpacing: 2.5)),
+                ],
+              ),
+            ),
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF2563EB) : Colors.transparent,
+                shape: BoxShape.circle,
+                border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE5E7EB), width: 2),
+              ),
+              child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 12) : null,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-        const toggleBtn = document.getElementById('toggle-card');
-        const cardUI = document.getElementById('card-ui');
-        const paymentList = document.getElementById('payment-options');
+  Widget _buildPricingSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('TOTAL PRICE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+              SizedBox(height: 4),
+              Text('\$75.49', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1.5)),
+            ],
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              border: Border.all(color: const Color(0xFFD1FAE5)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.shield, color: Color(0xFF10B981), size: 16),
+                SizedBox(width: 8),
+                Text('SECURE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF10B981), letterSpacing: 2.5)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        toggleBtn.onclick = () => {
-            const hidden = cardUI.classList.contains('hidden');
-            cardUI.classList.toggle('hidden');
-            paymentList.classList.toggle('hidden');
-            toggleBtn.textContent = hidden ? 'Cancel' : '+ New Card';
-        };
+  Widget _buildSliderToPay() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxSlide = constraints.maxWidth - 76;
+        return GestureDetector(
+          onHorizontalDragUpdate: _canCheckout
+              ? (details) {
+                  setState(() {
+                    _sliderPosition = (_sliderPosition + details.delta.dx).clamp(0.0, maxSlide);
+                  });
+                }
+              : null,
+          onHorizontalDragEnd: _canCheckout
+              ? (details) {
+                  if (_sliderPosition >= maxSlide * 0.9) {
+                    _completePayment();
+                  } else {
+                    setState(() => _sliderPosition = 0);
+                  }
+                }
+              : null,
+          child: Container(
+            height: 72,
+            decoration: BoxDecoration(
+              color: _canCheckout ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+              borderRadius: BorderRadius.circular(36),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Opacity(
+                    opacity: _canCheckout ? (1 - (_sliderPosition / maxSlide)).clamp(0.0, 1.0) : 0.4,
+                    child: Text(
+                      'SLIDE TO PAY',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        color: _canCheckout ? Colors.white.withOpacity(0.6) : const Color(0xFF94A3B8),
+                        letterSpacing: 2.5,
+                      ),
+                    ),
+                  ),
+                ),
+                AnimatedPositioned(
+                  duration: const Duration(milliseconds: 200),
+                  left: 6 + _sliderPosition,
+                  top: 6,
+                  child: Container(
+                    width: 60,
+                    height: 60,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+                    ),
+                    child: const Icon(Icons.arrow_forward, color: Color(0xFF2563EB), size: 24),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-        document.getElementById('c-num').oninput = (e) => {
-            let v = e.target.value.replace(/\D/g, '');
-            e.target.value = v.match(/.{1,4}/g)?.join(' ') || '';
-            document.getElementById('p-num').textContent = e.target.value || '•••• •••• •••• ••••';
-            
-            const preview = document.getElementById('card-preview');
-            const logo = document.getElementById('p-logo');
-            if(v.startsWith('4')) { preview.className = 'card-visual visa'; logo.textContent = 'VISA'; }
-            else if(v.startsWith('5')) { preview.className = 'card-visual mastercard'; logo.textContent = 'MASTERCARD'; }
-            else { preview.className = 'card-visual'; logo.textContent = 'CARD'; }
-            
-            const btn = document.getElementById('btn-add-card');
-            if(v.length >= 16) { btn.classList.remove('opacity-40', 'pointer-events-none'); btn.classList.add('bg-blue-600'); }
-        };
-
-        document.getElementById('c-name').oninput = (e) => {
-            document.getElementById('p-name').textContent = e.target.value.toUpperCase() || 'YOUR NAME';
-        };
-
-        document.getElementById('c-exp').oninput = (e) => {
-            let v = e.target.value.replace(/\D/g, '');
-            if (v.length > 2) {
-                v = v.substring(0, 2) + '/' + v.substring(2, 4);
-            }
-            e.target.value = v;
-            document.getElementById('p-exp').textContent = v || 'MM/YY';
-        };
-
-        function addNewCardToList() {
-            const last4 = document.getElementById('c-num').value.slice(-4);
-            const brandName = document.getElementById('p-logo').textContent;
-            const newId = 'card-' + Date.now();
-            const html = `
-                <div id="${newId}" onclick="selectMethod('${newId}')" class="p-4 rounded-[24px] bg-gray-50 border-2 border-transparent flex items-center justify-between cursor-pointer active:scale-95 transition-all animate-in">
-                    <div class="flex items-center space-x-3">
-                        <div class="bg-white p-2 rounded-xl shadow-sm text-blue-600 font-black italic text-[9px]">${brandName}</div>
-                        <p class="text-sm font-black text-gray-900">${brandName} •••• ${last4}</p>
-                    </div>
-                    <div class="status-dot w-5 h-5 rounded-full border-2 border-gray-200"></div>
-                </div>`;
-            paymentList.insertAdjacentHTML('afterbegin', html);
-            toggleBtn.click();
-            selectMethod(newId);
-        }
-
-        function triggerSuccess() {
-            document.getElementById('main-content').classList.add('blur-2xl', 'scale-90', 'opacity-0', 'transition-all', 'duration-1000');
-            const overlay = document.getElementById('success-overlay');
-            overlay.classList.remove('hidden');
-            
-            const container = document.getElementById('confetti-container');
-            for (let i = 0; i < 50; i++) {
-                const c = document.createElement('div');
-                c.className = 'confetti';
-                c.style.left = Math.random() * 100 + 'vw';
-                c.style.backgroundColor = ['#FFF', '#FACC15', '#60A5FA', '#F472B6', '#10B981'][Math.floor(Math.random() * 5)];
-                c.style.animationDuration = (Math.random() * 2 + 1) + 's';
-                c.style.animationDelay = Math.random() * 2 + 's';
-                container.appendChild(c);
-            }
-        }
-    </script>
-</body>
-</html>
+  Widget _buildSuccessOverlay() {
+    return Center(
+      child: ScaleTransition(
+        scale: CurvedAnimation(parent: _successAnimationController, curve: Curves.elasticOut),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 144,
+              height: 144,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(48),
+                border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 30)],
+              ),
+              child: const Icon(Icons.check_circle_outline, color: Colors.white, size: 80),
+            ),
+            const SizedBox(height: 40),
+            const Text(
+              'CONFIRMED!!',
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                fontStyle: FontStyle.italic,
+                letterSpacing: -2.0,
+                decoration: TextDecoration.underline,
+                decorationColor: Color(0xFF93C5FD),
+                decorationThickness: 4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'YOUR GEAR IS AT THE STARTING BLOCK',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: const Color(0xFFDCEEFE).withOpacity(0.8),
+                letterSpacing: 4.0,
+              ),
+            ),
+            const SizedBox(height: 48),
+            InkWell(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20)],
+                ),
+                child: const Text('BACK TO HOME', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), letterSpacing: 2.5)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

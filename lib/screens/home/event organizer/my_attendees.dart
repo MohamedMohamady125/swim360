@@ -1,304 +1,472 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  ChevronLeft, Building2, Calendar, X, 
-  CheckCircle, AlertCircle, MessageCircle, 
-  Smartphone, Clock, User, Trash2, Eye, 
-  ChevronRight, ArrowLeft, ArrowRight,
-  Search, Users, Ticket, Tag, Layout, MoreHorizontal,
-  Trophy, FileText, Download // تم إضافة أيقونات إضافية
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-// --- DATA DEFINITIONS ---
-const MOCK_DATA = {
-    events: [
-        { id: 'e1', name: 'Regional Championship 2026', date: 'Jan 23, 2026' },
-        { id: 'e2', name: 'Masters Training Clinic', date: 'Dec 01, 2025' },
-    ],
-    attendees: {
-        'e1': [
-            { id: 'a1', name: 'Liam Davies', age: 15, phone: '+201001234567', ticket: 'VIP Access', avatar: 'L' },
-            { id: 'a2', name: 'Olivia Martinez', age: 40, phone: '+201112223334', ticket: 'General Entry', avatar: 'O' },
-            { id: 'a3', name: 'Ethan Wilson', age: 28, phone: '+201223334445', ticket: 'Athlete Pass', avatar: 'E' },
-        ],
-        'e2': [
-            { id: 'a4', name: 'Ava Brown', age: 32, phone: '+201556667778', ticket: 'Clinic Pass', avatar: 'A' },
-            { id: 'a5', name: 'Noah Taylor', age: 55, phone: '+201009998887', ticket: 'Coach Pass', avatar: 'N' },
-        ]
-    }
-};
+class MyAttendeesScreen extends StatefulWidget {
+  const MyAttendeesScreen({super.key});
 
-export default function App() {
-    const [selectedEventId, setSelectedEventId] = useState('e1');
-    const [searchTerm, setSearchTerm] = useState('');
-    const [activeModal, setActiveModal] = useState(null); // 'details'
-    const [selectedAttendee, setSelectedAttendee] = useState(null);
-    const [notification, setNotification] = useState(null);
-
-    // --- PDF EXPORT LOGIC ---
-    // Dynamically load jsPDF scripts
-    useEffect(() => {
-        const script1 = document.createElement("script");
-        script1.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-        script1.async = true;
-        document.body.appendChild(script1);
-
-        const script2 = document.createElement("script");
-        script2.src = "https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js";
-        script2.async = true;
-        document.body.appendChild(script2);
-
-        return () => {
-            document.body.removeChild(script1);
-            document.body.removeChild(script2);
-        };
-    }, []);
-
-    const exportToPDF = () => {
-        if (!window.jspdf) {
-            showNotify("PDF libraries are still loading. Please wait...", "error");
-            return;
-        }
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        const event = MOCK_DATA.events.find(e => e.id === selectedEventId);
-        const roster = MOCK_DATA.attendees[selectedEventId] || [];
-
-        // Title and Header
-        doc.setFontSize(20);
-        doc.setTextColor(37, 99, 235); // Blue-600
-        doc.text("Swim 360 - Attendee Roster", 14, 22);
-        
-        doc.setFontSize(12);
-        doc.setTextColor(100, 116, 139); // Slate-500
-        doc.text(`Event: ${event.name}`, 14, 32);
-        doc.text(`Date: ${event.date}`, 14, 38);
-        doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 44);
-
-        // Table Data
-        const tableColumn = ["ID", "Name", "Age", "Ticket Type", "Phone"];
-        const tableRows = roster.map(a => [
-            a.id,
-            a.name,
-            a.age,
-            a.ticket,
-            a.phone
-        ]);
-
-        doc.autoTable({
-            head: [tableColumn],
-            body: tableRows,
-            startY: 55,
-            theme: 'striped',
-            headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
-            alternateRowStyles: { fillColor: [248, 250, 252] },
-            margin: { top: 55 },
-        });
-
-        doc.save(`${event.name.replace(/\s+/g, '_')}_Attendees.pdf`);
-        showNotify("PDF Downloaded Successfully!");
-    };
-
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
-    const selectedEvent = useMemo(() => {
-        return MOCK_DATA.events.find(e => e.id === selectedEventId);
-    }, [selectedEventId]);
-
-    const filteredAttendees = useMemo(() => {
-        const roster = MOCK_DATA.attendees[selectedEventId] || [];
-        return roster.filter(a => 
-            a.name.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-    }, [selectedEventId, searchTerm]);
-
-    // --- RENDERERS ---
-
-    const renderHeader = () => (
-        <header className="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50">
-            <div className="flex items-center space-x-4">
-                <button onClick={() => window.history.back()} className="p-2.5 rounded-2xl transition-all border bg-white border-gray-100 text-gray-900 shadow-sm active:scale-90 hover:bg-gray-50">
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
-                <div className="text-left">
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight leading-none">Attendees</h1>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Roster Management</p>
-                </div>
-            </div>
-            <div className="w-11 h-11 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 border border-rose-100 shadow-inner">
-                <Trophy className="w-6 h-6" />
-            </div>
-        </header>
-    );
-
-    const renderFilters = () => (
-        <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm space-y-5">
-            <div className="space-y-2 text-left">
-                <div className="flex justify-between items-end mb-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block tracking-widest">Selected Event</label>
-                    {/* DOWNLOAD PDF BUTTON */}
-                    <button 
-                        onClick={exportToPDF}
-                        className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center bg-blue-50 px-2 py-1 rounded-lg transition-colors"
-                    >
-                        <Download className="w-3 h-3 mr-1" /> Download as PDF
-                    </button>
-                </div>
-                <div className="flex items-center bg-gray-50 rounded-2xl px-4 py-1 border border-transparent focus-within:border-rose-500 transition-all">
-                    <Trophy className="w-5 h-5 text-gray-400 mr-3" />
-                    <select 
-                        value={selectedEventId}
-                        onChange={(e) => { setSelectedEventId(e.target.value); setSearchTerm(''); }}
-                        className="flex-1 bg-transparent py-3.5 text-sm font-bold outline-none appearance-none"
-                    >
-                        {MOCK_DATA.events.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                </div>
-            </div>
-
-            <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input 
-                    type="text" 
-                    placeholder="Search attendee name..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-11 pr-4 py-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-rose-500 outline-none"
-                />
-            </div>
-        </div>
-    );
-
-    const renderList = () => (
-        <div className="space-y-4 pb-20">
-            <div className="px-2 flex items-center justify-between">
-                <span className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">{filteredAttendees.length} Registered</span>
-                <div className="h-px bg-gray-100 flex-grow ml-4"></div>
-            </div>
-
-            {filteredAttendees.length > 0 ? (
-                filteredAttendees.map(attendee => (
-                    <div 
-                        key={attendee.id} 
-                        className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-4 flex items-center space-x-4 hover:shadow-md transition-all active:scale-[0.99] cursor-pointer"
-                        onClick={() => { setSelectedAttendee(attendee); setActiveModal('details'); }}
-                    >
-                        <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 font-black text-xl border border-rose-100 shadow-sm">
-                            {attendee.avatar}
-                        </div>
-                        <div className="flex-grow text-left">
-                            <h3 className="font-black text-gray-900 leading-tight">{attendee.name}</h3>
-                            <div className="flex items-center mt-1 text-[10px] font-bold text-blue-600 uppercase tracking-widest">
-                                <Ticket className="w-3 h-3 mr-1.5" /> {attendee.ticket}
-                            </div>
-                        </div>
-                        <div className="p-2.5 bg-gray-50 text-gray-300 rounded-xl group-hover:text-rose-600 transition-colors">
-                            <Eye className="w-5 h-5" />
-                        </div>
-                    </div>
-                ))
-            ) : (
-                <div className="py-20 text-center animate-in">
-                    <div className="w-20 h-20 bg-gray-50 rounded-[40px] flex items-center justify-center mx-auto mb-4 text-gray-200 shadow-inner">
-                        <Users className="w-10 h-10" />
-                    </div>
-                    <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No matching attendees</p>
-                </div>
-            )}
-        </div>
-    );
-
-    const renderDetailsModal = () => {
-        if (!activeModal || !selectedAttendee) return null;
-
-        return (
-            <div className="fixed inset-0 z-50 flex items-end justify-center px-4 pb-10">
-                <div 
-                    className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"
-                    onClick={() => setActiveModal(null)}
-                ></div>
-                <div className="bg-white w-full max-w-sm rounded-t-[40px] p-8 shadow-2xl z-10 animate-in relative overflow-hidden">
-                    <button onClick={() => setActiveModal(null)} className="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400 active:scale-90 transition-transform"><X className="w-5 h-5" /></button>
-                    
-                    <div className="text-center space-y-2">
-                        <div className="w-20 h-20 bg-rose-50 text-rose-600 rounded-[30px] flex items-center justify-center mx-auto mb-4 border border-rose-100 shadow-sm">
-                            <User className="w-10 h-10" />
-                        </div>
-                        <h3 className="text-2xl font-black text-gray-900 tracking-tight leading-none">{selectedAttendee.name}</h3>
-                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">{selectedEvent?.name}</p>
-                    </div>
-
-                    <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 space-y-4 text-left shadow-inner mt-6">
-                        <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Age</span>
-                            <span className="text-xs font-bold text-gray-800">{selectedAttendee.age} Years</span>
-                        </div>
-                        <div className="h-px bg-gray-200/50"></div>
-                        <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ticket Type</span>
-                            <span className="text-xs font-bold text-rose-600">{selectedAttendee.ticket}</span>
-                        </div>
-                    </div>
-
-                    <div className="pt-6 space-y-3">
-                        <a 
-                            href={`https://wa.me/${selectedAttendee.phone.replace(/\+/g, '')}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="w-full flex items-center justify-center py-5 bg-[#25D366] text-white rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all shadow-[#25D366]/20"
-                        >
-                            <MessageCircle className="w-6 h-6 mr-3" /> WhatsApp Chat
-                        </a>
-                        <button 
-                            onClick={() => setActiveModal(null)}
-                            className="w-full py-4 text-gray-400 font-bold text-sm hover:text-gray-600 transition-colors"
-                        >
-                            Dismiss
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    };
-
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            {renderHeader()}
-
-            <main className="p-6 space-y-6 animate-in">
-                {renderFilters()}
-                {renderList()}
-            </main>
-
-            {renderDetailsModal()}
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
-        </div>
-    );
+  @override
+  State<MyAttendeesScreen> createState() => _MyAttendeesScreenState();
 }
 
-// --- HELPER COMPONENTS ---
-function ChevronDown({ className }) {
-    return (
-        <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-        </svg>
+class _MyAttendeesScreenState extends State<MyAttendeesScreen> {
+  final List<Event> _events = [];
+
+  final Map<String, List<Attendee>> _attendees = {};
+
+  String _selectedEventId = 'e1';
+  String _searchTerm = '';
+  String? _activeModal;
+  Attendee? _selectedAttendee;
+  String? _notification;
+  String _notificationType = 'success';
+
+  void _showNotify(String msg, [String type = 'success']) {
+    setState(() {
+      _notification = msg;
+      _notificationType = type;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _notification = null);
+      }
+    });
+  }
+
+  List<Attendee> get _filteredAttendees {
+    final roster = _attendees[_selectedEventId] ?? [];
+    return roster.where((a) => a.name.toLowerCase().contains(_searchTerm.toLowerCase())).toList();
+  }
+
+  Event get _selectedEvent {
+    return _events.firstWhere((e) => e.id == _selectedEventId);
+  }
+
+  Future<void> _launchWhatsApp(String phone) async {
+    final cleanPhone = phone.replaceAll('+', '');
+    final url = Uri.parse('https://wa.me/$cleanPhone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              border: Border.all(color: const Color(0xFFF3F4F6)),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                            ),
+                            child: const Icon(Icons.arrow_back, size: 24),
+                          ),
+                          const SizedBox(width: 16),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Attendees', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                              SizedBox(height: 2),
+                              Text('ROSTER MANAGEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFFECDD3)),
+                        ),
+                        child: const Icon(Icons.emoji_events, color: Color(0xFFE11D48), size: 24),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Filters Card
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('SELECTED EVENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                            InkWell(
+                              onTap: () {
+                                // PDF export would go here
+                                _showNotify("PDF export feature - not implemented in this demo");
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFF6FF),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.download, size: 12, color: Color(0xFF2563EB)),
+                                    SizedBox(width: 4),
+                                    Text('PDF', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), letterSpacing: 2.0)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.emoji_events, color: Color(0xFF9CA3AF), size: 20),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  value: _selectedEventId,
+                                  isExpanded: true,
+                                  underline: const SizedBox(),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                  items: _events.map((e) => DropdownMenuItem(value: e.id, child: Text(e.name))).toList(),
+                                  onChanged: (value) => setState(() {
+                                    _selectedEventId = value!;
+                                    _searchTerm = '';
+                                  }),
+                                ),
+                              ),
+                              const Icon(Icons.arrow_drop_down, color: Color(0xFF9CA3AF)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        TextField(
+                          onChanged: (value) => setState(() => _searchTerm = value),
+                          decoration: InputDecoration(
+                            hintText: 'Search attendee name...',
+                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                            prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF), size: 16),
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Attendees List
+                  Row(
+                    children: [
+                      Text('${_filteredAttendees.length} REGISTERED', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFD1D5DB), letterSpacing: 3.0)),
+                      const SizedBox(width: 16),
+                      const Expanded(child: Divider(color: Color(0xFFF3F4F6))),
+                    ],
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  if (_filteredAttendees.isNotEmpty)
+                    ..._filteredAttendees.map((attendee) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: InkWell(
+                        onTap: () => setState(() {
+                          _selectedAttendee = attendee;
+                          _activeModal = 'details';
+                        }),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: const Color(0xFFF3F4F6)),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEE2E2),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: const Color(0xFFFECDD3)),
+                                  boxShadow: [BoxShadow(color: const Color(0xFFE11D48).withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
+                                ),
+                                child: Center(
+                                  child: Text(attendee.avatar, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFFE11D48))),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(attendee.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.confirmation_number, size: 12, color: Color(0xFF2563EB)),
+                                        const SizedBox(width: 6),
+                                        Text(attendee.ticket.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB), letterSpacing: 3.0)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.visibility, color: Color(0xFF9CA3AF), size: 20),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ))
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 80),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(40),
+                            ),
+                            child: const Icon(Icons.people_outline, size: 40, color: Color(0xFFE5E7EB)),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('NO MATCHING ATTENDEES', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          // Details Modal
+          if (_activeModal != null && _selectedAttendee != null)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _activeModal = null),
+                child: Container(
+                  color: const Color(0xFF0F172A).withOpacity(0.6),
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        margin: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(40),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(0, 10))],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Align(
+                              alignment: Alignment.topRight,
+                              child: InkWell(
+                                onTap: () => setState(() => _activeModal = null),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9FAFB),
+                                    borderRadius: BorderRadius.circular(100),
+                                  ),
+                                  child: const Icon(Icons.close, color: Color(0xFF9CA3AF), size: 20),
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEE2E2),
+                                borderRadius: BorderRadius.circular(30),
+                                border: Border.all(color: const Color(0xFFFECDD3)),
+                                boxShadow: [BoxShadow(color: const Color(0xFFE11D48).withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 2))],
+                              ),
+                              child: const Icon(Icons.person, color: Color(0xFFE11D48), size: 40),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            Text(_selectedAttendee!.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 4),
+                            Text(_selectedEvent.name.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+
+                            const SizedBox(height: 24),
+
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFB),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: const Color(0xFFF3F4F6)),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('AGE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                      Text('${_selectedAttendee!.age} Years', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  const Divider(height: 24, color: Color(0xFFE5E7EB)),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('TICKET TYPE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                      Text(_selectedAttendee!.ticket, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFE11D48))),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 24),
+
+                            InkWell(
+                              onTap: () => _launchWhatsApp(_selectedAttendee!.phone),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF25D366),
+                                  borderRadius: BorderRadius.circular(24),
+                                  boxShadow: [BoxShadow(color: const Color(0xFF25D366).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.chat_bubble, color: Colors.white, size: 24),
+                                    SizedBox(width: 12),
+                                    Text('WHATSAPP CHAT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            InkWell(
+                              onTap: () => setState(() => _activeModal = null),
+                              child: const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: Text('Dismiss', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF))),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Notification
+          if (_notification != null)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: _notificationType == 'error' ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_notificationType == 'success' ? Icons.check_circle : Icons.error, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(_notification!.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0), maxLines: 2, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+}
+
+class Event {
+  final String id;
+  final String name;
+  final String date;
+
+  Event({required this.id, required this.name, required this.date});
+}
+
+class Attendee {
+  final String id;
+  final String name;
+  final int age;
+  final String phone;
+  final String ticket;
+  final String avatar;
+
+  Attendee({
+    required this.id,
+    required this.name,
+    required this.age,
+    required this.phone,
+    required this.ticket,
+    required this.avatar,
+  });
 }

@@ -1,261 +1,729 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  Plus, Search, Edit3, ArrowLeft, X, 
-  Check, CheckCircle, AlertCircle, Layers, 
-  ClipboardList, DollarSign, Clock, Video,
-  Trash2, Image as ImageIcon, Briefcase,
-  ChevronRight // تم إضافة الأيقونة المفقودة هنا
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:swim360/core/services/clinic_service.dart';
+import 'package:swim360/core/models/clinic_models.dart';
 
-// --- DATA DEFINITIONS ---
-const CATEGORIES = ["Rehabilitation", "Assessment", "Recovery", "Manual Therapy", "Other"];
+class MyServicesScreen extends StatefulWidget {
+  const MyServicesScreen({super.key});
 
-const INITIAL_SERVICES = [
-    { id: 's1', title: 'Initial Assessment & Diagnosis', category: 'Assessment', price: 95.00, duration: '60 min', photo_url: 'https://placehold.co/100x100/3B82F6/ffffff?text=A', description: 'Comprehensive physical and functional assessment to identify the root cause of pain.' },
-    { id: 's2', title: 'Post-Injury Rehabilitation', category: 'Rehabilitation', price: 80.00, duration: '45 min', photo_url: 'https://placehold.co/100x100/10B981/ffffff?text=R', description: 'Focused sessions to restore strength and mobility after sports injuries.' },
-    { id: 's3', title: 'Manual Therapy & Adjustment', category: 'Manual Therapy', price: 120.00, duration: '60 min', photo_url: 'https://placehold.co/100x100/F97316/ffffff?text=M', description: 'Hands-on techniques for joint and soft tissue mobilization.' }
-];
-
-export default function App() {
-    const [services, setServices] = useState(INITIAL_SERVICES);
-    const [view, setView] = useState('list'); // 'list', 'add', 'edit'
-    const [editingService, setEditingService] = useState(null);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [notification, setNotification] = useState(null);
-    
-    // تم إضافة حالة loading لتجنب أخطاء المراجع في حال وجود عمليات برمجية سابقة تعتمد عليها
-    const [loading, setLoading] = useState(false);
-
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
-    const filteredServices = useMemo(() => {
-        return services.filter(s => 
-            s.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-            s.category.toLowerCase().includes(searchTerm.toLowerCase())
-        ).sort((a, b) => a.title.localeCompare(b.title));
-    }, [services, searchTerm]);
-
-    const handleAddClick = () => {
-        setEditingService({
-            title: '',
-            category: 'Rehabilitation',
-            price: '',
-            duration: '60 min',
-            description: '',
-            video_url: '',
-            photo_url: 'https://placehold.co/100x100/2563eb/ffffff?text=+'
-        });
-        setView('add');
-    };
-
-    const handleEditClick = (service) => {
-        setEditingService({ ...service });
-        setView('edit');
-    };
-
-    const handleSave = (e) => {
-        e.preventDefault();
-        if (!editingService.title || !editingService.price || !editingService.description) {
-            showNotify("Please fill in all required fields", "error");
-            return;
-        }
-
-        if (view === 'add') {
-            const newService = { ...editingService, id: 's' + (services.length + 1) };
-            setServices([...services, newService]);
-            showNotify("Service created successfully!");
-        } else {
-            setServices(services.map(s => s.id === editingService.id ? editingService : s));
-            showNotify("Service updated successfully!");
-        }
-        setView('list');
-    };
-
-    // --- VIEW RENDERERS ---
-
-    const renderList = () => (
-        <div className="p-6 space-y-8 animate-in text-left">
-            <header className="space-y-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">My Services</h1>
-                <p className="text-sm text-gray-400 font-medium">Manage treatments and programs</p>
-            </header>
-
-            {/* Add Service Banner */}
-            <button 
-                onClick={handleAddClick}
-                className="w-full p-4 bg-emerald-500 rounded-[24px] shadow-lg shadow-emerald-100 flex items-center justify-between group active:scale-[0.98] transition-all"
-            >
-                <div className="flex items-center space-x-3 text-white">
-                    <div className="p-2 bg-white/20 rounded-xl">
-                        <Plus className="w-6 h-6" />
-                    </div>
-                    <span className="font-black uppercase text-sm tracking-widest">Add New Service</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/60 group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            {/* Search Bar */}
-            <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input 
-                    type="text" 
-                    placeholder="Search treatments..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-12 pr-4 py-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-500 outline-none" 
-                />
-            </div>
-
-            {/* Services List */}
-            <div className="space-y-4 pb-20">
-                {filteredServices.map(service => (
-                    <div key={service.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-4 flex items-center space-x-4 hover:shadow-md transition-all">
-                        <div className="w-20 h-20 rounded-2xl bg-gray-50 overflow-hidden flex-shrink-0 border border-gray-50">
-                            <img src={service.photo_url} className="w-full h-full object-cover" alt="service" />
-                        </div>
-                        <div className="flex-grow min-w-0">
-                            <h3 className="text-lg font-black text-gray-900 truncate leading-tight">{service.title}</h3>
-                            <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest mt-1">{service.category}</p>
-                            <div className="flex items-center space-x-3 mt-2">
-                                <span className="text-sm font-black text-emerald-600">${service.price.toFixed(2)}</span>
-                                <span className="text-gray-300">|</span>
-                                <span className="text-[10px] text-gray-400 font-bold uppercase">{service.duration}</span>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={() => handleEditClick(service)}
-                            className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                        >
-                            <Edit3 className="w-5 h-5" />
-                        </button>
-                    </div>
-                ))}
-                {filteredServices.length === 0 && (
-                    <div className="py-20 text-center text-gray-400 italic">
-                        No services found...
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-
-    const renderForm = () => (
-        <div className="animate-in flex flex-col min-h-screen pb-12 text-left">
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <button onClick={() => setView('list')} className="p-2.5 bg-gray-50 rounded-2xl text-gray-500 active:scale-90 transition-transform">
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <h1 className="text-2xl font-black tracking-tight leading-tight">{view === 'add' ? 'New Service' : 'Edit Service'}</h1>
-                </div>
-                <button 
-                    onClick={handleSave}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-all"
-                >
-                    Save
-                </button>
-            </header>
-
-            <main className="p-6 space-y-6">
-                {/* 1. Basic Info */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
-                    <div className="flex items-center space-x-2">
-                        <ClipboardList className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Details</h3>
-                    </div>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Service Name</label>
-                            <input type="text" value={editingService?.title || ''} onChange={e => setEditingService({...editingService, title: e.target.value})} placeholder="e.g. Spine Assessment" className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Category</label>
-                            <select value={editingService?.category || 'Rehabilitation'} onChange={e => setEditingService({...editingService, category: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none">
-                                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. Media */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
-                    <div className="flex items-center space-x-2">
-                        <ImageIcon className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Media Gallery</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="p-6 bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 hover:bg-blue-50 transition-colors cursor-pointer">
-                            <Plus className="w-6 h-6 mb-1 text-blue-600" />
-                            <span className="text-[8px] font-black uppercase text-center">Add Photo</span>
-                        </div>
-                        <div className="p-6 bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400">
-                            <Video className="w-6 h-6 mb-1" />
-                            <span className="text-[8px] font-black uppercase">Intro Video</span>
-                        </div>
-                    </div>
-                    {editingService?.id && (
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Intro Video URL (Optional)</label>
-                            <input type="url" value={editingService?.video_url || ''} onChange={e => setEditingService({...editingService, video_url: e.target.value})} placeholder="https://youtube.com/..." className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                        </div>
-                    )}
-                </div>
-
-                {/* 3. Pricing & Logistics */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
-                    <div className="flex items-center space-x-2">
-                        <DollarSign className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pricing & Time</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Price ($)</label>
-                            <input type="number" value={editingService?.price || 0} onChange={e => setEditingService({...editingService, price: parseFloat(e.target.value) || 0})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Duration</label>
-                            <input type="text" value={editingService?.duration || ''} onChange={e => setEditingService({...editingService, duration: e.target.value})} placeholder="e.g. 60 min" className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* 4. Description */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
-                    <div className="flex items-center space-x-2">
-                        <Briefcase className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</h3>
-                    </div>
-                    <textarea value={editingService?.description || ''} onChange={e => setEditingService({...editingService, description: e.target.value})} rows="4" placeholder="Describe the treatment benefits and process..." className="w-full p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" />
-                </div>
-            </main>
-        </div>
-    );
-
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse">SWIM 360...</div>;
-
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            {view === 'list' && renderList()}
-            {(view === 'add' || view === 'edit') && renderForm()}
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-            `}</style>
-        </div>
-    );
+  @override
+  State<MyServicesScreen> createState() => _MyServicesScreenState();
 }
+
+class _MyServicesScreenState extends State<MyServicesScreen> {
+  final ClinicApiService _clinicService = ClinicApiService();
+  final List<String> _categories = ["Rehabilitation", "Assessment", "Recovery", "Manual Therapy", "Other"];
+
+  List<ClinicService> _services = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  String _view = 'list'; // 'list', 'add', 'edit'
+  Map<String, dynamic>? _editingData; // Form data being edited
+  String? _editingId; // ID of service being edited (null for new)
+  String _searchTerm = '';
+  String? _notificationMsg;
+  String _notificationType = 'success';
+
+  void _showNotification(String msg, [String type = 'success']) {
+    setState(() {
+      _notificationMsg = msg;
+      _notificationType = type;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _notificationMsg = null);
+      }
+    });
+  }
+
+  List<ClinicService> get _filteredServices {
+    return _services.where((s) {
+      return s.title.toLowerCase().contains(_searchTerm.toLowerCase()) ||
+             (s.category?.toLowerCase() ?? '').contains(_searchTerm.toLowerCase());
+    }).toList()..sort((a, b) => a.title.compareTo(b.title));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadServices();
+  }
+
+  Future<void> _loadServices() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final services = await _clinicService.getMyServices();
+
+      if (mounted) {
+        setState(() {
+          _services = services;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load services: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _handleAddClick() {
+    setState(() {
+      _editingData = {
+        'title': '',
+        'category': 'Rehabilitation',
+        'price': 0.0,
+        'duration': '60 min',
+        'description': '',
+        'video_url': '',
+        'photo_url': 'https://placehold.co/100x100/2563eb/ffffff?text=+',
+      };
+      _editingId = null;
+      _view = 'add';
+    });
+  }
+
+  void _handleEditClick(ClinicService service) {
+    setState(() {
+      _editingData = {
+        'title': service.title,
+        'category': service.category ?? 'Rehabilitation',
+        'price': service.price,
+        'duration': service.duration ?? '60 min',
+        'description': service.description ?? '',
+        'video_url': service.videoUrl ?? '',
+        'photo_url': service.photoUrl ?? 'https://placehold.co/100x100/2563eb/ffffff?text=+',
+      };
+      _editingId = service.id;
+      _view = 'edit';
+    });
+  }
+
+  Future<void> _handleSave() async {
+    if (_editingData == null) return;
+
+    final title = _editingData!['title'] as String? ?? '';
+    final description = _editingData!['description'] as String? ?? '';
+    final price = _editingData!['price'] as double? ?? 0.0;
+
+    if (title.isEmpty || price == 0 || description.isEmpty) {
+      _showNotification("Please fill in all required fields", "error");
+      return;
+    }
+
+    try {
+      setState(() => _isLoading = true);
+
+      if (_editingId == null) {
+        // Create new service
+        await _clinicService.createService(_editingData!);
+        _showNotification("Service created successfully!");
+      } else {
+        // Update existing service
+        await _clinicService.updateService(_editingId!, _editingData!);
+        _showNotification("Service updated successfully!");
+      }
+
+      // Reload services from backend
+      await _loadServices();
+
+      if (mounted) {
+        setState(() {
+          _view = 'list';
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showNotification("Failed to save service: $e", "error");
+      }
+    }
+  }
+
+  Future<void> _handleDelete(String serviceId) async {
+    try {
+      setState(() => _isLoading = true);
+      await _clinicService.deleteService(serviceId);
+      await _loadServices();
+      _showNotification("Service deleted successfully!");
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showNotification("Failed to delete service: $e", "error");
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: _view == 'list' ? _buildListView() : _buildFormView(),
+          ),
+          if (_notificationMsg != null)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: _notificationType == 'error' ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_notificationType == 'success' ? Icons.check_circle : Icons.error, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Text(_notificationMsg!.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListView() {
+    // Show loading indicator
+    if (_isLoading && _services.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading services...', style: TextStyle(color: Color(0xFF9CA3AF))),
+          ],
+        ),
+      );
+    }
+
+    // Show error message
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
+              const SizedBox(height: 16),
+              Text(_errorMessage!, textAlign: TextAlign.center, style: const TextStyle(color: Color(0xFF9CA3AF))),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadServices,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Retry', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('My Services', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+          const SizedBox(height: 4),
+          const Text('Manage treatments and programs', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF))),
+          const SizedBox(height: 32),
+
+          // Add Service Banner
+          InkWell(
+            onTap: _handleAddClick,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF10B981),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: const Color(0xFF10B981).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Text('ADD NEW SERVICE', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                    ],
+                  ),
+                  Icon(Icons.chevron_right, color: Colors.white.withOpacity(0.6), size: 20),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Search Bar
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFF3F4F6)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+            ),
+            child: TextField(
+              onChanged: (value) => setState(() => _searchTerm = value),
+              decoration: const InputDecoration(
+                hintText: 'Search treatments...',
+                hintStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                prefixIcon: Icon(Icons.search, color: Color(0xFF9CA3AF), size: 20),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.all(16),
+              ),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
+          // Empty State
+          if (_filteredServices.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(48),
+                child: Column(
+                  children: [
+                    Icon(Icons.medical_services_outlined, size: 64, color: Colors.grey.shade300),
+                    const SizedBox(height: 16),
+                    Text(
+                      _searchTerm.isEmpty ? 'No services yet' : 'No services found',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF)),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _searchTerm.isEmpty
+                        ? 'Tap "ADD NEW SERVICE" to create your first service'
+                        : 'Try a different search term',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Color(0xFF9CA3AF)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // Services List
+          ..._filteredServices.map((service) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: const Color(0xFFF3F4F6)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: const Color(0xFFF9FAFB),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(service.photoUrl ?? 'https://placehold.co/100x100/2563eb/ffffff?text=+', fit: BoxFit.cover),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(service.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, height: 1.2), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Text((service.category ?? 'OTHER').toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF2563EB), letterSpacing: 3.0)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text('\$${service.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF10B981))),
+                            const SizedBox(width: 12),
+                            const Text('|', style: TextStyle(color: Color(0xFFE5E7EB))),
+                            const SizedBox(width: 12),
+                            Text((service.duration ?? 'N/A').toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () => _handleEditClick(service),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.edit_outlined, color: Color(0xFF2563EB), size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )),
+
+          if (_filteredServices.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 80),
+              child: Center(
+                child: Text('No services found...', style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Color(0xFF9CA3AF))),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFormView() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () => setState(() => _view = 'list'),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.arrow_back, size: 24, color: Color(0xFF6B7280)),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(_view == 'add' ? 'New Service' : 'Edit Service', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                ],
+              ),
+              InkWell(
+                onTap: _handleSave,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                  ),
+                  child: const Text('SAVE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Basic Info
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.content_paste, size: 16, color: Color(0xFF2563EB)),
+                          SizedBox(width: 8),
+                          Text('SERVICE DETAILS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const Text('Service Name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: TextEditingController(text: _editingData?['title']),
+                        onChanged: (value) => setState(() => _editingData!['title'] = value),
+                        decoration: InputDecoration(
+                          hintText: 'e.g. Spine Assessment',
+                          hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Category', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _editingData?['category'] ?? 'Rehabilitation',
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                          items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                          onChanged: (value) => setState(() => _editingData!['category'] = value!),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // 2. Media
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.image_outlined, size: 16, color: Color(0xFF2563EB)),
+                          SizedBox(width: 8),
+                          Text('MEDIA GALLERY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFB),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: const Color(0xFFE5E7EB), width: 2, style: BorderStyle.solid),
+                              ),
+                              child: const Column(
+                                children: [
+                                  Icon(Icons.add, color: Color(0xFF2563EB), size: 24),
+                                  SizedBox(height: 4),
+                                  Text('ADD PHOTO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFB),
+                                borderRadius: BorderRadius.circular(24),
+                                border: Border.all(color: const Color(0xFFE5E7EB), width: 2, style: BorderStyle.solid),
+                              ),
+                              child: const Column(
+                                children: [
+                                  Icon(Icons.videocam_outlined, color: Color(0xFF9CA3AF), size: 24),
+                                  SizedBox(height: 4),
+                                  Text('INTRO VIDEO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_editingId != null && _editingId!.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text('Intro Video URL (Optional)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: TextEditingController(text: _editingData?['video_url']),
+                          onChanged: (value) => setState(() => _editingData!['video_url'] = value),
+                          decoration: InputDecoration(
+                            hintText: 'https://youtube.com/...',
+                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // 3. Pricing & Logistics
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.attach_money, size: 16, color: Color(0xFF2563EB)),
+                          SizedBox(width: 8),
+                          Text('PRICING & TIME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Price (\$)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: TextEditingController(text: _editingData?['price']?.toString() ?? '0'),
+                                  onChanged: (value) => setState(() => _editingData!['price'] = double.tryParse(value) ?? 0.0),
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Duration', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                const SizedBox(height: 6),
+                                TextField(
+                                  controller: TextEditingController(text: _editingData?['duration']),
+                                  onChanged: (value) => setState(() => _editingData!['duration'] = value),
+                                  decoration: InputDecoration(
+                                    hintText: 'e.g. 60 min',
+                                    hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                    filled: true,
+                                    fillColor: const Color(0xFFF9FAFB),
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                    contentPadding: const EdgeInsets.all(16),
+                                  ),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // 4. Description
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.work_outline, size: 16, color: Color(0xFF2563EB)),
+                          SizedBox(width: 8),
+                          Text('DESCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: TextEditingController(text: _editingData?['description']),
+                        onChanged: (value) => setState(() => _editingData!['description'] = value),
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: 'Describe the treatment benefits and process...',
+                          hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                          filled: true,
+                          fillColor: const Color(0xFFF9FAFB),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.all(16),
+                        ),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+

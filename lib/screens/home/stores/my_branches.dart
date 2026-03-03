@@ -1,284 +1,380 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Plus, MapPin, Phone, Clock, Truck, 
-  ChevronDown, Check, X, ArrowLeft, 
-  Building2, Navigation, Smartphone,
-  CheckCircle, AlertCircle, Edit3, Globe
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:swim360/core/services/store_service.dart';
+import 'package:swim360/core/models/store_models.dart';
 
-// --- DATA DEFINITIONS ---
-const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Luxor", "Matrouh", "Minya", "Monufia", "New Valley", "North Sinai", "Port Said", "Qalyubia", "Qena", "Sharqia", "Sohag", "South Sinai", "Suez"];
+class MyBranchesScreen extends StatefulWidget {
+  const MyBranchesScreen({super.key});
 
-const DELIVERY_OPTIONS = [
-    { id: 'pickup-only', label: 'Pickup Only' },
-    { id: 'governorate-delivery', label: 'Governorate Delivery' },
-    { id: 'national-delivery', label: 'National Delivery' },
-    { id: 'international-delivery', label: 'International Delivery' }
-];
+  @override
+  State<MyBranchesScreen> createState() => _MyBranchesScreenState();
+}
 
-// --- MOCK DATA ---
-const INITIAL_BRANCHES = [
-    { 
-        id: 'b1', 
-        location_name: 'Al Malaz Store', 
-        governorate: 'Cairo',
-        city: 'Nasr City', 
-        location_url: 'https://maps.google.com/malaz',
-        branch_phone: '+201001234567',
-        opening_hour: '08', opening_minute: '00', opening_ampm: 'AM',
-        closing_hour: '05', closing_minute: '00', closing_ampm: 'PM',
-        delivery_options: ['pickup-only', 'governorate-delivery'] 
-    },
-    { 
-        id: 'b2', 
-        location_name: 'Red Sea Mall Branch', 
-        governorate: 'Red Sea',
-        city: 'Hurghada', 
-        location_url: 'https://maps.google.com/redsea',
-        branch_phone: '+201119998888',
-        opening_hour: '10', opening_minute: '00', opening_ampm: 'AM',
-        closing_hour: '10', closing_minute: '00', closing_ampm: 'PM',
-        delivery_options: ['pickup-only', 'national-delivery'] 
-    }
-];
+class _MyBranchesScreenState extends State<MyBranchesScreen> {
+  final StoreApiService _storeService = StoreApiService();
 
-export default function App() {
-    const [branches, setBranches] = useState(INITIAL_BRANCHES);
-    const [view, setView] = useState('list'); // 'list' or 'edit'
-    const [editingBranch, setEditingBranch] = useState(null);
-    const [notification, setNotification] = useState(null);
-    const [loading, setLoading] = useState(false);
+  String _view = 'list'; // 'list' or 'edit'
+  Map<String, dynamic>? _editingData;
+  String? _editingId;
 
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+  List<StoreBranch> _branches = [];
+  bool _isLoading = false;
+  String? _errorMessage;
 
-    const handleEditClick = (branch) => {
-        setEditingBranch({ ...branch });
-        setView('edit');
-    };
+  final List<Map<String, String>> _deliveryOptions = [
+    {'id': 'pickup-only', 'label': 'Pickup Only'},
+    {'id': 'governorate-delivery', 'label': 'Governorate Delivery'},
+    {'id': 'national-delivery', 'label': 'National Delivery'},
+    {'id': 'international-delivery', 'label': 'International Delivery'},
+  ];
 
-    const toggleDeliveryOption = (optionId) => {
-        setEditingBranch(prev => {
-            const currentOptions = prev.delivery_options || [];
-            const newOptions = currentOptions.includes(optionId)
-                ? currentOptions.filter(id => id !== optionId)
-                : [...currentOptions, optionId];
-            return { ...prev, delivery_options: newOptions };
+  @override
+  void initState() {
+    super.initState();
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final branches = await _storeService.getMyBranches();
+
+      if (mounted) {
+        setState(() {
+          _branches = branches;
+          _isLoading = false;
         });
-    };
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load branches: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
-    const handleSave = (e) => {
-        e.preventDefault();
-        // Simple time validation logic
-        const openTotal = (parseInt(editingBranch.opening_hour) % 12 + (editingBranch.opening_ampm === 'PM' ? 12 : 0)) * 60 + parseInt(editingBranch.opening_minute);
-        const closeTotal = (parseInt(editingBranch.closing_hour) % 12 + (editingBranch.closing_ampm === 'PM' ? 12 : 0)) * 60 + parseInt(editingBranch.closing_minute);
-
-        if (closeTotal <= openTotal) {
-            showNotify("Closing time must be after opening time", "error");
-            return;
-        }
-
-        if (editingBranch.delivery_options.length === 0) {
-            showNotify("Please select at least one delivery option", "error");
-            return;
-        }
-
-        setLoading(true);
-        setTimeout(() => {
-            setBranches(prev => prev.map(b => b.id === editingBranch.id ? editingBranch : b));
-            setLoading(false);
-            showNotify("Branch updated successfully!");
-            setView('list');
-        }, 1000);
-    };
-
-    // --- COMPONENTS ---
-
-    const TimeSelector = ({ label, prefix }) => (
-        <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{label}</label>
-            <div className="flex space-x-2">
-                <select 
-                    value={editingBranch[`${prefix}_hour`]} 
-                    onChange={e => setEditingBranch({...editingBranch, [`${prefix}_hour`]: e.target.value})}
-                    className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-                <select 
-                    value={editingBranch[`${prefix}_minute`]} 
-                    onChange={e => setEditingBranch({...editingBranch, [`${prefix}_minute`]: e.target.value})}
-                    className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <select 
-                    value={editingBranch[`${prefix}_ampm`]} 
-                    onChange={e => setEditingBranch({...editingBranch, [`${prefix}_ampm`]: e.target.value})}
-                    className="w-16 p-3 bg-gray-50 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                </select>
-            </div>
-        </div>
+  void _showNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: const Color(0xFF1F2937)),
     );
+  }
 
-    const renderList = () => (
-        <div className="p-6 space-y-8 animate-in text-left">
-            <div className="space-y-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">My Branches</h1>
-                <p className="text-sm text-gray-400 font-medium">Manage and monitor your retail outlets</p>
-            </div>
+  @override
+  Widget build(BuildContext context) {
+    // Show loading state
+    if (_isLoading && _branches.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading branches...'),
+            ],
+          ),
+        ),
+      );
+    }
 
-            <div className="space-y-4">
-                {branches.map(branch => (
-                    <div key={branch.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6 flex items-center justify-between group active:scale-[0.99] transition-all">
-                        <div className="flex-grow min-w-0">
-                            <h3 className="text-lg font-black text-gray-900 truncate">{branch.location_name}</h3>
-                            <p className="text-xs text-blue-600 font-bold uppercase tracking-widest mt-1 flex items-center">
-                                <MapPin className="w-3 h-3 mr-1" /> {branch.city}, {branch.governorate}
-                            </p>
-                            <div className="flex items-center space-x-4 mt-3">
-                                <div className="flex items-center text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-                                    <Clock className="w-3 h-3 mr-1" /> {branch.opening_hour}:{branch.opening_minute} {branch.opening_ampm} - {branch.closing_hour}:{branch.closing_minute} {branch.closing_ampm}
-                                </div>
-                                <div className="flex items-center text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-                                    <Smartphone className="w-3 h-3 mr-1" /> {branch.branch_phone}
-                                </div>
-                            </div>
-                        </div>
-                        <button 
-                            onClick={() => handleEditClick(branch)}
-                            className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm flex-shrink-0 ml-4"
-                        >
-                            <Edit3 className="w-5 h-5" />
-                        </button>
-                    </div>
-                ))}
-            </div>
-        </div>
+    // Show error state
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
+                const SizedBox(height: 16),
+                Text(_errorMessage!),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadBranches,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: _view == 'list' ? _buildList() : _buildEdit(),
+      ),
     );
+  }
 
-    const renderEdit = () => (
-        <div className="animate-in flex flex-col min-h-screen pb-12 text-left">
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <button onClick={() => setView('list')} className="p-2.5 bg-gray-50 rounded-2xl text-gray-500 active:scale-90 transition-transform">
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <h1 className="text-2xl font-black tracking-tight leading-tight">Edit Branch</h1>
-                </div>
-                <button 
-                    onClick={handleSave}
-                    disabled={loading}
-                    className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100 active:scale-95 transition-all"
-                >
-                    {loading ? 'Saving...' : 'Save'}
-                </button>
-            </header>
-
-            <main className="p-6 space-y-6">
-                {/* 1. Location Details */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
-                    <div className="flex items-center space-x-2">
-                        <Navigation className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Location Details</h3>
-                    </div>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Governorate</label>
-                            <select 
-                                value={editingBranch.governorate} 
-                                onChange={e => setEditingBranch({...editingBranch, governorate: e.target.value})}
-                                className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none"
-                            >
-                                {GOVERNORATES.map(g => <option key={g} value={g}>{g}</option>)}
-                            </select>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">City</label>
-                            <input type="text" value={editingBranch.city} onChange={e => setEditingBranch({...editingBranch, city: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Store Location Name</label>
-                            <input type="text" value={editingBranch.location_name} onChange={e => setEditingBranch({...editingBranch, location_name: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Google Maps URL</label>
-                            <input type="url" value={editingBranch.location_url} onChange={e => setEditingBranch({...editingBranch, location_url: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* 2. Operations */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
-                    <div className="flex items-center space-x-2">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Operations</h3>
-                    </div>
-                    <div className="space-y-5">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Branch Phone Number</label>
-                            <input type="tel" value={editingBranch.branch_phone} onChange={e => setEditingBranch({...editingBranch, branch_phone: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 pt-2">
-                            <TimeSelector label="Opening Time" prefix="opening" />
-                            <TimeSelector label="Closing Time" prefix="closing" />
-                        </div>
-                    </div>
-                </div>
-
-                {/* 3. Delivery Options */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
-                    <div className="flex items-center space-x-2">
-                        <Truck className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Fulfillment Options</h3>
-                    </div>
-                    <div className="grid grid-cols-1 gap-2">
-                        {DELIVERY_OPTIONS.map(option => {
-                            const isSelected = editingBranch.delivery_options.includes(option.id);
-                            return (
-                                <button 
-                                    key={option.id}
-                                    type="button"
-                                    onClick={() => toggleDeliveryOption(option.id)}
-                                    className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border ${isSelected ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-50' : 'bg-gray-50 border-transparent'}`}
-                                >
-                                    <span className={`text-sm font-bold ${isSelected ? 'text-blue-700' : 'text-gray-500'}`}>{option.label}</span>
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-gray-200 bg-white'}`}>
-                                        {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            </main>
-        </div>
+  Widget _buildList() {
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text('My Branches', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+        const SizedBox(height: 4),
+        const Text('Manage and monitor your retail outlets', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF))),
+        const SizedBox(height: 32),
+        ..._branches.map((branch) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: const Color(0xFFF3F4F6)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(branch.locationName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on, color: Color(0xFF2563EB), size: 12),
+                            const SizedBox(width: 4),
+                            Text('${branch.city ?? 'N/A'}, ${branch.governorate ?? 'N/A'}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB), letterSpacing: 3.0)),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (branch.openingHour != null) Row(
+                          children: [
+                            const Icon(Icons.access_time, color: Color(0xFF9CA3AF), size: 12),
+                            const SizedBox(width: 4),
+                            Text('${branch.openingHour}:${branch.openingMinute} ${branch.openingAmpm} - ${branch.closingHour}:${branch.closingMinute} ${branch.closingAmpm}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 1.0)),
+                          ],
+                        ),
+                        if (branch.openingHour != null) const SizedBox(height: 6),
+                        if (branch.branchPhone != null) Row(
+                          children: [
+                            const Icon(Icons.phone, color: Color(0xFF9CA3AF), size: 12),
+                            const SizedBox(width: 4),
+                            Text(branch.branchPhone!, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 1.0)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        _editingId = branch.id;
+                        _editingData = {
+                          'location_name': branch.locationName,
+                          'governorate': branch.governorate ?? '',
+                          'city': branch.city ?? '',
+                          'location_url': branch.locationUrl ?? '',
+                          'branch_phone': branch.branchPhone ?? '',
+                          'opening_hour': branch.openingHour ?? '09',
+                          'opening_minute': branch.openingMinute ?? '00',
+                          'opening_ampm': branch.openingAmpm ?? 'AM',
+                          'closing_hour': branch.closingHour ?? '05',
+                          'closing_minute': branch.closingMinute ?? '00',
+                          'closing_ampm': branch.closingAmpm ?? 'PM',
+                          'delivery_options': List<String>.from(branch.deliveryOptions ?? []),
+                        };
+                        _view = 'edit';
+                      });
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEFF6FF),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.edit, color: Color(0xFF2563EB), size: 20),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
     );
+  }
 
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            {view === 'list' && renderList()}
-            {view === 'edit' && renderEdit()}
+  Widget _buildEdit() {
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () => setState(() => _view = 'list'),
+                    child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.arrow_back, size: 24)),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text('Edit Branch', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              InkWell(
+                onTap: () async {
+                  if (_editingData == null || _editingId == null) return;
 
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
+                  try {
+                    setState(() => _isLoading = true);
 
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
-        </div>
+                    await _storeService.updateBranch(_editingId!, _editingData!);
+                    await _loadBranches();
+
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                        _view = 'list';
+                      });
+                      _showNotification('Branch updated successfully!');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      setState(() => _isLoading = false);
+                      _showNotification('Failed to update branch: $e');
+                    }
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))]),
+                  child: Text(_isLoading ? 'SAVING...' : 'SAVE', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Form
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              // Location Details
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: const Color(0xFFF3F4F6)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [Icon(Icons.navigation, color: Color(0xFF2563EB), size: 16), SizedBox(width: 8), Text('LOCATION DETAILS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0))]),
+                    const SizedBox(height: 16),
+                    const Text('Store Location Name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: TextEditingController(text: _editingData?['location_name'] as String?),
+                      onChanged: (value) => _editingData!['location_name'] = value,
+                      decoration: InputDecoration(filled: true, fillColor: const Color(0xFFF9FAFB), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Operations
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: const Color(0xFFF3F4F6)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [Icon(Icons.access_time, color: Color(0xFF2563EB), size: 16), SizedBox(width: 8), Text('OPERATIONS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0))]),
+                    const SizedBox(height: 16),
+                    const Text('Branch Phone Number', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: TextEditingController(text: _editingData?['branch_phone'] as String?),
+                      onChanged: (value) => _editingData!['branch_phone'] = value,
+                      decoration: InputDecoration(filled: true, fillColor: const Color(0xFFF9FAFB), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Fulfillment Options
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: const Color(0xFFF3F4F6)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [Icon(Icons.local_shipping, color: Color(0xFF2563EB), size: 16), SizedBox(width: 8), Text('FULFILLMENT OPTIONS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0))]),
+                    const SizedBox(height: 16),
+                    ..._deliveryOptions.map((option) {
+                      final deliveryOpts = _editingData?['delivery_options'] as List<String>? ?? [];
+                      final isSelected = deliveryOpts.contains(option['id']);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              final opts = _editingData!['delivery_options'] as List<String>;
+                              if (isSelected) {
+                                opts.remove(option['id']);
+                              } else {
+                                opts.add(option['id']!);
+                              }
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: isSelected ? const Color(0xFF2563EB) : Colors.transparent, width: 2),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(option['label']!, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isSelected ? const Color(0xFF1E40AF) : const Color(0xFF6B7280))),
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE5E7EB), width: 2),
+                                  ),
+                                  child: isSelected ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
+  }
 }

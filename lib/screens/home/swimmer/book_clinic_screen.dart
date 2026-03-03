@@ -1,238 +1,653 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - Recovery Portal</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .shadow-blueprint { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
-    </style>
-</head>
-<body class="no-scrollbar">
+import 'package:flutter/material.dart';
 
-    <div class="max-w-md mx-auto min-h-screen relative flex flex-col pb-20">
-        
-        <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50 text-left">
-            <div class="flex items-center space-x-4">
-                <button onclick="handleBack()" class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                </button>
-                <div>
-                    <h1 class="text-2xl font-black text-gray-900 tracking-tight uppercase leading-none italic">Recovery</h1>
-                    <p id="step-label" class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1.5">Booking Hub</p>
-                </div>
-            </div>
-            <div class="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-            </div>
-        </header>
+class BookClinicScreen extends StatefulWidget {
+  const BookClinicScreen({super.key});
 
-        <div id="stepper" class="px-8 py-5 bg-white border-b border-gray-50 sticky top-[74px] z-20">
-            <div class="flex justify-between items-center relative max-w-[300px] mx-auto text-left">
-                <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2"></div>
-                <div id="step-line" class="absolute top-1/2 left-0 h-0.5 bg-blue-600 -translate-y-1/2 transition-all duration-700 w-0"></div>
-                
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-blue-600 text-white shadow-lg">1</div>
-                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-blue-600">Clinic</span>
-                </div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300">2</div>
-                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-gray-300">Branch</span>
-                </div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300">3</div>
-                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-gray-300">Slot</span>
-                </div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300">4</div>
-                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-gray-300">Service</span>
-                </div>
-            </div>
-        </div>
+  @override
+  State<BookClinicScreen> createState() => _BookClinicScreenState();
+}
 
-        <main id="view-port" class="p-6 flex-grow animate-in text-left">
-            </main>
+class _BookClinicScreenState extends State<BookClinicScreen> {
+  int _currentStep = 0;
+  Clinic? _selectedClinic;
+  Branch? _selectedBranch;
+  int _selectedDate = DateTime.now().day;
+  int _selectedBed = 1;
+  String? _selectedSlot;
+  String? _selectedService;
 
-    </div>
+  final List<Clinic> _clinics = [];
 
-    <script>
-        const CLINICS_DATA = [
-            {
-                id: 'c1', name: 'AquaHealth Physio', img: 'https://images.unsplash.com/photo-1590233156170-ef1f6305f884?auto=format&fit=crop&q=80&w=800',
-                branches: [
-                    { id: 'b1', name: 'Olympic Park', beds: 3, open: 9, close: 18 },
-                    { id: 'b2', name: 'Downtown Wellness', beds: 2, open: 10, close: 20 }
+  void _handleBack() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(),
+                _buildStepper(),
+                Expanded(child: _buildCurrentStep()),
+              ],
+            ),
+            if (_shouldShowFloatingButton()) _buildFloatingButton(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              InkWell(
+                onTap: _handleBack,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new, size: 24),
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('RECOVERY', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                  Text('BOOKING HUB', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
                 ],
-                services: [
-                    { id: 's1', name: 'Initial Assessment', price: 95, dur: '60m' },
-                    { id: 's2', name: 'Manual Therapy', price: 120, dur: '45m' }
-                ]
-            }
-        ];
+              ),
+            ],
+          ),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFDCEEFE)),
+            ),
+            child: const Icon(Icons.favorite, color: Color(0xFF2563EB), size: 24),
+          ),
+        ],
+      ),
+    );
+  }
 
-        let state = { step: 0, clinic: null, branch: null, date: new Date().getDate(), bed: 1, slot: null, service: null };
+  Widget _buildStepper() {
+    final steps = ['Clinic', 'Branch', 'Slot', 'Service'];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(steps.length, (index) {
+          return Row(
+            children: [
+              _buildStepIndicator(index, steps[index]),
+              if (index < steps.length - 1) _buildStepLine(index),
+            ],
+          );
+        }),
+      ),
+    );
+  }
 
-        function render() {
-            const port = document.getElementById('view-port');
-            updateStepper();
+  Widget _buildStepIndicator(int step, String label) {
+    final isActive = _currentStep >= step;
+    return Column(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFF2563EB) : Colors.white,
+            border: Border.all(color: isActive ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9), width: 2),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text('${step + 1}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isActive ? Colors.white : const Color(0xFF9CA3AF))),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(label.toUpperCase(), style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: isActive ? const Color(0xFF2563EB) : const Color(0xFF9CA3AF), letterSpacing: 2.0)),
+      ],
+    );
+  }
 
-            if (state.step === 0) {
-                port.innerHTML = `
-                    <div class="space-y-6">
-                        <div class="px-2"><h2 class="text-3xl font-black text-gray-900 uppercase italic leading-none">Clinics</h2><p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-2">Find a medical provider</p></div>
-                        <div class="space-y-4">
-                            ${CLINICS_DATA.map(c => `
-                                <div onclick="selectClinic('${c.id}')" class="bg-white rounded-[32px] overflow-hidden shadow-blueprint border border-white group active:scale-[0.98] transition-all cursor-pointer">
-                                    <div class="relative h-48">
-                                        <img src="${c.img}" class="w-full h-full object-cover">
-                                        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                                        <div class="absolute bottom-5 left-6">
-                                            <h3 class="text-2xl font-black text-white uppercase italic tracking-tighter">${c.name}</h3>
-                                            <p class="text-blue-200 text-[9px] font-black uppercase tracking-widest mt-1">Verified Partner</p>
-                                        </div>
-                                    </div>
-                                    <div class="p-6 flex justify-between items-center">
-                                        <div class="flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest"><svg class="w-4 h-4 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 21l-8.228-8.228a6 6 0 1 1 8.486-8.486L12 4.058l.742-.772a6 6 0 1 1 8.486 8.486L12 21z"/></svg> 4.9 Rating</div>
-                                        <div class="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg">Choose</div>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-            else if (state.step === 1) {
-                port.innerHTML = `
-                    <div class="space-y-6">
-                        <div class="px-2"><h2 class="text-3xl font-black text-gray-900 uppercase italic leading-none">Branches</h2><p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-2">${state.clinic.name}</p></div>
-                        <div class="space-y-4">
-                            ${state.clinic.branches.map(b => `
-                                <div onclick="selectBranch('${b.id}')" class="bg-white p-6 rounded-[32px] border border-gray-100 flex items-center justify-between group active:scale-[0.98] transition-all cursor-pointer shadow-sm">
-                                    <div class="flex items-center space-x-5">
-                                        <div class="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner"><svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M3 21h18M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7M4 21V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v17"/></svg></div>
-                                        <div><h4 class="font-black text-gray-900 leading-none uppercase">${b.name}</h4><p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2">View Availability</p></div>
-                                    </div>
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-200 group-hover:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
-            else if (state.step === 2) {
-                const days = Array.from({length: 14}, (_, i) => { let d = new Date(); d.setDate(d.getDate()+i); return d; });
-                const beds = Array.from({length: state.branch.beds}, (_, i) => i + 1);
-                const hours = Array.from({length: state.branch.close - state.branch.open}, (_, i) => state.branch.open + i);
+  Widget _buildStepLine(int step) {
+    return Container(
+      width: 40,
+      height: 2,
+      margin: const EdgeInsets.only(bottom: 20),
+      color: _currentStep > step ? const Color(0xFF2563EB) : const Color(0xFFF1F5F9),
+    );
+  }
 
-                port.innerHTML = `
-                    <div class="space-y-8 pb-10">
-                        <div class="flex space-x-3 overflow-x-auto no-scrollbar pb-2">
-                            ${days.map(d => `
-                                <div onclick="state.date = ${d.getDate()}; render();" class="flex-shrink-0 w-14 py-4 rounded-[22px] border-2 flex flex-col items-center transition-all cursor-pointer ${state.date === d.getDate() ? 'border-blue-600 bg-blue-50' : 'border-gray-50 bg-white text-gray-400'}">
-                                    <span class="text-[8px] font-black uppercase mb-1">${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]}</span>
-                                    <span class="text-sm font-black">${d.getDate()}</span>
-                                </div>
-                            `).join('')}
-                        </div>
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 0:
+        return _buildClinicList();
+      case 1:
+        return _buildBranchList();
+      case 2:
+        return _buildSlotPicker();
+      case 3:
+        return _buildServiceList();
+      default:
+        return const SizedBox();
+    }
+  }
 
-                        <div class="space-y-4">
-                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Select Bed</label>
-                            <div class="flex space-x-2 bg-gray-100 p-1.5 rounded-[24px] shadow-inner">
-                                ${beds.map(b => `
-                                    <button onclick="state.bed = ${b}; render();" class="flex-1 py-3 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all ${state.bed === b ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400'}">Bed ${b}</button>
-                                `).join('')}
-                            </div>
-                        </div>
+  Widget _buildClinicList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(24),
+      itemCount: _clinics.length,
+      itemBuilder: (context, index) {
+        final clinic = _clinics[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (index == 0) ...[
+                const Padding(
+                  padding: EdgeInsets.only(left: 8, bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('CLINICS', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                      SizedBox(height: 4),
+                      Text('FIND A MEDICAL PROVIDER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF2563EB), letterSpacing: 2.5)),
+                    ],
+                  ),
+                ),
+              ],
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedClinic = clinic;
+                    _currentStep = 1;
+                  });
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: Colors.white),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 20))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                        child: Stack(
+                          children: [
+                            Image.network(clinic.image, height: 192, width: double.infinity, fit: BoxFit.cover),
+                            Container(
+                              height: 192,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.8)],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              bottom: 20,
+                              left: 24,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(clinic.name.toUpperCase(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, fontStyle: FontStyle.italic, letterSpacing: -0.5)),
+                                  const SizedBox(height: 4),
+                                  Text('VERIFIED PARTNER', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: const Color(0xFFDEF3FF).withOpacity(0.9), letterSpacing: 2.5)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.favorite, color: Color(0xFF2563EB), size: 16),
+                                SizedBox(width: 8),
+                                Text('4.9 RATING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2563EB),
+                                borderRadius: BorderRadius.circular(12),
+                                boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 10)],
+                              ),
+                              child: const Text('CHOOSE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-                        <div class="space-y-3">
-                            <label class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Select Time</label>
-                            ${hours.map(h => {
-                                const time = h > 12 ? (h-12)+':00 PM' : h+':00 AM';
-                                const isSel = state.slot === time;
-                                return `
-                                    <div onclick="state.slot='${time}'; render();" class="bg-white p-5 rounded-[24px] border-2 transition-all flex items-center justify-between group ${isSel ? 'border-blue-600 bg-blue-50 shadow-md' : 'border-gray-50 active:scale-95 cursor-pointer'}">
-                                        <div class="flex items-center space-x-4">
-                                            <div class="w-10 h-10 rounded-xl flex items-center justify-center ${isSel ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-400'}">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                                            </div>
-                                            <p class="font-black text-gray-900 uppercase italic text-sm">${time}</p>
-                                        </div>
-                                        ${isSel ? '<svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>' : '<div class="w-5 h-5 rounded-full border-2 border-gray-100 group-hover:border-blue-200"></div>'}
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                    </div>
-                `;
-                if(state.slot) addFloatingButton('CONTINUE', () => { state.step = 3; render(); });
-            }
-            else if (state.step === 3) {
-                port.innerHTML = `
-                    <div class="space-y-6">
-                        <div class="px-2"><h2 class="text-3xl font-black text-gray-900 uppercase italic leading-none text-left">Treatment</h2><p class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-2">${state.branch.name} • Bed ${state.bed}</p></div>
-                        <div class="space-y-4">
-                            ${state.clinic.services.map(s => `
-                                <div onclick="state.service = '${s.id}'; render();" class="p-6 rounded-[32px] border-2 flex items-center justify-between transition-all cursor-pointer ${state.service === s.id ? 'border-blue-600 bg-blue-50 shadow-xl' : 'border-gray-50 bg-white'}">
-                                    <div class="flex items-center space-x-4">
-                                        <div class="w-12 h-12 rounded-2xl ${state.service === s.id ? 'bg-blue-600 text-white' : 'bg-emerald-50 text-emerald-600'} flex items-center justify-center shadow-inner transition-colors">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M12 2v20m0-20c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8z"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                                        </div>
-                                        <div><p class="font-black text-gray-900 leading-none uppercase italic">${s.name}</p><p class="text-[9px] text-gray-400 font-bold uppercase mt-1 tracking-widest">${s.dur} session</p></div>
-                                    </div>
-                                    <p class="text-xl font-black text-blue-600">$${s.price}</p>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-                if(state.service) addFloatingButton('CHECKOUT', () => { location.href='checkout.html' });
-            }
-        }
+  Widget _buildBranchList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(24),
+      itemCount: _selectedClinic!.branches.length,
+      itemBuilder: (context, index) {
+        final branch = _selectedClinic!.branches[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (index == 0) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('BRANCHES', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                      const SizedBox(height: 4),
+                      Text(_selectedClinic!.name.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF2563EB), letterSpacing: 2.5)),
+                    ],
+                  ),
+                ),
+              ],
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedBranch = branch;
+                    _selectedBed = 1;
+                    _selectedSlot = null;
+                    _currentStep = 2;
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.business, color: Color(0xFF2563EB), size: 28),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(branch.name.toUpperCase(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                            const SizedBox(height: 4),
+                            const Text('VIEW AVAILABILITY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 24),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-        function updateStepper() {
-            const dots = document.querySelectorAll('.step-dot');
-            const labels = document.querySelectorAll('.step-dot + span');
-            const line = document.getElementById('step-line');
-            line.style.width = (state.step / 3) * 100 + '%';
-            dots.forEach((dot, i) => {
-                if(i <= state.step) {
-                    dot.className = "step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-blue-600 text-white shadow-lg transition-all scale-110";
-                    labels[i].classList.replace('text-gray-300', 'text-blue-600');
+  Widget _buildSlotPicker() {
+    final days = List.generate(14, (i) => DateTime.now().add(Duration(days: i)));
+    final beds = List.generate(_selectedBranch!.beds, (i) => i + 1);
+    final hours = List.generate(_selectedBranch!.closeHour - _selectedBranch!.openHour, (i) => _selectedBranch!.openHour + i);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Date picker
+          SizedBox(
+            height: 70,
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: days.length,
+              itemBuilder: (context, index) {
+                final date = days[index];
+                final isSelected = _selectedDate == date.day;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: InkWell(
+                    onTap: () => setState(() {
+                      _selectedDate = date.day;
+                      _selectedSlot = null;
+                    }),
+                    child: Container(
+                      width: 56,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+                        border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF3F4F6), width: 2),
+                        borderRadius: BorderRadius.circular(22),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'][date.weekday % 7],
+                            style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF9CA3AF)),
+                          ),
+                          const SizedBox(height: 4),
+                          Text('${date.day}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF9CA3AF))),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Bed selector
+          const Text('SELECT BED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              children: beds.map((bed) {
+                final isSelected = _selectedBed == bed;
+                return Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() {
+                      _selectedBed = bed;
+                      _selectedSlot = null;
+                    }),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? const Color(0xFF2563EB) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 8)] : null,
+                      ),
+                      child: Text(
+                        'BED $bed',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isSelected ? Colors.white : const Color(0xFF9CA3AF), letterSpacing: 2.5),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Time slots
+          const Text('SELECT TIME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+          const SizedBox(height: 12),
+          ...hours.map((hour) {
+            final time = hour > 12 ? '${hour - 12}:00 PM' : '$hour:00 AM';
+            final isSelected = _selectedSlot == time;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: InkWell(
+                onTap: () => setState(() => _selectedSlot = time),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+                    border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF3F4F6), width: 2),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.1), blurRadius: 10)] : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 8)] : null,
+                        ),
+                        child: Icon(Icons.access_time, color: isSelected ? Colors.white : const Color(0xFF9CA3AF), size: 20),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(time, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -0.5)),
+                      const Spacer(),
+                      if (isSelected)
+                        const Icon(Icons.check, color: Color(0xFF2563EB), size: 20)
+                      else
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFF1F5F9), width: 2),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+          const SizedBox(height: 100),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(24),
+      itemCount: _selectedClinic!.services.length,
+      itemBuilder: (context, index) {
+        final service = _selectedClinic!.services[index];
+        final isSelected = _selectedService == service.id;
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (index == 0) ...[
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('TREATMENT', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                      const SizedBox(height: 4),
+                      Text('${_selectedBranch!.name.toUpperCase()} • BED $_selectedBed', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF2563EB), letterSpacing: 2.5)),
+                    ],
+                  ),
+                ),
+              ],
+              InkWell(
+                onTap: () => setState(() => _selectedService = service.id),
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFEFF6FF) : Colors.white,
+                    border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF3F4F6), width: 2),
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.1), blurRadius: 20)] : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(Icons.healing, color: isSelected ? Colors.white : const Color(0xFF10B981), size: 24),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(service.name.toUpperCase(), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -0.5)),
+                            const SizedBox(height: 4),
+                            Text('${service.duration} SESSION', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                          ],
+                        ),
+                      ),
+                      Text('\$${service.price.toStringAsFixed(0)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  bool _shouldShowFloatingButton() {
+    if (_currentStep == 2 && _selectedSlot != null) return true;
+    if (_currentStep == 3 && _selectedService != null) return true;
+    return false;
+  }
+
+  Widget _buildFloatingButton() {
+    final buttonText = _currentStep == 2 ? 'CONTINUE' : 'CHECKOUT';
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: const Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, -10))],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('PHASE FINAL', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                SizedBox(height: 4),
+                Text('PROCEED', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+              ],
+            ),
+            InkWell(
+              onTap: () {
+                if (_currentStep == 2) {
+                  setState(() => _currentStep = 3);
                 } else {
-                    dot.className = "step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300 transition-all";
-                    labels[i].classList.replace('text-blue-600', 'text-gray-300');
+                  // Navigate to checkout
                 }
-            });
-        }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                ),
+                child: Row(
+                  children: [
+                    Text(buttonText, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white)),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-        function addFloatingButton(text, action) {
-            const old = document.getElementById('float-bar'); if(old) old.remove();
-            const bar = document.createElement('div');
-            bar.id = 'float-bar';
-            bar.className = "fixed bottom-0 left-0 right-0 p-8 bg-white border-t border-gray-50 flex items-center justify-between shadow-2xl z-40 max-w-md mx-auto rounded-t-[40px] animate-in";
-            bar.innerHTML = `
-                <div class="text-left"><p class="text-[8px] font-black text-gray-400 uppercase tracking-[0.3em]">Phase Final</p><p class="text-2xl font-black text-gray-900 tracking-tighter italic uppercase">${text}</p></div>
-                <button onclick="(${action})()" class="bg-blue-600 text-white px-10 py-5 rounded-[24px] font-black text-sm shadow-xl shadow-blue-100 flex items-center active:scale-95 transition-all">
-                    PROCEED <svg class="w-5 h-5 ml-2" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
-                </button>`;
-            document.body.appendChild(bar);
-        }
+class Clinic {
+  final String id;
+  final String name;
+  final String image;
+  final List<Branch> branches;
+  final List<Service> services;
 
-        function selectClinic(id) { state.clinic = CLINICS_DATA.find(c => c.id === id); state.step = 1; render(); }
-        function selectBranch(id) { state.branch = state.clinic.branches.find(b => b.id === id); state.step = 2; render(); }
-        function handleBack() { 
-            const bar = document.getElementById('float-bar'); if(bar) bar.remove();
-            if(state.step > 0) { state.step--; render(); } else window.history.back(); 
-        }
+  Clinic({required this.id, required this.name, required this.image, required this.branches, required this.services});
+}
 
-        window.onload = render;
-    </script>
-</body>
-</html>
+class Branch {
+  final String id;
+  final String name;
+  final int beds;
+  final int openHour;
+  final int closeHour;
+
+  Branch({required this.id, required this.name, required this.beds, required this.openHour, required this.closeHour});
+}
+
+class Service {
+  final String id;
+  final String name;
+  final double price;
+  final String duration;
+
+  Service({required this.id, required this.name, required this.price, required this.duration});
+}

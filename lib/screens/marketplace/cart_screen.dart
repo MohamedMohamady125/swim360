@@ -1,211 +1,454 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - My Cart</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .shadow-soft { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
-    </style>
-</head>
-<body class="flex flex-col min-h-screen no-scrollbar">
+import 'package:flutter/material.dart';
 
-    <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50">
-        <div class="flex items-center space-x-4">
-            <button onclick="window.history.back()" class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-            </button>
-            <div>
-                <h1 class="text-2xl font-black text-gray-900 tracking-tight uppercase leading-none">My Cart</h1>
-                <p id="cart-count-header" class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Items Selected</p>
-            </div>
-        </div>
-        <button onclick="clearCart()" class="text-[10px] font-black text-rose-500 uppercase tracking-widest bg-rose-50 px-3 py-2 rounded-xl active:scale-90 transition-all">Clear All</button>
-    </header>
+class CartScreen extends StatefulWidget {
+  const CartScreen({super.key});
 
-    <main class="flex-grow p-6 space-y-6 animate-in text-left">
-        
-        <div id="cart-items-container" class="space-y-4">
-            </div>
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
 
-        <div id="promo-section" class="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
-            <div class="flex items-center space-x-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
-                <h3 class="text-xs font-black text-gray-400 uppercase tracking-widest">Offers & Coupons</h3>
-            </div>
-            <div class="flex space-x-2">
-                <input type="text" id="promo-input" placeholder="SWIM10" 
-                    class="flex-grow p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold uppercase focus:ring-2 focus:ring-blue-500 outline-none shadow-inner transition-all">
-                <button onclick="applyPromo()" class="px-6 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg">Apply</button>
-            </div>
-            <p id="promo-message" class="text-[10px] font-black uppercase tracking-widest hidden"></p>
-        </div>
+class _CartScreenState extends State<CartScreen> {
+  final TextEditingController _promoController = TextEditingController();
+  final double _serviceFee = 2.50;
+  double _discountPercent = 0;
+  String? _promoMessage;
+  bool _promoSuccess = false;
 
-        <div id="summary-section" class="bg-white p-6 rounded-[32px] shadow-soft border border-gray-100 space-y-5">
-            <h2 class="text-xs font-black text-gray-400 uppercase tracking-[0.2em] border-b border-gray-50 pb-3">Order Summary</h2>
-            
-            <div class="space-y-3">
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Subtotal</span>
-                    <span id="subtotal" class="text-sm font-black text-gray-800">$0.00</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Delivery Fees</span>
-                    <span class="text-sm font-black text-emerald-500 uppercase tracking-tighter">Free</span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Fees</span>
-                    <span id="service-fees" class="text-sm font-black text-gray-800">$2.50</span>
-                </div>
-                <div id="promo-discount-row" class="hidden justify-between items-center">
-                    <span class="text-[10px] font-black text-blue-600 uppercase tracking-widest">Discount (10%)</span>
-                    <span id="promo-discount-val" class="text-sm font-black text-blue-600">-$0.00</span>
-                </div>
-                
-                <div class="flex justify-between items-end pt-4 border-t border-gray-50">
-                    <div>
-                        <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Price</p>
-                        <p id="grand-total" class="text-4xl font-black text-gray-900 tracking-tighter leading-none">$0.00</p>
-                    </div>
-                    <button onclick="proceedToCheckout()" class="bg-blue-600 text-white px-8 py-4 rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
-                        Checkout
-                    </button>
-                </div>
-            </div>
-        </div>
+  List<CartItem> _cartItems = [];
 
-        <div id="empty-state" class="hidden flex-col items-center justify-center py-20 text-center animate-in">
-            <div class="w-24 h-24 bg-blue-50 rounded-[40px] flex items-center justify-center mb-6 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-            </div>
-            <h2 class="text-2xl font-black text-gray-900 uppercase tracking-tight">Cart is Empty</h2>
-            <button onclick="location.reload()" class="bg-blue-600 text-white px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all mt-8">Start Shopping</button>
-        </div>
+  double get _subtotal => _cartItems.fold(0, (sum, item) => sum + (item.price * item.quantity));
+  double get _discountAmount => _subtotal * (_discountPercent / 100);
+  double get _total => (_subtotal + _serviceFee) - _discountAmount;
 
-    </main>
+  void _applyPromo() {
+    final code = _promoController.text.trim().toUpperCase();
+    setState(() {
+      if (code == 'SWIM10') {
+        _discountPercent = 10;
+        _promoMessage = '10% Discount Applied!';
+        _promoSuccess = true;
+      } else {
+        _discountPercent = 0;
+        _promoMessage = 'Invalid Code';
+        _promoSuccess = false;
+      }
+    });
+  }
 
-    <script>
-        let cartItems = [
-            { id: 'c1', name: 'Pro Racing Goggles', brand: 'Speedo', price: 39.99, size: 'Adult', color: 'Blue', quantity: 1, image: 'https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?q=80&w=400&auto=format&fit=crop' },
-            { id: 'c2', name: 'Silicone Swim Cap', brand: 'Arena', price: 12.50, size: 'One Size', color: 'Black', quantity: 2, image: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?q=80&w=400&auto=format&fit=crop' }
-        ];
+  void _updateQuantity(String id, int change) {
+    setState(() {
+      final item = _cartItems.firstWhere((i) => i.id == id);
+      item.quantity += change;
+      if (item.quantity < 1) {
+        _removeItem(id);
+      }
+    });
+  }
 
-        const SERVICE_FEE_VAL = 2.50;
-        let discountPercent = 0;
+  void _removeItem(String id) {
+    setState(() {
+      _cartItems.removeWhere((i) => i.id == id);
+    });
+  }
 
-        function renderCart() {
-            const container = document.getElementById('cart-items-container');
-            const summary = document.getElementById('summary-section');
-            const promo = document.getElementById('promo-section');
-            const emptyState = document.getElementById('empty-state');
-            const headerCount = document.getElementById('cart-count-header');
+  void _clearCart() {
+    setState(() {
+      _cartItems.clear();
+      _discountPercent = 0;
+      _promoMessage = null;
+      _promoController.clear();
+    });
+  }
 
-            if (cartItems.length === 0) {
-                container.classList.add('hidden'); summary.classList.add('hidden');
-                promo.classList.add('hidden'); emptyState.classList.remove('hidden');
-                headerCount.textContent = "0 Items";
-                return;
-            }
+  @override
+  void dispose() {
+    _promoController.dispose();
+    super.dispose();
+  }
 
-            container.classList.remove('hidden'); summary.classList.remove('hidden');
-            promo.classList.remove('hidden'); emptyState.classList.add('hidden');
-            headerCount.textContent = `${cartItems.length} Items Selected`;
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: _cartItems.isEmpty ? _buildEmptyState() : _buildCartContent(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            container.innerHTML = cartItems.map(item => `
-                <div class="bg-white p-4 rounded-[32px] flex space-x-4 border border-gray-50 shadow-sm animate-in">
-                    <div class="w-24 h-24 rounded-[24px] bg-gray-100 overflow-hidden shadow-inner flex-shrink-0">
-                        <img src="${item.image}" alt="${item.name}" class="w-full h-full object-cover">
-                    </div>
-                    
-                    <div class="flex-grow flex flex-col justify-between py-1">
-                        <div>
-                            <div class="flex justify-between items-start">
-                                <h3 class="font-black text-gray-900 text-lg leading-tight uppercase tracking-tighter">${item.name}</h3>
-                                <button onclick="removeItem('${item.id}')" class="p-1 text-gray-300 hover:text-rose-500 transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18m-2 0v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6m3 0V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-                                </button>
-                            </div>
-                            <p class="text-[9px] font-black text-blue-600 uppercase tracking-widest mt-1">${item.brand} • ${item.size}</p>
-                        </div>
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              InkWell(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new, size: 24),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('MY CART', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                  Text(
+                    _cartItems.isEmpty ? 'ITEMS SELECTED' : '${_cartItems.length} ITEMS SELECTED',
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 2.5),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (_cartItems.isNotEmpty)
+            InkWell(
+              onTap: _clearCart,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text('CLEAR ALL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), letterSpacing: 2.5)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
-                        <div class="flex justify-between items-center">
-                            <span class="text-xl font-black text-gray-900 tracking-tighter">$${item.price.toFixed(2)}</span>
-                            
-                            <div class="flex items-center space-x-3 bg-gray-50 rounded-2xl p-1 border border-gray-100 shadow-inner">
-                                <button onclick="updateQty('${item.id}', -1)" class="w-8 h-8 rounded-xl bg-white flex items-center justify-center font-black text-gray-900 shadow-sm active:scale-90 transition-all">-</button>
-                                <span class="font-black text-xs text-gray-900 min-w-[12px] text-center">${item.quantity}</span>
-                                <button onclick="updateQty('${item.id}', 1)" class="w-8 h-8 rounded-xl bg-white flex items-center justify-center font-black text-gray-900 shadow-sm active:scale-90 transition-all">+</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+  Widget _buildCartContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          ..._cartItems.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: _buildCartItem(item),
+          )),
+          const SizedBox(height: 24),
+          _buildPromoSection(),
+          const SizedBox(height: 24),
+          _buildSummarySection(),
+        ],
+      ),
+    );
+  }
 
-            calculateTotals();
-        }
+  Widget _buildCartItem(CartItem item) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFFF3F4F6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: Image.network(item.image, fit: BoxFit.cover),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.name.toUpperCase(),
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _removeItem(item.id),
+                      child: const Icon(Icons.delete_outline, color: Color(0xFF9CA3AF), size: 20),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${item.brand} • ${item.size}'.toUpperCase(),
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), letterSpacing: 2.5),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('\$${item.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: Row(
+                        children: [
+                          InkWell(
+                            onTap: () => _updateQuantity(item.id, -1),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(child: Text('-', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 32,
+                            child: Text('${item.quantity}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                          ),
+                          InkWell(
+                            onTap: () => _updateQuantity(item.id, 1),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(child: Text('+', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900))),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        function calculateTotals() {
-            const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-            const discountAmount = subtotal * (discountPercent / 100);
-            const total = (subtotal + SERVICE_FEE_VAL) - discountAmount;
+  Widget _buildPromoSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.local_offer, color: Color(0xFF2563EB), size: 16),
+              SizedBox(width: 8),
+              Text('OFFERS & COUPONS', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _promoController,
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: InputDecoration(
+                    hintText: 'SWIM10',
+                    hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                    filled: true,
+                    fillColor: const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(width: 8),
+              InkWell(
+                onTap: _applyPromo,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF111827),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 15)],
+                  ),
+                  child: const Text('APPLY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+                ),
+              ),
+            ],
+          ),
+          if (_promoMessage != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _promoMessage!,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: _promoSuccess ? const Color(0xFF10B981) : const Color(0xFFEF4444), letterSpacing: 2.5),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
-            document.getElementById('subtotal').textContent = `$${subtotal.toFixed(2)}`;
-            document.getElementById('grand-total').textContent = `$${total.toFixed(2)}`;
-            
-            const promoRow = document.getElementById('promo-discount-row');
-            if (discountAmount > 0) {
-                promoRow.classList.remove('hidden'); promoRow.classList.add('flex');
-                document.getElementById('promo-discount-val').textContent = `-$${discountAmount.toFixed(2)}`;
-            } else {
-                promoRow.classList.add('hidden'); promoRow.classList.remove('flex');
-            }
-        }
+  Widget _buildSummarySection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 20))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('ORDER SUMMARY', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+          Container(
+            margin: const EdgeInsets.only(top: 12, bottom: 20),
+            height: 1,
+            color: const Color(0xFFF3F4F6),
+          ),
+          _buildSummaryRow('SUBTOTAL', '\$${_subtotal.toStringAsFixed(2)}'),
+          const SizedBox(height: 12),
+          _buildSummaryRow('DELIVERY FEES', 'FREE', valueColor: const Color(0xFF10B981)),
+          const SizedBox(height: 12),
+          _buildSummaryRow('SERVICE FEES', '\$${_serviceFee.toStringAsFixed(2)}'),
+          if (_discountAmount > 0) ...[
+            const SizedBox(height: 12),
+            _buildSummaryRow('DISCOUNT (10%)', '-\$${_discountAmount.toStringAsFixed(2)}', valueColor: const Color(0xFF2563EB)),
+          ],
+          const SizedBox(height: 24),
+          Container(
+            height: 1,
+            color: const Color(0xFFF3F4F6),
+          ),
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('TOTAL PRICE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                  const SizedBox(height: 4),
+                  Text('\$${_total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, letterSpacing: -1.5)),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  // Navigate to checkout
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB),
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 8))],
+                  ),
+                  child: const Text('CHECKOUT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
-        function applyPromo() {
-            const code = document.getElementById('promo-input').value.trim().toUpperCase();
-            const msg = document.getElementById('promo-message');
-            if (code === 'SWIM10') {
-                discountPercent = 10;
-                msg.textContent = '10% Discount Applied!';
-                msg.className = 'text-[10px] font-black uppercase tracking-widest text-emerald-500';
-            } else {
-                discountPercent = 0;
-                msg.textContent = 'Invalid Code';
-                msg.className = 'text-[10px] font-black uppercase tracking-widest text-rose-500';
-            }
-            msg.classList.remove('hidden');
-            calculateTotals();
-        }
+  Widget _buildSummaryRow(String label, String value, {Color? valueColor}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+        Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: valueColor ?? const Color(0xFF111827))),
+      ],
+    );
+  }
 
-        function updateQty(id, change) {
-            const item = cartItems.find(i => i.id === id);
-            if (item) {
-                item.quantity += change;
-                if (item.quantity < 1) removeItem(id);
-                else renderCart();
-            }
-        }
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 96,
+            height: 96,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(40),
+            ),
+            child: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF93C5FD), size: 48),
+          ),
+          const SizedBox(height: 24),
+          const Text('CART IS EMPTY', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+          const SizedBox(height: 32),
+          InkWell(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2563EB),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20)],
+              ),
+              child: const Text('START SHOPPING', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-        function removeItem(id) {
-            cartItems = cartItems.filter(i => i.id !== id);
-            renderCart();
-        }
+class CartItem {
+  final String id;
+  final String name;
+  final String brand;
+  final double price;
+  final String size;
+  final String color;
+  int quantity;
+  final String image;
 
-        function clearCart() {
-            cartItems = []; renderCart();
-        }
-
-        function proceedToCheckout() {
-            window.location.href = 'checkout_screen.html';
-        }
-
-        window.onload = renderCart;
-    </script>
-</body>
-</html>
+  CartItem({
+    required this.id,
+    required this.name,
+    required this.brand,
+    required this.price,
+    required this.size,
+    required this.color,
+    required this.quantity,
+    required this.image,
+  });
+}

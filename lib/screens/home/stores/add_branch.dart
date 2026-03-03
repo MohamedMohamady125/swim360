@@ -1,255 +1,314 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Plus, MapPin, Phone, Clock, Truck, 
-  ChevronDown, Check, X, ArrowLeft, 
-  Building2, Globe, Navigation, Smartphone,
-  CheckCircle, AlertCircle
-} from 'lucide-react';
+import 'package:flutter/material.dart';
 
-// --- DATA DEFINITIONS ---
-const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Luxor", "Matrouh", "Minya", "Monufia", "New Valley", "North Sinai", "Port Said", "Qalyubia", "Qena", "Sharqia", "Sohag", "South Sinai", "Suez"];
+class AddBranchScreen extends StatefulWidget {
+  const AddBranchScreen({super.key});
 
-export default function App() {
-    const [notification, setNotification] = useState(null);
-    const [loading, setLoading] = useState(false);
+  @override
+  State<AddBranchScreen> createState() => _AddBranchScreenState();
+}
 
-    // Form State for Branch Registration
-    const [form, setForm] = useState({
-        governorate: 'Cairo',
-        city: '',
-        location_name: '',
-        location_url: '',
-        branch_phone: '',
-        opening_hour: '08',
-        opening_minute: '00',
-        opening_ampm: 'AM',
-        closing_hour: '05',
-        closing_minute: '00',
-        closing_ampm: 'PM',
-        delivery_time_range: ''
+class _AddBranchScreenState extends State<AddBranchScreen> {
+  final List<String> governorates = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Luxor", "Matrouh", "Minya", "Monufia", "New Valley", "North Sinai", "Port Said", "Qalyubia", "Qena", "Sharqia", "Sohag", "South Sinai", "Suez"];
+
+  String _governorate = 'Cairo';
+  String _city = '';
+  String _locationName = '';
+  String _locationUrl = '';
+  String _branchPhone = '';
+  String _openingHour = '08';
+  String _openingMinute = '00';
+  String _openingAmpm = 'AM';
+  String _closingHour = '05';
+  String _closingMinute = '00';
+  String _closingAmpm = 'PM';
+  String _deliveryTimeRange = '';
+  bool _isLoading = false;
+
+  void _handleSubmit() {
+    if (_city.isEmpty || _locationName.isEmpty || _branchPhone.isEmpty || _deliveryTimeRange.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill in all required fields'), backgroundColor: Color(0xFFEF4444)),
+      );
+      return;
+    }
+
+    final rangePattern = RegExp(r'^\d+(-\d+)?$');
+    if (!rangePattern.hasMatch(_deliveryTimeRange)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a valid range (e.g. 3 or 3-5)'), backgroundColor: Color(0xFFEF4444)),
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Branch Registered Successfully!'), backgroundColor: Color(0xFF1F2937)),
+      );
     });
+  }
 
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                        ),
+                        child: const Icon(Icons.business, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Register Branch', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                          SizedBox(height: 2),
+                          Text('STORE EXPANSION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 24)),
+                ],
+              ),
+            ),
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
-        // Basic validation for delivery range pattern (e.g., 3 or 3-5)
-        const rangePattern = /^\d+(-\d+)?$/;
-        if (!rangePattern.test(form.delivery_time_range)) {
-            showNotify("Please enter a valid range (e.g. 3 or 3-5)", "error");
-            return;
-        }
+            // Form
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  // 1. Location Information
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(children: [Icon(Icons.location_on, color: Color(0xFF2563EB), size: 16), SizedBox(width: 8), Text('LOCATION DETAILS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0))]),
+                        const SizedBox(height: 20),
+                        const Text('Governorate', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(16)),
+                          child: DropdownButton<String>(
+                            value: _governorate,
+                            isExpanded: true,
+                            underline: const SizedBox(),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                            items: governorates.map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
+                            onChanged: (val) => setState(() => _governorate = val!),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('City', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          onChanged: (val) => setState(() => _city = val),
+                          decoration: InputDecoration(hintText: 'e.g. Maadi or Nasr City', hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)), filled: true, fillColor: const Color(0xFFF9FAFB), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Store Location Name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          onChanged: (val) => setState(() => _locationName = val),
+                          decoration: InputDecoration(hintText: 'e.g. Red Sea Mall Branch', hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)), filled: true, fillColor: const Color(0xFFF9FAFB), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Google Maps URL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          onChanged: (val) => setState(() => _locationUrl = val),
+                          decoration: InputDecoration(
+                            hintText: 'Paste link here...',
+                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                            prefixIcon: const Icon(Icons.navigation, color: Color(0xFFD1D5DB), size: 16),
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-        if (!form.city || !form.location_name || !form.branch_phone) {
-            showNotify("Please fill in all required fields", "error");
-            return;
-        }
+                  // 2. Contact & Hours
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: const Color(0xFFF3F4F6)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(children: [Icon(Icons.access_time, color: Color(0xFF2563EB), size: 16), SizedBox(width: 8), Text('OPERATIONS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0))]),
+                        const SizedBox(height: 20),
+                        const Text('Branch Phone Number', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          onChanged: (val) => setState(() => _branchPhone = val),
+                          keyboardType: TextInputType.phone,
+                          decoration: InputDecoration(
+                            hintText: '+20',
+                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                            prefixIcon: const Icon(Icons.phone, color: Color(0xFFD1D5DB), size: 16),
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildTimeSelector('Opening Time', 'opening'),
+                        const SizedBox(height: 16),
+                        _buildTimeSelector('Closing Time', 'closing'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-        setLoading(true);
-        // Simulate API Call
-        setTimeout(() => {
-            setLoading(false);
-            showNotify("Branch Registered Successfully!");
-            // Reset logic or navigation can happen here
-        }, 1500);
-    };
+                  // 3. Fulfillment
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: const Color(0xFFF3F4F6)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(children: [Icon(Icons.local_shipping, color: Color(0xFF2563EB), size: 16), SizedBox(width: 8), Text('FULFILLMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0))]),
+                        const SizedBox(height: 16),
+                        const Text('Delivery Time Range (Days)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 6),
+                        TextField(
+                          onChanged: (val) => setState(() => _deliveryTimeRange = val),
+                          decoration: InputDecoration(hintText: 'e.g. 3 or 3-5', hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)), filled: true, fillColor: const Color(0xFFF9FAFB), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text('Accepts a single number or a range separated by a hyphen.', style: TextStyle(fontSize: 9, color: Color(0xFF9CA3AF), fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
 
-    const TimeSelector = ({ label, prefix }) => (
-        <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{label}</label>
-            <div className="flex space-x-2">
-                <select 
-                    value={form[`${prefix}_hour`]} 
-                    onChange={e => setForm({...form, [`${prefix}_hour`]: e.target.value})}
-                    className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    {Array.from({length: 12}, (_, i) => String(i + 1).padStart(2, '0')).map(h => <option key={h} value={h}>{h}</option>)}
-                </select>
-                <select 
-                    value={form[`${prefix}_minute`]} 
-                    onChange={e => setForm({...form, [`${prefix}_minute`]: e.target.value})}
-                    className="flex-1 p-3 bg-gray-50 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    {["00", "15", "30", "45"].map(m => <option key={m} value={m}>{m}</option>)}
-                </select>
-                <select 
-                    value={form[`${prefix}_ampm`]} 
-                    onChange={e => setForm({...form, [`${prefix}_ampm`]: e.target.value})}
-                    className="w-16 p-3 bg-gray-50 border-none rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                    <option value="AM">AM</option>
-                    <option value="PM">PM</option>
-                </select>
-            </div>
-        </div>
+                  // Submit Button
+                  InkWell(
+                    onTap: _isLoading ? null : _handleSubmit,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(color: _isLoading ? const Color(0xFF9CA3AF) : const Color(0xFF2563EB), borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 8))]),
+                      child: Center(child: Text(_isLoading ? 'REGISTERING...' : 'REGISTER BRANCH', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0))),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
+  }
 
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 pb-12">
-            
-            {/* Header */}
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3 text-left">
-                        <div className="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
-                            <Building2 className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tight">Register Branch</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Store Expansion</p>
-                        </div>
-                    </div>
-                    <button onClick={() => window.history.back()} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                        <X className="w-6 h-6" />
-                    </button>
-                </div>
-            </header>
-
-            <main className="p-6 space-y-6 animate-in">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    
-                    {/* 1. Location Information Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5 text-left">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <MapPin className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Location Details</h3>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Governorate</label>
-                                <select 
-                                    value={form.governorate} 
-                                    onChange={e => setForm({...form, governorate: e.target.value})}
-                                    className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                                >
-                                    {GOVERNORATES.map(g => <option key={g} value={g}>{g}</option>)}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">City</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    placeholder="e.g. Maadi or Nasr City" 
-                                    value={form.city} 
-                                    onChange={e => setForm({...form, city: e.target.value})}
-                                    className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Store Location Name</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    placeholder="e.g. Red Sea Mall Branch" 
-                                    value={form.location_name} 
-                                    onChange={e => setForm({...form, location_name: e.target.value})}
-                                    className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Google Maps URL</label>
-                                <div className="relative">
-                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                                    <input 
-                                        type="url" 
-                                        required
-                                        placeholder="Paste link here..." 
-                                        value={form.location_url} 
-                                        onChange={e => setForm({...form, location_url: e.target.value})}
-                                        className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 2. Contact & Hours Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6 text-left">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Operations</h3>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Branch Phone Number</label>
-                                <div className="relative">
-                                    <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                                    <input 
-                                        type="tel" 
-                                        required
-                                        placeholder="+20" 
-                                        value={form.branch_phone} 
-                                        onChange={e => setForm({...form, branch_phone: e.target.value})}
-                                        className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 gap-4 pt-2">
-                                <TimeSelector label="Opening Time" prefix="opening" />
-                                <TimeSelector label="Closing Time" prefix="closing" />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. Fulfillment Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4 text-left">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Truck className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Fulfillment</h3>
-                        </div>
-                        
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Delivery Time Range (Days)</label>
-                            <input 
-                                type="text" 
-                                required
-                                placeholder="e.g. 3 or 3-5" 
-                                value={form.delivery_time_range} 
-                                onChange={e => setForm({...form, delivery_time_range: e.target.value})}
-                                className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                            />
-                            <p className="text-[9px] text-gray-400 font-bold mt-2 px-1">Accepts a single number or a range separated by a hyphen.</p>
-                        </div>
-                    </div>
-
-                    {/* Submit Button */}
-                    <div className="pt-4">
-                        <button 
-                            type="submit" 
-                            disabled={loading}
-                            className={`w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-[0.2em] ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110'}`}
-                        >
-                            {loading ? 'Registering...' : 'Register Branch'}
-                        </button>
-                    </div>
-                </form>
-            </main>
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
-        </div>
+  Widget _buildTimeSelector(String label, String prefix) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)),
+                child: DropdownButton<String>(
+                  value: prefix == 'opening' ? _openingHour : _closingHour,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black),
+                  items: List.generate(12, (i) => (i + 1).toString().padLeft(2, '0')).map((h) => DropdownMenuItem(value: h, child: Text(h))).toList(),
+                  onChanged: (val) => setState(() {
+                    if (prefix == 'opening') {
+                      _openingHour = val!;
+                    } else {
+                      _closingHour = val!;
+                    }
+                  }),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)),
+                child: DropdownButton<String>(
+                  value: prefix == 'opening' ? _openingMinute : _closingMinute,
+                  isExpanded: true,
+                  underline: const SizedBox(),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black),
+                  items: ["00", "15", "30", "45"].map((m) => DropdownMenuItem(value: m, child: Text(m))).toList(),
+                  onChanged: (val) => setState(() {
+                    if (prefix == 'opening') {
+                      _openingMinute = val!;
+                    } else {
+                      _closingMinute = val!;
+                    }
+                  }),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 64,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)),
+              child: DropdownButton<String>(
+                value: prefix == 'opening' ? _openingAmpm : _closingAmpm,
+                underline: const SizedBox(),
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black),
+                items: ["AM", "PM"].map((ap) => DropdownMenuItem(value: ap, child: Text(ap))).toList(),
+                onChanged: (val) => setState(() {
+                  if (prefix == 'opening') {
+                    _openingAmpm = val!;
+                  } else {
+                    _closingAmpm = val!;
+                  }
+                }),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
+  }
 }

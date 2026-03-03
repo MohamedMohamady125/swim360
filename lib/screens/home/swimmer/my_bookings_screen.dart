@@ -1,314 +1,733 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swim 360 - My Bookings</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F8FAFC;
-            -webkit-tap-highlight-color: transparent;
-            color: #0f172a;
-        }
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-        .premium-shadow {
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
-        }
+class MyBookingsScreen extends StatefulWidget {
+  const MyBookingsScreen({super.key});
 
-        /* Digital Ticket Aesthetics */
-        .ticket-card {
-            background: white;
-            position: relative;
-            border-radius: 28px;
-            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-            overflow: hidden;
-        }
+  @override
+  State<MyBookingsScreen> createState() => _MyBookingsScreenState();
+}
 
-        .ticket-card:active {
-            transform: scale(0.97);
-        }
+class _MyBookingsScreenState extends State<MyBookingsScreen> {
+  String _currentTab = 'upcoming';
+  String _currentFilter = 'all';
 
-        /* Perforated holes on the sides */
-        .ticket-card::before, .ticket-card::after {
-            content: '';
-            position: absolute;
-            left: -12px;
-            top: 68%;
-            width: 24px;
-            height: 24px;
-            background-color: #F8FAFC;
-            border-radius: 50%;
-            z-index: 10;
-        }
+  final List<Booking> _bookings = [];
 
-        .ticket-card::after {
-            left: auto;
-            right: -12px;
-        }
+  List<Booking> get _filteredBookings {
+    return _bookings.where((b) {
+      final tabMatch = _currentTab == 'upcoming' ? b.status == 'confirmed' : b.status == 'completed';
+      final filterMatch = _currentFilter == 'all' || b.type == _currentFilter;
+      return tabMatch && filterMatch;
+    }).toList();
+  }
 
-        .ticket-divider {
-            position: absolute;
-            top: 72%;
-            left: 24px;
-            right: 24px;
-            border-top: 2px dashed #f1f5f9;
-        }
+  Color _getTypeColor(String type) {
+    switch (type) {
+      case 'academy':
+        return const Color(0xFF2563EB);
+      case 'clinic':
+        return const Color(0xFF10B981);
+      case 'event':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF2563EB);
+    }
+  }
 
-        /* Color-Coded Accents */
-        .card-academy { border-top: 8px solid #2563eb; }
-        .card-clinic { border-top: 8px solid #10b981; }
-        .card-event { border-top: 8px solid #ef4444; }
+  Color _getTypeBgColor(String type) {
+    switch (type) {
+      case 'academy':
+        return const Color(0xFFEFF6FF);
+      case 'clinic':
+        return const Color(0xFFECFDF5);
+      case 'event':
+        return const Color(0xFFFEF2F2);
+      default:
+        return const Color(0xFFEFF6FF);
+    }
+  }
 
-        .bg-academy { background-color: #eff6ff; color: #1e40af; }
-        .bg-clinic { background-color: #ecfdf5; color: #065f46; }
-        .bg-event { background-color: #fef2f2; color: #991b1b; }
+  void _showBookingDetails(Booking booking) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildDetailModal(booking),
+    );
+  }
 
-        /* Filter Chips */
-        .filter-chip {
-            padding: 10px 20px;
-            border-radius: 16px;
-            font-size: 0.85rem;
-            font-weight: 800;
-            white-space: nowrap;
-            transition: all 0.2s;
-            background: white;
-            color: #94a3b8;
-            border: 2px solid #f1f5f9;
-        }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                border: const Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(100),
+                          ),
+                          child: const Icon(Icons.arrow_back, size: 24, color: Color(0xFF64748B)),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Text(
+                        'My Bookings',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: const Color(0xFFDCEEFE), width: 2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.network(
+                        'https://placehold.co/100x100/2563eb/white?text=Y',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-        .filter-chip.active {
-            background: #0f172a;
-            color: white;
-            border-color: #0f172a;
-            box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.2);
-        }
+            // Tabs
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+              child: Row(
+                children: [
+                  _buildTab('Upcoming', 'upcoming'),
+                  const SizedBox(width: 32),
+                  _buildTab('History', 'past'),
+                ],
+              ),
+            ),
 
-        .whatsapp-brand {
-            background-color: #25D366;
-            box-shadow: 0 10px 20px -5px rgba(37, 211, 102, 0.4);
-        }
+            // Filters
+            SizedBox(
+              height: 60,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                children: [
+                  _buildFilterChip('All Bookings', 'all'),
+                  const SizedBox(width: 12),
+                  _buildFilterChip('Academies', 'academy'),
+                  const SizedBox(width: 12),
+                  _buildFilterChip('Clinics', 'clinic'),
+                  const SizedBox(width: 12),
+                  _buildFilterChip('Events', 'event'),
+                ],
+              ),
+            ),
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+            // Bookings List
+            Expanded(
+              child: _filteredBookings.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.calendar_today, size: 64, color: Colors.grey.withOpacity(0.3)),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Nothing found here',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF9CA3AF),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(24),
+                      itemCount: _filteredBookings.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: _buildBookingCard(_filteredBookings[index], index),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-        .animate-item {
-            opacity: 0;
-            animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
+  Widget _buildTab(String label, String value) {
+    final isActive = _currentTab == value;
+    return InkWell(
+      onTap: () => setState(() => _currentTab = value),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              color: isActive ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
+            ),
+          ),
+          const SizedBox(height: 8),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: isActive ? 32 : 0,
+            height: 6,
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
-</head>
-<body class="max-w-md mx-auto min-h-screen pb-20">
+  Widget _buildFilterChip(String label, String value) {
+    final isActive = _currentFilter == value;
+    return InkWell(
+      onTap: () => setState(() => _currentFilter = value),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF0F172A) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+            width: 2,
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF0F172A).withOpacity(0.2),
+                    blurRadius: 15,
+                    offset: const Offset(0, 10),
+                  ),
+                ]
+              : [],
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: isActive ? Colors.white : const Color(0xFF94A3B8),
+          ),
+        ),
+      ),
+    );
+  }
 
-    <!-- Premium Header -->
-    <header class="px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-xl z-30 border-b border-slate-50">
-        <div class="flex items-center space-x-4">
-            <button onclick="window.history.back()" class="p-2 -ml-2 hover:bg-slate-100 rounded-full transition text-slate-800">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"></path></svg>
-            </button>
-            <h1 class="text-2xl font-black text-slate-900 tracking-tight">My Bookings</h1>
-        </div>
-        <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-blue-100 shadow-sm">
-            <img src="https://placehold.co/100x100/2563eb/white?text=Y" alt="Profile">
-        </div>
-    </header>
+  Widget _buildBookingCard(Booking booking, int index) {
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 500 + (index * 100)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: InkWell(
+        onTap: () => _showBookingDetails(booking),
+        child: Stack(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                border: Border(
+                  top: BorderSide(color: _getTypeColor(booking.type), width: 8),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 25,
+                    offset: const Offset(0, 20),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _getTypeBgColor(booking.type),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                booking.type.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  color: _getTypeColor(booking.type),
+                                  letterSpacing: 2.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              booking.name,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              booking.provider.toUpperCase(),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF94A3B8),
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(Icons.arrow_forward, color: Color(0xFF94A3B8), size: 24),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 40),
+                  Container(
+                    height: 2,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: const Color(0xFFF1F5F9),
+                          width: 2,
+                          style: BorderStyle.solid,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'DATE',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFFCBD5E1),
+                                  letterSpacing: 2.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                booking.date,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(width: 24),
+                          Container(
+                            width: 1,
+                            height: 32,
+                            color: const Color(0xFFF1F5F9),
+                          ),
+                          const SizedBox(width: 24),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'TIME',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFFCBD5E1),
+                                  letterSpacing: 2.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                booking.time,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF1E293B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF10B981),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            booking.status.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF10B981),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            // Perforated holes
+            Positioned(
+              left: -12,
+              top: MediaQuery.of(context).size.width * 0.45,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            Positioned(
+              right: -12,
+              top: MediaQuery.of(context).size.width * 0.45,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    <!-- History/Upcoming Switcher -->
-    <div class="px-6 mt-8 flex space-x-8">
-        <button onclick="setTab('upcoming')" id="tab-upcoming" class="group pb-2 relative">
-            <span class="text-xl font-black text-blue-600 transition-colors" id="text-upcoming">Upcoming</span>
-            <div id="line-upcoming" class="absolute bottom-0 left-0 w-8 h-1.5 bg-blue-600 rounded-full transition-all"></div>
-        </button>
-        <button onclick="setTab('past')" id="tab-past" class="group pb-2 relative">
-            <span class="text-xl font-black text-slate-300 transition-colors" id="text-past">History</span>
-            <div id="line-past" class="absolute bottom-0 left-0 w-0 h-1.5 bg-blue-600 rounded-full transition-all"></div>
-        </button>
-    </div>
+  Widget _buildDetailModal(Booking booking) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(40),
+          topRight: Radius.circular(40),
+        ),
+      ),
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 6,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 40),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: _getTypeBgColor(booking.type),
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              booking.type.toUpperCase(),
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: _getTypeColor(booking.type),
+                letterSpacing: 2.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            booking.name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w900,
+              color: Color(0xFF0F172A),
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            booking.provider,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.calendar_today, color: Color(0xFF2563EB), size: 24),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'MY BOOKINGS-CONTAINER',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF9CA3AF),
+                          letterSpacing: 3.0,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${booking.date} at ${booking.time}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.location_on, color: Color(0xFF2563EB), size: 24),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'LOCATION',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF9CA3AF),
+                          letterSpacing: 3.0,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        booking.location,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF1E293B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          InkWell(
+            onTap: () async {
+              final url = Uri.parse('https://wa.me/1234567890');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF25D366).withOpacity(0.4),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble, color: Colors.white, size: 24),
+                  SizedBox(width: 12),
+                  Text(
+                    'CHAT WITH SUPPORT',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Close',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF94A3B8),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-    <!-- Category Filters -->
-    <div class="flex space-x-3 overflow-x-auto px-6 py-6 hide-scrollbar">
-        <button onclick="setFilter('all')" class="filter-chip active" id="filter-all">All Bookings</button>
-        <button onclick="setFilter('academy')" class="filter-chip" id="filter-academy">Academies</button>
-        <button onclick="setFilter('clinic')" class="filter-chip" id="filter-clinic">Clinics</button>
-        <button onclick="setFilter('event')" class="filter-chip" id="filter-event">Events</button>
-    </div>
+class Booking {
+  final String id;
+  final String type;
+  final String name;
+  final String date;
+  final String time;
+  final String location;
+  final String status;
+  final String provider;
 
-    <!-- Bookings List -->
-    <main class="px-6 space-y-6" id="bookings-container">
-        <!-- Rendered by JS -->
-    </main>
-
-    <!-- Bottom Sheet Modal -->
-    <div id="modal-overlay" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-end justify-center" onclick="closeModal()">
-        <div id="modal-content" class="bg-white w-full max-w-md rounded-t-[40px] p-8 shadow-2xl transition-transform transform translate-y-full" onclick="event.stopPropagation()">
-            <div class="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-10"></div>
-            <div id="modal-body" class="space-y-8">
-                <!-- Content injected by JS -->
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const myBookings = [
-            { id: 'b1', type: 'clinic', name: 'Physiotherapy Assessment', date: 'Mon, Oct 24', time: '4:00 PM', location: 'Olympic Aquatic Center', status: 'confirmed', provider: 'AquaHealth Recovery Clinic' },
-            { id: 'b2', type: 'academy', name: 'Advanced Stroke Analysis', date: 'Wed, Oct 26', time: '10:30 AM', location: 'Family Park Academy', status: 'confirmed', provider: 'Elite Performance Academy' },
-            { id: 'b3', type: 'event', name: 'National Junior Open', date: 'Sun, Nov 15', time: '9:00 AM', location: 'City Sports Arena', status: 'confirmed', provider: 'Regional Swim Federation' },
-            { id: 'b4', type: 'clinic', name: 'Hydrotherapy Session', date: 'Sep 12', time: '5:00 PM', location: 'West Side Academy', status: 'completed', provider: 'Dynamic Rehab Specialists' },
-            { id: 'b5', type: 'academy', name: 'Intermediate Squad', date: 'Fri, Nov 01', time: '5:00 PM', location: 'Training Center', status: 'confirmed', provider: 'Blue Wave Academy' }
-        ];
-
-        let currentTab = 'upcoming';
-        let currentFilter = 'all';
-
-        function setTab(tab) {
-            currentTab = tab;
-            const isUp = tab === 'upcoming';
-            
-            document.getElementById('text-upcoming').className = `text-xl font-black transition-colors ${isUp ? 'text-blue-600' : 'text-slate-300'}`;
-            document.getElementById('text-past').className = `text-xl font-black transition-colors ${!isUp ? 'text-blue-600' : 'text-slate-300'}`;
-            
-            document.getElementById('line-upcoming').style.width = isUp ? '32px' : '0';
-            document.getElementById('line-past').style.width = !isUp ? '32px' : '0';
-            
-            renderBookings();
-        }
-
-        function setFilter(filter) {
-            currentFilter = filter;
-            document.querySelectorAll('.filter-chip').forEach(chip => {
-                chip.classList.toggle('active', chip.id === `filter-${filter}`);
-            });
-            renderBookings();
-        }
-
-        function renderBookings() {
-            const container = document.getElementById('bookings-container');
-            const filtered = myBookings.filter(b => {
-                const tabMatch = currentTab === 'upcoming' ? b.status === 'confirmed' : b.status === 'completed';
-                const filterMatch = currentFilter === 'all' || b.type === currentFilter;
-                return tabMatch && filterMatch;
-            });
-
-            if (filtered.length === 0) {
-                container.innerHTML = `
-                    <div class="py-20 text-center opacity-30">
-                        <svg class="w-16 h-16 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        <p class="font-bold">Nothing found here</p>
-                    </div>`;
-                return;
-            }
-
-            container.innerHTML = filtered.map((booking, idx) => `
-                <div class="ticket-card card-${booking.type} premium-shadow p-6 flex flex-col cursor-pointer animate-item" 
-                     style="animation-delay: ${idx * 0.1}s"
-                     onclick="openDetails('${booking.id}')">
-                    
-                    <div class="flex justify-between items-start mb-10">
-                        <div class="space-y-1">
-                            <span class="text-[10px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest bg-${booking.type}">${booking.type}</span>
-                            <h3 class="text-xl font-black text-slate-900 mt-2">${booking.name}</h3>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-tight">${booking.provider}</p>
-                        </div>
-                        <div class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:text-blue-600 transition-colors">
-                             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 7l5 5m0 0l-5 5m5-5H6"></path></svg>
-                        </div>
-                    </div>
-                    
-                    <div class="ticket-divider"></div>
-                    
-                    <div class="mt-14 flex items-center justify-between">
-                        <div class="flex items-center space-x-6">
-                            <div>
-                                <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Date</p>
-                                <p class="text-sm font-black text-slate-800">${booking.date}</p>
-                            </div>
-                            <div class="w-px h-8 bg-slate-100"></div>
-                            <div>
-                                <p class="text-[9px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Time</p>
-                                <p class="text-sm font-black text-slate-800">${booking.time}</p>
-                            </div>
-                        </div>
-                        <div class="flex items-center space-x-1 text-emerald-500">
-                             <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
-                             <span class="text-[10px] font-black uppercase tracking-tighter">${booking.status}</span>
-                        </div>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function openDetails(id) {
-            const booking = myBookings.find(b => b.id === id);
-            const body = document.getElementById('modal-body');
-            
-            body.innerHTML = `
-                <div class="space-y-1 text-center">
-                    <span class="text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest bg-${booking.type}">${booking.type}</span>
-                    <h2 class="text-3xl font-black text-slate-900 leading-tight pt-2">${booking.name}</h2>
-                    <p class="text-slate-500 font-bold text-sm">${booking.provider}</p>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4">
-                    <div class="p-6 bg-slate-50 rounded-3xl flex items-center space-x-5 border border-slate-100">
-                        <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-500 shadow-sm">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">My bookings-container</p>
-                            <p class="text-lg font-black text-slate-800">${booking.date} at ${booking.time}</p>
-                        </div>
-                    </div>
-                    <div class="p-6 bg-slate-50 rounded-3xl flex items-center space-x-5 border border-slate-100">
-                        <div class="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-500 shadow-sm">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"></path></svg>
-                        </div>
-                        <div>
-                            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Location</p>
-                            <p class="text-lg font-black text-slate-800">${booking.location}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-4 pt-4">
-                    <a href="https://wa.me/1234567890" target="_blank" class="w-full py-5 whatsapp-brand text-white rounded-[24px] font-black flex items-center justify-center shadow-xl active:scale-95 transition-transform">
-                        <svg class="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.883 1.027 3.909 1.564 5.968 1.564h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-                        Chat with Support
-                    </a>
-                    <button onclick="closeModal()" class="w-full py-4 text-slate-400 font-bold hover:text-slate-600 transition-colors">
-                        Close
-                    </button>
-                </div>
-            `;
-
-            const overlay = document.getElementById('modal-overlay');
-            const content = document.getElementById('modal-content');
-            
-            overlay.classList.remove('hidden');
-            setTimeout(() => {
-                content.classList.remove('translate-y-full');
-            }, 10);
-        }
-
-        function closeModal() {
-            const overlay = document.getElementById('modal-overlay');
-            const content = document.getElementById('modal-content');
-            
-            content.classList.add('translate-y-full');
-            setTimeout(() => {
-                overlay.classList.add('hidden');
-            }, 400);
-        }
-
-        window.onload = renderBookings;
-    </script>
-</body>
-</html>
+  Booking({
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.date,
+    required this.time,
+    required this.location,
+    required this.status,
+    required this.provider,
+  });
+}

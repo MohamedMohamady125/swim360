@@ -1,159 +1,447 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swim 360 Academy Dashboard</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F7F9FB;
-        }
-        .view-container {
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-        .action-card {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
-            transition: all 0.2s;
-            cursor: pointer;
-            min-height: 110px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .action-card:hover {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-            transform: translateY(-2px);
-        }
-        .poster-scroll {
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-        .poster-scroll::-webkit-scrollbar {
-            display: none;
-        }
-    </style>
-</head>
-<body class="text-gray-800">
+import 'package:flutter/material.dart';
 
-    <div id="app-container" class="max-w-xl mx-auto pb-20">
-        <header class="bg-white shadow-md sticky top-0 z-10">
-            <div class="p-4 flex items-center">
-                <h1 class="text-xl font-bold truncate">Academy Dashboard</h1>
-            </div>
-        </header>
+class AcademyHomeScreen extends StatefulWidget {
+  const AcademyHomeScreen({Key? key}) : super(key: key);
 
-        <main class="view-container p-4 md:p-8">
-            <h1 class="text-3xl font-extrabold text-gray-800 mb-2">Hello, Academy Manager!</h1>
-            <p class="text-gray-500 mb-6">Coordinate your swimmers, coaches, and programs from one place.</p>
-            
-            <!-- Notifications Banner -->
-            <div class="bg-red-500 rounded-xl shadow-lg p-3 flex justify-between items-center text-white mb-4 cursor-pointer transform hover:scale-[1.005] transition duration-200" onclick="showAction('Notifications')">
-                <span class="text-md font-extrabold uppercase">Notifications</span>
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-            </div>
+  @override
+  State<AcademyHomeScreen> createState() => _AcademyHomeScreenState();
+}
 
-            <!-- Primary Action Banner: MY SWIMMERS -->
-            <div class="bg-blue-600 rounded-xl shadow-lg p-6 flex justify-between items-center text-white mb-6 cursor-pointer transform hover:scale-[1.01] transition duration-200" onclick="showAction('My Swimmers')">
-                <span class="text-xl font-extrabold uppercase">My Swimmers <span class="text-2xl ml-2">&gt;</span></span>
-                <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-            </div>
+class _AcademyHomeScreenState extends State<AcademyHomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
 
-            <!-- 2x3 Grid of Action Buttons -->
-            <div class="grid grid-cols-2 gap-3 mb-8">
-                
-                <!-- 1. Add Program -->
-                <button class="action-card p-4 text-center" onclick="showAction('Add Program')">
-                    <svg class="w-8 h-8 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="text-sm font-semibold">Add Program</span>
-                </button>
-                
-                <!-- 2. My Programs -->
-                <button class="action-card p-4 text-center" onclick="showAction('My Programs')">
-                    <svg class="w-8 h-8 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 002 2h2a2 2 0 002-2"></path></svg>
-                    <span class="text-sm font-semibold">My Programs</span>
-                </button>
-                
-                <!-- 3. Groups & Schedule -->
-                <button class="action-card p-4 text-center" onclick="showAction('Groups & Schedule')">
-                    <svg class="w-8 h-8 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                    <span class="text-sm font-semibold">Groups & Schedule</span>
-                </button>
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _animationController.forward();
+  }
 
-                <!-- 4. Add Branch -->
-                 <button class="action-card p-4 text-center" onclick="showAction('Add Branch')">
-                    <svg class="w-8 h-8 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                    <span class="text-sm font-semibold">Add Branch</span>
-                </button>
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
-                <!-- 5. My Branches -->
-                <button class="action-card p-4 text-center" onclick="showAction('My Branches')">
-                    <svg class="w-8 h-8 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 10h6"></path></svg>
-                    <span class="text-sm font-semibold">My Branches</span>
-                </button>
+  void _showAction(String name) {
+    final isError = name == 'Notifications';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Navigating to $name...'),
+        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 80, vertical: 24),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
-                <!-- 6. Coaches -->
-                <button class="action-card p-4 text-center" onclick="showAction('Coaches')">
-                    <svg class="w-8 h-8 text-blue-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                    <span class="text-sm font-semibold">Coaches</span>
-                </button>
-                
-            </div>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F9FB),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            Expanded(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildWelcomeSection(),
+                      const SizedBox(height: 24),
+                      _buildNotificationsBanner(),
+                      const SizedBox(height: 16),
+                      _buildMySwimmersBanner(),
+                      const SizedBox(height: 24),
+                      _buildActionGrid(),
+                      const SizedBox(height: 32),
+                      _buildManagementTools(),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            <!-- Management Tools (Scrolling Banner) -->
-            <h2 class="text-xl font-bold mb-3">Management Tools</h2>
-            <div class="flex overflow-x-auto space-x-4 pb-4 poster-scroll">
-                <!-- Tool 1 -->
-                <div class="w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-lg border border-gray-200 cursor-pointer bg-red-100" onclick="showAction('Create Event')">
-                    <div class="p-3">
-                        <p class="font-bold text-lg text-red-700">Create Event</p>
-                        <p class="text-sm text-gray-700">Set up a new swim meet or clinic.</p>
-                    </div>
-                </div>
+  Widget _buildHeader() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Academy Dashboard',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                <!-- Tool 2 -->
-                <div class="w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-lg border border-gray-200 cursor-pointer bg-yellow-100" onclick="showAction('Create Offer')">
-                    <div class="p-3">
-                        <p class="font-bold text-lg text-yellow-700">Create Offer</p>
-                        <p class="text-sm text-gray-700">Post a discount code or package deal.</p>
-                    </div>
-                </div>
-                
-                <!-- Tool 3 -->
-                <div class="w-64 flex-shrink-0 rounded-xl overflow-hidden shadow-lg border border-gray-200 cursor-pointer bg-green-100" onclick="showAction('Advertise')">
-                    <div class="p-3">
-                        <p class="font-bold text-lg text-green-700">Advertise</p>
-                        <p class="text-sm text-gray-700">Promote your brand to our users.</p>
-                    </div>
-                </div>
-            </div>
-        </main>
-    </div>
+  Widget _buildWelcomeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Hello, Academy Manager!',
+          style: TextStyle(
+            fontSize: 30,
+            fontWeight: FontWeight.w800,
+            color: const Color(0xFF1F2937),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Coordinate your swimmers, coaches, and programs from one place.',
+          style: TextStyle(
+            fontSize: 14,
+            color: const Color(0xFF6B7280),
+          ),
+        ),
+      ],
+    );
+  }
 
-    <!-- Feedback Snackbar -->
-    <div id="snackbar" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white opacity-0 transition-opacity duration-300 pointer-events-none z-50"></div>
+  Widget _buildNotificationsBanner() {
+    return InkWell(
+      onTap: () => _showAction('Notifications'),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFEF4444),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFEF4444).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'NOTIFICATIONS',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+            Icon(
+              Icons.notifications_outlined,
+              color: Colors.white,
+              size: 24,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    <script>
-        function showAction(name) {
-            const isError = name === 'Notifications';
-            const snackbar = document.getElementById('snackbar');
-            snackbar.textContent = `Navigating to ${name}...`;
-            snackbar.className = `fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg text-white z-50 transition-opacity duration-300 ${isError ? 'bg-red-500' : 'bg-blue-600'}`;
-            snackbar.style.opacity = '1';
-            setTimeout(() => {
-                snackbar.style.opacity = '0';
-            }, 3000);
-        }
-    </script>
-</body>
-</html>
+  Widget _buildMySwimmersBanner() {
+    return InkWell(
+      onTap: () => _showAction('My Swimmers'),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2563EB),
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2563EB).withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                Text(
+                  'MY SWIMMERS',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '>',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            Icon(
+              Icons.people_outline,
+              color: Colors.white,
+              size: 40,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionGrid() {
+    final actions = [
+      _ActionItem(
+        title: 'Add Program',
+        icon: Icons.add_circle_outline,
+        onTap: () => _showAction('Add Program'),
+      ),
+      _ActionItem(
+        title: 'My Programs',
+        icon: Icons.assignment_outlined,
+        onTap: () => _showAction('My Programs'),
+      ),
+      _ActionItem(
+        title: 'Groups & Schedule',
+        icon: Icons.calendar_today_outlined,
+        onTap: () => _showAction('Groups & Schedule'),
+      ),
+      _ActionItem(
+        title: 'Add Branch',
+        icon: Icons.location_on_outlined,
+        onTap: () => _showAction('Add Branch'),
+      ),
+      _ActionItem(
+        title: 'My Branches',
+        icon: Icons.business_outlined,
+        onTap: () => _showAction('My Branches'),
+      ),
+      _ActionItem(
+        title: 'Coaches',
+        icon: Icons.person_outline,
+        onTap: () => _showAction('Coaches'),
+      ),
+    ];
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: actions.length,
+      itemBuilder: (context, index) {
+        final action = actions[index];
+        return InkWell(
+          onTap: action.onTap,
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 6,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  action.icon,
+                  color: const Color(0xFF2563EB),
+                  size: 32,
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    action.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildManagementTools() {
+    final tools = [
+      _ToolItem(
+        title: 'Create Event',
+        description: 'Set up a new swim meet or clinic.',
+        color: const Color(0xFFFEE2E2),
+        textColor: const Color(0xFFB91C1C),
+        onTap: () => _showAction('Create Event'),
+      ),
+      _ToolItem(
+        title: 'Create Offer',
+        description: 'Post a discount code or package deal.',
+        color: const Color(0xFFFEF3C7),
+        textColor: const Color(0xFFA16207),
+        onTap: () => _showAction('Create Offer'),
+      ),
+      _ToolItem(
+        title: 'Advertise',
+        description: 'Promote your brand to our users.',
+        color: const Color(0xFFDCFCE7),
+        textColor: const Color(0xFF15803D),
+        onTap: () => _showAction('Advertise'),
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Management Tools',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 100,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: tools.length,
+            itemBuilder: (context, index) {
+              final tool = tools[index];
+              return Padding(
+                padding: EdgeInsets.only(right: index < tools.length - 1 ? 16 : 0),
+                child: InkWell(
+                  onTap: tool.onTap,
+                  child: Container(
+                    width: 256,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: tool.color,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE5E7EB)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          tool.title,
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: tool.textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          tool.description,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: const Color(0xFF374151),
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionItem {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  _ActionItem({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+}
+
+class _ToolItem {
+  final String title;
+  final String description;
+  final Color color;
+  final Color textColor;
+  final VoidCallback onTap;
+
+  _ToolItem({
+    required this.title,
+    required this.description,
+    required this.color,
+    required this.textColor,
+    required this.onTap,
+  });
+}

@@ -1,385 +1,473 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Plus, UploadCloud, ChevronDown, Check, 
-  Layers, Package, Ruler, Palette, Building2, 
-  X, Info, ArrowLeft, Camera, Settings,
-  AlertCircle, Tag, Percent, Ticket, Edit3,
-  MoreHorizontal, Eye, ChevronRight, CheckCircle,
-  Phone, MapPin, Truck, Search, Calendar, MessageCircle,
-  XCircle, Archive, Smartphone, Clock // أضفت Smartphone و Clock هنا
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/store_service.dart';
+import 'package:swim360/core/models/store_models.dart';
+import 'package:intl/intl.dart';
 
-// --- DATA DEFINITIONS ---
-const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Luxor", "Matrouh", "Minya", "Monufia", "New Valley", "North Sinai", "Port Said", "Qalyubia", "Qena", "Sharqia", "Sohag", "South Sinai", "Suez"];
-const BRANDS = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
-const CATEGORIES = ["Cap", "Goggles", "Suit", "Kickboard", "Paddles", "Fins", "Snorkels", "Other"];
-const SIZES = ["XS", "S", "M", "L", "XL", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "ONE SIZE", "OTHER"];
-const COLORS = [
-    { name: 'Red', code: '#EF4444' },
-    { name: 'Blue', code: '#3B82F6' },
-    { name: 'Yellow', code: '#FACC15' },
-    { name: 'Orange', code: '#F97316' },
-    { name: 'Gold', code: '#FFD700' },
-    { name: 'Green', code: '#10B981' },
-    { name: 'Black', code: '#000000' },
-    { name: 'White', code: '#FFFFFF' },
-    { name: 'Pink', code: '#EC4899' },
-    { name: 'Purple', code: '#8B5CF6' }
-];
-const BRANCHES = [
-    { id: 'b1', name: 'Zamalek Main' },
-    { id: 'b2', name: 'New Cairo Hub' },
-    { id: 'b3', name: 'Alexandria Branch' },
-    { id: 'b4', name: 'Giza Outlet' }
-];
+class OrdersScreen extends StatefulWidget {
+  const OrdersScreen({super.key});
 
-// --- MOCK ORDERS DATA ---
-const INITIAL_ORDERS = [
-    { 
-        id: 1001, status: 'requested', customer_name: 'Liam Davies', phone: '+201001234567', branch_id: 'b1',
-        location: 'Zamalek, Cairo', delivery_type: 'National Delivery',
-        items: [
-            {name: 'Pro Goggles', qty: 1, category: 'Goggles', brand: 'Speedo', size: 'ONE SIZE', color: 'Blue'}, 
-            {name: 'Swim Cap', qty: 2, category: 'Cap', brand: 'TYR', size: 'M', color: 'Black'}
-        ],
-        createdAt: new Date(Date.now() - 3600000) 
-    },
-    { 
-        id: 1002, status: 'confirmed', customer_name: 'Olivia Martin', phone: '+201119998888', branch_id: 'b2',
-        location: 'Rehab City, Cairo', delivery_type: 'Governorate Delivery',
-        items: [
-            {name: 'Carbon Suit', qty: 1, category: 'Suit', brand: 'Arena', size: '32', color: 'Purple'}
-        ],
-        delivery_date: '2026-01-25',
-        createdAt: new Date(Date.now() - 86400000)
+  @override
+  State<OrdersScreen> createState() => _OrdersScreenState();
+}
+
+class _OrdersScreenState extends State<OrdersScreen> {
+  final StoreApiService _storeService = StoreApiService();
+
+  String _orderTab = 'pending'; // 'pending', 'confirmed', 'delivered'
+  String _branchFilter = 'all';
+  String _orderSearch = '';
+  String? _activeModal;
+  StoreOrder? _selectedOrder;
+
+  List<StoreOrder> _orders = [];
+  List<StoreBranch> _branches = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final orders = await _storeService.getMyOrders();
+      final branches = await _storeService.getMyBranches();
+
+      if (mounted) {
+        setState(() {
+          _orders = orders;
+          _branches = branches;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load data: $e';
+          _isLoading = false;
+        });
+      }
     }
-];
+  }
 
-export default function App() {
-    const [view, setView] = useState('orders'); // 'inventory', 'edit', 'orders'
-    const [orders, setOrders] = useState(INITIAL_ORDERS);
-    const [orderTab, setOrderTab] = useState('requested'); // 'requested', 'confirmed', 'delivered'
-    const [branchFilter, setBranchFilter] = useState('all');
-    const [orderSearch, setOrderSearch] = useState('');
-    
-    const [activeModal, setActiveModal] = useState(null); // 'delivery', 'reject', 'contact', 'details', 'confirm-delivered'
-    const [selectedOrder, setSelectedOrder] = useState(null);
-    const [notification, setNotification] = useState(null);
+  List<StoreOrder> get filteredOrders {
+    return _orders.where((order) {
+      final matchesStatus = order.status == _orderTab;
+      final matchesBranch = _branchFilter == 'all' || order.branchId == _branchFilter;
+      final matchesSearch = _orderSearch.isEmpty || order.id.toString().contains(_orderSearch);
+      return matchesStatus && matchesBranch && matchesSearch;
+    }).toList();
+  }
 
-    // تم الإصلاح: تعريف حالة loading المفقودة
-    const [loading, setLoading] = useState(false);
-
-    // Modal Specific States
-    const [deliveryDate, setDeliveryDate] = useState('');
-    const [rejectionReason, setRejectionReason] = useState('');
-
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
-    // --- ORDER LOGIC ---
-    const filteredOrders = useMemo(() => {
-        const now = new Date().getTime();
-        const fourteenDays = 14 * 24 * 60 * 60 * 1000;
-
-        return orders.filter(order => {
-            // Archival Logic: Remove delivered orders older than 14 days
-            if (order.status === 'delivered' && order.delivered_on) {
-                if ((now - new Date(order.delivered_on).getTime()) > fourteenDays) return false;
-            }
-
-            const matchesStatus = order.status === orderTab;
-            const matchesBranch = branchFilter === 'all' || order.branch_id === branchFilter;
-            const matchesSearch = orderSearch === '' || order.id.toString().includes(orderSearch);
-
-            return matchesStatus && matchesBranch && matchesSearch;
-        }).sort((a, b) => b.id - a.id);
-    }, [orders, orderTab, branchFilter, orderSearch]);
-
-    const handleConfirmOrder = (e) => {
-        e.preventDefault();
-        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'confirmed', delivery_date: deliveryDate } : o));
-        showNotify(`Order #${selectedOrder.id} confirmed for ${deliveryDate}`);
-        setActiveModal(null);
-        setOrderTab('confirmed');
-    };
-
-    const handleRejectOrder = (e) => {
-        e.preventDefault();
-        setOrders(prev => prev.filter(o => o.id !== selectedOrder.id));
-        showNotify(`Order #${selectedOrder.id} rejected: ${rejectionReason}`, 'error');
-        setActiveModal(null);
-    };
-
-    const handleMarkDelivered = () => {
-        setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, status: 'delivered', delivered_on: new Date().toISOString().split('T')[0] } : o));
-        showNotify(`Order #${selectedOrder.id} archived as delivered`);
-        setActiveModal(null);
-        setOrderTab('delivered');
-    };
-
-    // --- VIEW RENDERERS ---
-
-    const renderOrderManagement = () => (
-        <div className="p-6 space-y-6 animate-in text-left">
-            <header className="space-y-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Order Management</h1>
-                <p className="text-sm text-gray-400 font-medium">Process and track your store sales</p>
-            </header>
-
-            {/* Branch Filter & Tabs */}
-            <div className="space-y-4">
-                <div className="bg-white p-4 rounded-[24px] border border-gray-100 shadow-sm">
-                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-2 block">Store Branch</label>
-                    <div className="flex items-center bg-gray-50 rounded-xl px-4 py-1">
-                        <Building2 className="w-4 h-4 text-gray-400 mr-3" />
-                        <select 
-                            value={branchFilter}
-                            onChange={(e) => setBranchFilter(e.target.value)}
-                            className="flex-1 bg-transparent py-3 text-sm font-bold outline-none"
-                        >
-                            <option value="all">All Branches</option>
-                            {BRANCHES.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                    </div>
-                </div>
-
-                <div className="flex bg-white p-1.5 rounded-[20px] shadow-sm border border-gray-100">
-                    {['requested', 'confirmed', 'delivered'].map(tab => (
-                        <button 
-                            key={tab}
-                            onClick={() => setOrderTab(tab)}
-                            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderTab === tab ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:bg-gray-50'}`}
-                        >
-                            {tab === 'delivered' ? 'Archive' : tab}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {/* Search (Only for confirmed/delivered) */}
-            {(orderTab === 'confirmed' || orderTab === 'delivered') && (
-                <div className="relative animate-in">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input 
-                        type="number" 
-                        placeholder="Search order number..." 
-                        value={orderSearch}
-                        onChange={(e) => setOrderSearch(e.target.value)}
-                        className="w-full pl-11 p-4 bg-white border border-gray-100 rounded-2xl text-sm font-bold shadow-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                    />
-                </div>
-            )}
-
-            {/* Orders List */}
-            <div className="space-y-4 pb-20">
-                {filteredOrders.map(order => (
-                    <div key={order.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-6 space-y-4 border-l-8 transition-all hover:shadow-md" style={{ borderColor: orderTab === 'requested' ? '#f59e0b' : orderTab === 'confirmed' ? '#10b981' : '#3b82f6' }}>
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h3 className="text-xl font-black text-gray-900 leading-none">Order #{order.id}</h3>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-2">{order.delivery_type}</p>
-                            </div>
-                            <button 
-                                onClick={() => { setSelectedOrder(order); setActiveModal('details'); }}
-                                className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-500 hover:text-white transition-all shadow-sm"
-                            >
-                                <Eye className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-2">
-                            <div className="flex items-center text-sm font-bold text-gray-700">
-                                <Package className="w-4 h-4 mr-2 text-gray-300" />
-                                {order.items.length} Items ({order.items.map(i => i.name).join(', ')})
-                            </div>
-                            <div className="flex items-center text-sm font-bold text-gray-700">
-                                <MapPin className="w-4 h-4 mr-2 text-gray-300" />
-                                {order.location}
-                            </div>
-                            {order.delivery_date && (
-                                <div className="flex items-center text-sm font-bold text-emerald-600">
-                                    <Clock className="w-4 h-4 mr-2" />
-                                    Expected: {order.delivery_date}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex justify-end space-x-2 pt-2">
-                            {order.status === 'requested' && (
-                                <>
-                                    <button onClick={() => { setSelectedOrder(order); setRejectionReason(''); setActiveModal('reject'); }} className="px-5 py-2.5 bg-red-50 text-red-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all">Reject</button>
-                                    <button onClick={() => { setSelectedOrder(order); setDeliveryDate(''); setActiveModal('delivery'); }} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 hover:brightness-110 transition-all">Confirm</button>
-                                </>
-                            )}
-                            {order.status === 'confirmed' && (
-                                <>
-                                    <button onClick={() => { setSelectedOrder(order); setActiveModal('contact'); }} className="px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center"><MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Contact</button>
-                                    <button onClick={() => { setSelectedOrder(order); setActiveModal('confirm-delivered'); }} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center"><CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Delivered</button>
-                                </>
-                            )}
-                            {order.status === 'delivered' && (
-                                <button onClick={() => { setSelectedOrder(order); setActiveModal('contact'); }} className="px-5 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center"><MessageCircle className="w-3.5 h-3.5 mr-1.5" /> Contact History</button>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+  void _showNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: const Color(0xFF1F2937)),
     );
+  }
 
-    const renderModals = () => {
-        if (!activeModal || !selectedOrder) return null;
+  Future<void> _launchWhatsApp(String phone) async {
+    final url = Uri.parse('https://wa.me/${phone.replaceAll('+', '')}');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
-        const onClose = () => setActiveModal(null);
+  @override
+  Widget build(BuildContext context) {
+    // Show loading state
+    if (_isLoading && _orders.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading orders...'),
+            ],
+          ),
+        ),
+      );
+    }
 
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in">
-                <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 relative overflow-hidden">
-                    <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400"><X className="w-5 h-5" /></button>
-                    
-                    {activeModal === 'delivery' && (
-                        <form onSubmit={handleConfirmOrder} className="space-y-6 text-left">
-                            <h3 className="text-2xl font-black text-gray-900 leading-tight">Set Delivery Date</h3>
-                            <p className="text-sm text-gray-500">Provide an estimated arrival date for Order #{selectedOrder.id}.</p>
-                            <div className="input-group">
-                                <Calendar className="w-5 h-5 text-blue-600 mr-3" />
-                                <input 
-                                    type="date" 
-                                    required 
-                                    min={new Date().toISOString().split('T')[0]}
-                                    value={deliveryDate} 
-                                    onChange={e => setDeliveryDate(e.target.value)} 
-                                    className="flex-1 bg-transparent py-3 text-sm font-bold outline-none" 
-                                />
-                            </div>
-                            <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl">Confirm Shipment</button>
-                        </form>
-                    )}
+    // Show error state
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
+                const SizedBox(height: 16),
+                Text(_errorMessage!),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadData,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-                    {activeModal === 'reject' && (
-                        <form onSubmit={handleRejectOrder} className="space-y-6 text-left">
-                            <h3 className="text-2xl font-black text-red-600 leading-tight">Reject Order</h3>
-                            <p className="text-sm text-gray-500">Please select a reason for declining Order #{selectedOrder.id}.</p>
-                            <div className="input-group">
-                                <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
-                                <select 
-                                    required 
-                                    value={rejectionReason} 
-                                    onChange={e => setRejectionReason(e.target.value)} 
-                                    className="flex-1 bg-transparent py-3 text-sm font-bold outline-none"
-                                >
-                                    <option value="">Choose Reason</option>
-                                    <option value="Out of Stock">Item Out of Stock</option>
-                                    <option value="Location unreachable">Location Unreachable</option>
-                                    <option value="Duplicate Order">Duplicate Order</option>
-                                </select>
-                            </div>
-                            <button type="submit" className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl">Confirm Rejection</button>
-                        </form>
-                    )}
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                const Text('Order Management', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                const SizedBox(height: 4),
+                const Text('Process and track your store sales', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF))),
+                const SizedBox(height: 32),
 
-                    {activeModal === 'details' && (
-                        <div className="space-y-6 text-left">
-                            <div className="flex justify-between items-center border-b border-gray-100 pb-4">
-                                <h3 className="text-2xl font-black text-gray-900">Order Items</h3>
-                                <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-[10px] font-black uppercase">#{selectedOrder.id}</span>
-                            </div>
-                            <div className="space-y-4 max-h-60 overflow-y-auto no-scrollbar">
-                                {selectedOrder.items.map((item, idx) => (
-                                    <div key={idx} className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                                        <p className="text-sm font-black text-gray-900">{item.name} <span className="text-blue-600">x{item.qty}</span></p>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1">{item.brand} | {item.size} | {item.color}</p>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
-                                <p className="text-xs font-bold text-gray-400 uppercase">Customer</p>
-                                <p className="text-sm font-black text-gray-900">{selectedOrder.customer_name}</p>
-                            </div>
-                        </div>
-                    )}
+                // Branch Filter
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Store Branch', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.business, color: Color(0xFF9CA3AF), size: 16),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: DropdownButton<String>(
+                                value: _branchFilter,
+                                isExpanded: true,
+                                underline: const SizedBox(),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                items: [
+                                  const DropdownMenuItem(value: 'all', child: Text('All Branches')),
+                                  ..._branches.map((b) => DropdownMenuItem(value: b.id, child: Text(b.locationName))),
+                                ],
+                                onChanged: (val) => setState(() => _branchFilter = val!),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-                    {activeModal === 'contact' && (
-                        <div className="space-y-6 text-center">
-                            <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center mx-auto">
-                                <MessageCircle className="w-10 h-10" />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-gray-900 leading-tight">Chat with Customer</h3>
-                                <p className="text-sm text-gray-500 mt-2">Connect via WhatsApp for Order #{selectedOrder.id}</p>
-                            </div>
-                            <a 
-                                href={`https://wa.me/${selectedOrder.phone.replace('+', '')}`} 
-                                target="_blank" 
-                                className="w-full flex items-center justify-center py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-                            >
-                                <Smartphone className="w-5 h-5 mr-3" /> Start WhatsApp Chat
-                            </a>
-                        </div>
-                    )}
+                // Order Tabs
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: const Color(0xFFF3F4F6)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6, offset: const Offset(0, 2))],
+                  ),
+                  child: Row(
+                    children: ['pending', 'confirmed', 'delivered'].map((tab) {
+                      final isActive = _orderTab == tab;
+                      return Expanded(
+                        child: InkWell(
+                          onTap: () => setState(() => _orderTab = tab),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isActive ? const Color(0xFF2563EB) : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: isActive ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))] : [],
+                            ),
+                            child: Text(
+                              tab == 'delivered' ? 'ARCHIVE' : tab.toUpperCase(),
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isActive ? Colors.white : const Color(0xFF9CA3AF), letterSpacing: 3.0),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                const SizedBox(height: 24),
 
-                    {activeModal === 'confirm-delivered' && (
-                        <div className="space-y-6 text-center">
-                            <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto">
-                                <Truck className="w-10 h-10" />
-                            </div>
-                            <div>
-                                <h3 className="text-2xl font-black text-gray-900 leading-tight">Confirm Delivery</h3>
-                                <p className="text-sm text-gray-500 mt-2">Mark Order #{selectedOrder.id} as completed? It will move to Archive for 14 days.</p>
-                            </div>
-                            <button 
-                                onClick={handleMarkDelivered}
-                                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-100"
-                            >
-                                Yes, It's Delivered
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse uppercase tracking-[0.3em]">Swim 360</div>;
-
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            
-            {renderOrderManagement()}
-
-            {renderModals()}
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-                .input-group {
-                    display: flex;
-                    align-items: center;
-                    border: 1px solid #E5E7EB;
-                    border-radius: 16px;
-                    padding: 0 16px;
-                    background-color: #FAFAFA;
-                    transition: all 0.2s;
-                }
-                .input-group:focus-within {
-                    border-color: #3B82F6;
-                    background-color: white;
-                    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.05);
-                }
-            `}</style>
-        </div>
+                // Orders List
+                ...filteredOrders.map((order) {
+                  final borderColor = _orderTab == 'pending' ? const Color(0xFFF59E0B) : _orderTab == 'confirmed' ? const Color(0xFF10B981) : const Color(0xFF2563EB);
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border(
+                          left: BorderSide(width: 8, color: borderColor),
+                          top: const BorderSide(color: Color(0xFFF3F4F6)),
+                          right: const BorderSide(color: Color(0xFFF3F4F6)),
+                          bottom: const BorderSide(color: Color(0xFFF3F4F6)),
+                        ),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Order #${order.id}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                                  const SizedBox(height: 4),
+                                  Text((order.deliveryType ?? 'PICKUP').toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                ],
+                              ),
+                              InkWell(
+                                onTap: () => setState(() {
+                                  _selectedOrder = order;
+                                  _activeModal = 'details';
+                                }),
+                                child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.visibility, color: Color(0xFF2563EB), size: 20)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              const Icon(Icons.shopping_bag, color: Color(0xFFD1D5DB), size: 16),
+                              const SizedBox(width: 8),
+                              Text('${order.items?.length ?? 0} Items', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF6B7280))),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.location_on, color: Color(0xFFD1D5DB), size: 16),
+                              const SizedBox(width: 8),
+                              Expanded(child: Text(order.deliveryAddress ?? 'N/A', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF6B7280)))),
+                            ],
+                          ),
+                          if (order.deliveryDate != null) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                const Icon(Icons.access_time, color: Color(0xFF10B981), size: 16),
+                                const SizedBox(width: 8),
+                                Text('Expected: ${DateFormat('MMM d, yyyy').format(order.deliveryDate!)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF10B981))),
+                              ],
+                            ),
+                          ],
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              if (order.status == 'pending') ...[
+                                InkWell(
+                                  onTap: () async {
+                                    try {
+                                      setState(() => _isLoading = true);
+                                      await _storeService.updateOrderStatus(order.id, {'status': 'cancelled'});
+                                      await _loadData();
+                                      if (mounted) {
+                                        setState(() => _isLoading = false);
+                                        _showNotification('Order rejected');
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        setState(() => _isLoading = false);
+                                        _showNotification('Failed to reject order: $e');
+                                      }
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                    decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(12)),
+                                    child: const Text('REJECT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), letterSpacing: 3.0)),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () async {
+                                    try {
+                                      setState(() => _isLoading = true);
+                                      await _storeService.updateOrderStatus(order.id, {'status': 'confirmed'});
+                                      await _loadData();
+                                      if (mounted) {
+                                        setState(() => _isLoading = false);
+                                        _showNotification('Order confirmed');
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        setState(() => _isLoading = false);
+                                        _showNotification('Failed to confirm order: $e');
+                                      }
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                    decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))]),
+                                    child: const Text('CONFIRM', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                                  ),
+                                ),
+                              ] else if (order.status == 'confirmed') ...[
+                                InkWell(
+                                  onTap: () => setState(() {
+                                    _selectedOrder = order;
+                                    _activeModal = 'contact';
+                                  }),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                    decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(12)),
+                                    child: const Row(children: [Icon(Icons.chat, color: Color(0xFF10B981), size: 14), SizedBox(width: 6), Text('CONTACT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF10B981), letterSpacing: 3.0))]),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                InkWell(
+                                  onTap: () async {
+                                    try {
+                                      setState(() => _isLoading = true);
+                                      await _storeService.updateOrderStatus(order.id, {'status': 'delivered'});
+                                      await _loadData();
+                                      if (mounted) {
+                                        setState(() => _isLoading = false);
+                                        _showNotification('Order marked as delivered');
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        setState(() => _isLoading = false);
+                                        _showNotification('Failed to mark as delivered: $e');
+                                      }
+                                    }
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                    decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))]),
+                                    child: const Row(children: [Icon(Icons.check_circle, color: Colors.white, size: 14), SizedBox(width: 6), Text('DELIVERED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0))]),
+                                  ),
+                                ),
+                              ] else ...[
+                                InkWell(
+                                  onTap: () => setState(() {
+                                    _selectedOrder = order;
+                                    _activeModal = 'contact';
+                                  }),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                    decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(12)),
+                                    child: const Row(children: [Icon(Icons.chat, color: Color(0xFF6B7280), size: 14), SizedBox(width: 6), Text('CONTACT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6B7280), letterSpacing: 3.0))]),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+          if (_activeModal != null) _buildModal(),
+        ],
+      ),
     );
+  }
+
+  Widget _buildModal() {
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () => setState(() => _activeModal = null),
+        child: Container(
+          color: const Color(0xFF0F172A).withOpacity(0.6),
+          child: Center(
+            child: GestureDetector(
+              onTap: () {},
+              child: Container(
+                margin: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(0, 10))]),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_activeModal == 'details') ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Order Items', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                          InkWell(onTap: () => setState(() => _activeModal = null), child: const Icon(Icons.close, color: Color(0xFF9CA3AF))),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      ...(_selectedOrder?.items ?? []).map((item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(child: Text(item.productName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700))),
+                              Text('x${item.quantity}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+                            ],
+                          ),
+                        ),
+                      )),
+                    ] else if (_activeModal == 'contact') ...[
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(30)),
+                        child: const Icon(Icons.chat, color: Color(0xFF10B981), size: 40),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Chat with Customer', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                      const SizedBox(height: 8),
+                      Text('Connect via WhatsApp for Order #${_selectedOrder?.id}', style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+                      const SizedBox(height: 24),
+                      InkWell(
+                        onTap: () => _launchWhatsApp(_selectedOrder?.customerPhone ?? ''),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(color: const Color(0xFF25D366), borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: const Color(0xFF25D366).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))]),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [Icon(Icons.phone, color: Colors.white, size: 24), SizedBox(width: 12), Text('START WHATSAPP CHAT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0))],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

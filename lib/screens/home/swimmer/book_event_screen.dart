@@ -1,241 +1,656 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - Events Marketplace</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .shadow-soft { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
-    </style>
-</head>
-<body class="no-scrollbar">
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-    <div class="max-w-md mx-auto min-h-screen relative flex flex-col">
-        
-        <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50 text-left">
-            <div class="flex items-center space-x-4">
-                <button onclick="handleBack()" class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                </button>
-                <div>
-                    <h1 class="text-2xl font-black text-gray-900 tracking-tight uppercase leading-none italic">Events</h1>
-                    <p id="header-subtitle" class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1.5">Marketplace</p>
-                </div>
-            </div>
-            <div class="w-11 h-11 rounded-2xl bg-rose-50 flex items-center justify-center text-rose-600 border border-rose-100 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
-            </div>
-        </header>
+class BookEventScreen extends StatefulWidget {
+  const BookEventScreen({super.key});
 
-        <div id="step-indicator" class="px-8 py-5 bg-white border-b border-gray-50 sticky top-[74px] z-20">
-            <div class="flex justify-between items-center relative max-w-[280px] mx-auto text-left">
-                <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2"></div>
-                <div id="step-line" class="absolute top-1/2 left-0 h-0.5 bg-rose-600 -translate-y-1/2 transition-all duration-700 w-0"></div>
-                
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-rose-600 text-white shadow-lg shadow-rose-100 transition-all duration-500">1</div>
-                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-rose-600">Explore</span>
-                </div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300 transition-all duration-500">2</div>
-                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-gray-300">Details</span>
-                </div>
-                <div class="relative z-10 flex flex-col items-center">
-                    <div class="step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300 transition-all duration-500">3</div>
-                    <span class="text-[8px] mt-2 font-black uppercase tracking-widest text-gray-300">Options</span>
-                </div>
-            </div>
-        </div>
+  @override
+  State<BookEventScreen> createState() => _BookEventScreenState();
+}
 
-        <main class="p-6 flex-grow overflow-y-auto no-scrollbar">
-            <div id="view-container" class="animate-in">
-                </div>
-        </main>
+class _BookEventScreenState extends State<BookEventScreen> {
+  int _currentStep = 0;
+  Event? _selectedEvent;
+  int _ticketQty = 1;
 
-    </div>
+  final List<Event> _events = [];
 
-    <script>
-        const EVENTS = [
-            {
-                id: 'e1', name: 'Regional Championship 2026', type: 'Championship', displayDate: 'Jan 10, 2026',
-                startTime: '09:00 AM', location: 'Central Pool (New Cairo)', price: 45.00, seatsLeft: 25,
-                image: 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=800',
-                desc: 'Cairo’s leading high-performance swim center event. Featuring top-tier professional timing systems, international judges, and an Olympic-sized heating system for maximum performance.',
-                mapUrl: 'https://maps.google.com',
-                videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-            }
-        ];
+  Future<void> _launchUrl(String urlString) async {
+    final url = Uri.parse(urlString);
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
-        let currentStep = 0;
-        let selectedEvent = null;
-        let ticketQty = 1;
+  void _handleBack() {
+    if (_currentStep > 0) {
+      setState(() => _currentStep--);
+    } else {
+      Navigator.pop(context);
+    }
+  }
 
-        function render() {
-            const container = document.getElementById('view-container');
-            updateStepIndicator();
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                _buildHeader(),
+                _buildStepper(),
+                Expanded(child: _buildCurrentStep()),
+              ],
+            ),
+            if (_currentStep == 1 && _selectedEvent != null) _buildFloatingButton(),
+          ],
+        ),
+      ),
+    );
+  }
 
-            if (currentStep === 0) {
-                container.innerHTML = `
-                    <div class="space-y-6 text-left pb-10">
-                        <div class="bg-white p-5 rounded-[32px] shadow-sm border border-gray-100">
-                            <div class="relative">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                                <input type="text" placeholder="Search events..." class="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none shadow-inner">
-                            </div>
-                        </div>
-                        ${EVENTS.map(e => `
-                            <div onclick="selectEvent('${e.id}')" class="bg-white rounded-[32px] overflow-hidden shadow-soft border border-white group active:scale-[0.98] transition-all cursor-pointer">
-                                <div class="relative h-60">
-                                    <img src="${e.image}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000">
-                                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
-                                    <div class="absolute bottom-6 left-6">
-                                        <h3 class="text-2xl font-black text-white uppercase italic tracking-tighter">${e.name}</h3>
-                                        <p class="text-rose-200 text-[10px] font-bold uppercase tracking-widest mt-1">${e.location}</p>
-                                    </div>
-                                </div>
-                                <div class="p-6 flex justify-between items-center">
-                                    <div class="flex items-center space-x-2">
-                                        <div class="w-10 h-10 rounded-xl bg-rose-50 flex items-center justify-center text-rose-600 shadow-inner">
-                                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                                        </div>
-                                        <span class="text-[10px] font-black text-gray-400 uppercase tracking-widest">${e.displayDate}</span>
-                                    </div>
-                                    <div class="text-right">
-                                        <p class="text-2xl font-black text-gray-900 tracking-tighter leading-none">$${e.price.toFixed(2)}</p>
-                                        <p class="text-[8px] font-black text-rose-500 uppercase tracking-widest mt-1 italic">Book Now</p>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } else if (currentStep === 1) {
-                container.innerHTML = `
-                    <div class="space-y-8 animate-in text-left pb-40">
-                        <div class="relative h-64 -mx-6 -mt-6 overflow-hidden shadow-lg">
-                            <img src="${selectedEvent.image}" class="w-full h-full object-cover">
-                            <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                            <button onclick="window.open('${selectedEvent.videoUrl}', '_blank')" class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center border border-white/40 active:scale-90 transition-all shadow-2xl">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white fill-white ml-1" viewBox="0 0 24 24"><path d="M5 3l14 9-14 9V3z"/></svg>
-                            </button>
-                        </div>
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(24, 48, 24, 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              InkWell(
+                onTap: _handleBack,
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: const Color(0xFFF1F5F9)),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.arrow_back_ios_new, size: 24),
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('EVENTS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                  Text('MARKETPLACE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                ],
+              ),
+            ],
+          ),
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF1F2),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFFFE4E6)),
+            ),
+            child: const Icon(Icons.emoji_events, color: Color(0xFFEF4444), size: 24),
+          ),
+        ],
+      ),
+    );
+  }
 
-                        <div class="px-2">
-                            <div class="flex items-center space-x-2 mb-3">
-                                <span class="px-3 py-1 bg-rose-50 text-rose-600 rounded-lg text-[10px] font-black uppercase tracking-widest">${selectedEvent.type}</span>
-                                <span class="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-lg text-[10px] font-black uppercase tracking-widest">Enrollment Open</span>
-                            </div>
-                            <h2 class="text-3xl font-black text-gray-900 leading-tight tracking-tight uppercase italic">${selectedEvent.name}</h2>
-                        </div>
+  Widget _buildStepper() {
+    final steps = ['Explore', 'Details', 'Options'];
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(steps.length, (index) {
+          return Row(
+            children: [
+              _buildStepIndicator(index, steps[index]),
+              if (index < steps.length - 1) _buildStepLine(index),
+            ],
+          );
+        }),
+      ),
+    );
+  }
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div onclick="window.open('${selectedEvent.mapUrl}', '_blank')" class="bg-white p-5 rounded-[28px] shadow-sm border border-gray-100 flex items-center space-x-4 active:scale-95 transition-all cursor-pointer">
-                                <div class="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center shadow-inner">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 21l-8.228-8.228a6 6 0 1 1 8.486-8.486L12 4.058l.742-.772a6 6 0 1 1 8.486 8.486L12 21z"></path></svg>
-                                </div>
-                                <div class="overflow-hidden">
-                                    <p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Location</p>
-                                    <p class="text-[10px] font-black text-blue-600 underline truncate leading-none mt-1">Open Maps</p>
-                                </div>
-                            </div>
-                            <div class="bg-white p-5 rounded-[28px] shadow-sm border border-gray-100 flex items-center space-x-4">
-                                <div class="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
-                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                                </div>
-                                <div><p class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Starts</p><p class="text-xs font-black text-gray-900 leading-none mt-1">${selectedEvent.startTime}</p></div>
-                            </div>
-                        </div>
+  Widget _buildStepIndicator(int step, String label) {
+    final isActive = _currentStep >= step;
+    return Column(
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            color: isActive ? const Color(0xFFEF4444) : Colors.white,
+            border: Border.all(color: isActive ? const Color(0xFFEF4444) : const Color(0xFFF1F5F9), width: 2),
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: Text('${step + 1}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: isActive ? Colors.white : const Color(0xFF9CA3AF))),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(label.toUpperCase(), style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: isActive ? const Color(0xFFEF4444) : const Color(0xFF9CA3AF), letterSpacing: 2.0)),
+      ],
+    );
+  }
 
-                        <div class="px-2 space-y-4">
-                            <h4 class="text-xs font-black text-gray-900 uppercase tracking-[0.2em] border-b border-gray-100 pb-2">Event Description</h4>
-                            <p class="text-xs font-bold text-gray-400 leading-relaxed">${selectedEvent.desc}</p>
-                        </div>
+  Widget _buildStepLine(int step) {
+    return Container(
+      width: 50,
+      height: 2,
+      margin: const EdgeInsets.only(bottom: 20),
+      color: _currentStep > step ? const Color(0xFFEF4444) : const Color(0xFFF1F5F9),
+    );
+  }
 
-                        <div class="fixed bottom-0 left-0 right-0 p-8 bg-white/90 backdrop-blur-md border-t border-gray-50 max-w-md mx-auto rounded-t-[40px] shadow-2xl flex items-center justify-between z-40">
-                            <div>
-                                <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Single Ticket</p>
-                                <p class="text-3xl font-black text-gray-900 tracking-tighter italic">$${selectedEvent.price.toFixed(2)}</p>
-                            </div>
-                            <button onclick="goToStep(2)" class="bg-rose-600 text-white px-10 py-5 rounded-3xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-rose-200 active:scale-95 transition-all">Buy Tickets
-                            </button>
-                        </div>
-                    </div>
-                `;
-            } else if (currentStep === 2) {
-                container.innerHTML = `
-                    <div class="space-y-8 animate-in text-left pb-10">
-                        <div class="px-2">
-                            <h2 class="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase italic">Quantity</h2>
-                            <p class="text-[10px] font-bold text-rose-600 uppercase tracking-widest mt-2">Entry Passes</p>
-                        </div>
-                        <div class="bg-white rounded-[40px] p-10 shadow-soft border border-gray-100 space-y-8 relative overflow-hidden">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <h4 class="font-black text-gray-900 text-xl leading-none">Athlete Entry</h4>
-                                    <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-2 italic">Standard Registration</p>
-                                </div>
-                                <div class="flex items-center space-x-5 bg-gray-50 p-2 rounded-2xl shadow-inner">
-                                    <button onclick="updateQty(-1)" class="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center font-black active:scale-90 transition-all">-</button>
-                                    <span class="font-black text-lg">${ticketQty}</span>
-                                    <button onclick="updateQty(1)" class="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center font-black active:scale-90 transition-all">+</button>
-                                </div>
-                            </div>
-                            <div class="bg-gray-50 p-8 rounded-[32px] flex justify-between items-center shadow-inner">
-                                <div>
-                                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">Total Due</p>
-                                    <p class="text-3xl font-black text-gray-900 tracking-tighter mt-1">$${(selectedEvent.price * ticketQty).toFixed(2)}</p>
-                                </div>
-                                <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm text-emerald-500"><svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
-                            </div>
-                        </div>
-                        <button onclick="finalize()" class="w-full py-5 bg-rose-600 text-white rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-rose-200 active:scale-95 transition-all flex items-center justify-center space-x-3">
-                            <span>Proceed to Checkout</span>
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </button>
-                    </div>
-                `;
-            }
+  Widget _buildCurrentStep() {
+    switch (_currentStep) {
+      case 0:
+        return _buildEventList();
+      case 1:
+        return _buildEventDetails();
+      case 2:
+        return _buildTicketQuantity();
+      default:
+        return const SizedBox();
+    }
+  }
+
+  Widget _buildEventList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(24),
+      itemCount: _events.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 24),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.search, color: Color(0xFF9CA3AF), size: 16),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Search events...', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
-        function updateStepIndicator() {
-            const dots = document.querySelectorAll('.step-dot');
-            const labels = document.querySelectorAll('.step-dot + span');
-            const line = document.getElementById('step-line');
-            line.style.width = (currentStep / 2) * 100 + '%';
-            dots.forEach((dot, i) => {
-                if(i <= currentStep) {
-                    dot.className = "step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-rose-600 text-white shadow-lg transition-all scale-110";
-                    labels[i].classList.replace('text-gray-300', 'text-rose-600');
-                } else {
-                    dot.className = "step-dot w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black bg-white border-2 border-gray-100 text-gray-300 transition-all";
-                    labels[i].classList.replace('text-rose-600', 'text-gray-300');
-                }
-            });
-        }
+        final event = _events[index - 1];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 24),
+          child: InkWell(
+            onTap: () {
+              setState(() {
+                _selectedEvent = event;
+                _currentStep = 1;
+              });
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: Colors.white),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 20))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                    child: Stack(
+                      children: [
+                        Image.network(event.image, height: 240, width: double.infinity, fit: BoxFit.cover),
+                        Container(
+                          height: 240,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.8)],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 24,
+                          left: 24,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(event.name.toUpperCase(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, fontStyle: FontStyle.italic, letterSpacing: -0.5)),
+                              const SizedBox(height: 4),
+                              Text(event.location.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFFECDD3).withOpacity(0.9), letterSpacing: 2.5)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFFF1F2),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.calendar_today, color: Color(0xFFEF4444), size: 24),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(event.displayDate.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                          ],
+                        ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text('\$${event.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                            const Text('BOOK NOW', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), fontStyle: FontStyle.italic, letterSpacing: 2.5)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
-        function selectEvent(id) {
-            selectedEvent = EVENTS.find(e => e.id === id);
-            currentStep = 1; render();
-        }
+  Widget _buildEventDetails() {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              Image.network(_selectedEvent!.image, height: 256, width: double.infinity, fit: BoxFit.cover),
+              Container(
+                height: 256,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.6)],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 100,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: InkWell(
+                    onTap: () => _launchUrl(_selectedEvent!.videoUrl),
+                    child: Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withOpacity(0.4)),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30)],
+                      ),
+                      child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(_selectedEvent!.type.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), letterSpacing: 2.5)),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFECFDF5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text('ENROLLMENT OPEN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF10B981), letterSpacing: 2.5)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(_selectedEvent!.name.toUpperCase(), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => _launchUrl(_selectedEvent!.mapUrl),
+                        child: Container(
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            border: Border.all(color: const Color(0xFFF1F5F9)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF1F2),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(Icons.location_on, color: Color(0xFFEF4444), size: 20),
+                              ),
+                              const SizedBox(width: 16),
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('LOCATION', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                                    SizedBox(height: 4),
+                                    Text('Open Maps', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), decoration: TextDecoration.underline)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(color: const Color(0xFFF1F5F9)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(Icons.access_time, color: Color(0xFF2563EB), size: 20),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('STARTS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                                  const SizedBox(height: 4),
+                                  Text(_selectedEvent!.startTime, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                const Text('EVENT DESCRIPTION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 3.0)),
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  height: 2,
+                  color: const Color(0xFFF1F5F9),
+                ),
+                const SizedBox(height: 16),
+                Text(_selectedEvent!.description, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), height: 1.6)),
+                const SizedBox(height: 120),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        function goToStep(step) { currentStep = step; render(); }
+  Widget _buildTicketQuantity() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('QUANTITY', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+          const SizedBox(height: 4),
+          const Text('ENTRY PASSES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFFEF4444), letterSpacing: 2.5)),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(40),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 20))],
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Athlete Entry', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+                        SizedBox(height: 4),
+                        Text('STANDARD REGISTRATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), fontStyle: FontStyle.italic, letterSpacing: 2.5)),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          InkWell(
+                            onTap: () => setState(() => _ticketQty = (_ticketQty - 1).clamp(1, 99)),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(child: Text('-', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 50,
+                            child: Text('$_ticketQty', textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                          ),
+                          InkWell(
+                            onTap: () => setState(() => _ticketQty = (_ticketQty + 1).clamp(1, 99)),
+                            child: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Center(child: Text('+', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900))),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('TOTAL DUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                          const SizedBox(height: 4),
+                          Text('\$${(_selectedEvent!.price * _ticketQty).toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                        ],
+                      ),
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8)],
+                        ),
+                        child: const Icon(Icons.check, color: Color(0xFF10B981), size: 24),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          InkWell(
+            onTap: () {
+              // Navigate to checkout
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: const Color(0xFFEF4444).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('PROCEED TO CHECKOUT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                  SizedBox(width: 12),
+                  Icon(Icons.arrow_forward, color: Colors.white, size: 20),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        function handleBack() {
-            if (currentStep > 0) { currentStep--; render(); }
-            else window.history.back();
-        }
+  Widget _buildFloatingButton() {
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.9),
+          border: const Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, -10))],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('SINGLE TICKET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                const SizedBox(height: 4),
+                Text('\$${_selectedEvent!.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+              ],
+            ),
+            InkWell(
+              onTap: () => setState(() => _currentStep = 2),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444),
+                  borderRadius: BorderRadius.circular(30),
+                  boxShadow: [BoxShadow(color: const Color(0xFFEF4444).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                ),
+                child: const Text('BUY TICKETS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-        function updateQty(val) { ticketQty = Math.max(1, ticketQty + val); render(); }
+class Event {
+  final String id;
+  final String name;
+  final String type;
+  final String displayDate;
+  final String startTime;
+  final String location;
+  final double price;
+  final int seatsLeft;
+  final String image;
+  final String description;
+  final String mapUrl;
+  final String videoUrl;
 
-        function finalize() { window.location.href = 'checkout_screen.html'; }
-
-        window.onload = render;
-    </script>
-</body>
-</html>
+  Event({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.displayDate,
+    required this.startTime,
+    required this.location,
+    required this.price,
+    required this.seatsLeft,
+    required this.image,
+    required this.description,
+    required this.mapUrl,
+    required this.videoUrl,
+  });
+}

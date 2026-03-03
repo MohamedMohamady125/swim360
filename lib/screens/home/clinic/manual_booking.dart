@@ -1,388 +1,616 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Plus, Calendar, ChevronDown, Check, 
-  Building2, X, Info, ArrowLeft, ArrowRight,
-  ShieldOff, RotateCcw, CheckCircle, AlertCircle,
-  Clock, Layers, MapPin, Activity, ChevronLeft, ChevronRight
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-// --- DATA DEFINITIONS ---
-const MOCK_DATA = {
-    branches: [
-        { id: 'b1', name: 'Family Park Clinic', beds: 3, open: 8, close: 17, city: 'Riyadh' },
-        { id: 'b2', name: 'Jeddah Coastal Center', beds: 2, open: 9, close: 18, city: 'Jeddah' }
-    ],
-    // Initial Admin Blocked Slots (RED)
-    blockedSlots: {
-        'b1': {
-            '2026-01-23': { 'Bed-1': ['10:00', '11:00'], 'Bed-3': ['14:00'] },
-            '2026-01-25': { 'Bed-2': ['13:00'] }
-        },
-    },
-    // Client Booked Slots (GREEN) - Usually immutable by Admin here
-    bookedSlots: {
-        'b1': {
-            '2026-01-23': { 'Bed-2': ['09:00'] },
-            '2026-01-24': { 'Bed-1': ['16:00'] }
+class ManualBookingScreen extends StatefulWidget {
+  const ManualBookingScreen({super.key});
+
+  @override
+  State<ManualBookingScreen> createState() => _ManualBookingScreenState();
+}
+
+class _ManualBookingScreenState extends State<ManualBookingScreen> {
+  DateTime _selectedDate = DateTime(2026, 1, 23);
+  String _selectedBranchId = 'b1';
+  List<SlotSelection> _selectedSlots = [];
+  String? _notificationMsg;
+  String _notificationType = 'success';
+
+  final List<Branch> _branches = [];
+
+  Map<String, Map<String, Map<String, List<String>>>> _blockedSlots = {};
+
+  final Map<String, Map<String, Map<String, List<String>>>> _bookedSlots = {};
+
+  void _showNotification(String msg, [String type = 'success']) {
+    setState(() {
+      _notificationMsg = msg;
+      _notificationType = type;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _notificationMsg = null);
+      }
+    });
+  }
+
+  String _formatDateStr(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _formatTime24to12(String hr24) {
+    final hr = int.parse(hr24);
+    final ampm = hr >= 12 ? 'PM' : 'AM';
+    final displayHr = hr % 12 == 0 ? 12 : hr % 12;
+    return '${displayHr.toString().padLeft(2, '0')}:00 $ampm';
+  }
+
+  void _changeWeek(int direction) {
+    setState(() {
+      _selectedDate = _selectedDate.add(Duration(days: direction * 7));
+      _selectedSlots.clear();
+    });
+  }
+
+  void _changeDate(DateTime date) {
+    setState(() {
+      _selectedDate = date;
+      _selectedSlots.clear();
+    });
+  }
+
+  void _handleSlotTap(String bedId, String time, String type) {
+    if (type == 'unavailable' || type == 'booked') return;
+
+    setState(() {
+      final selection = SlotSelection(bedId: bedId, time: time);
+      if (_selectedSlots.any((s) => s.bedId == bedId && s.time == time)) {
+        _selectedSlots.removeWhere((s) => s.bedId == bedId && s.time == time);
+      } else {
+        _selectedSlots.add(selection);
+      }
+    });
+  }
+
+  void _handleBlock() {
+    if (_selectedSlots.isEmpty) return;
+
+    final dateKey = _formatDateStr(_selectedDate);
+
+    setState(() {
+      if (_blockedSlots[_selectedBranchId] == null) {
+        _blockedSlots[_selectedBranchId] = {};
+      }
+      if (_blockedSlots[_selectedBranchId]![dateKey] == null) {
+        _blockedSlots[_selectedBranchId]![dateKey] = {};
+      }
+
+      for (var slot in _selectedSlots) {
+        if (_blockedSlots[_selectedBranchId]![dateKey]![slot.bedId] == null) {
+          _blockedSlots[_selectedBranchId]![dateKey]![slot.bedId] = [];
         }
-    }
-};
-
-export default function App() {
-    const [selectedDate, setSelectedDate] = useState(new Date(2026, 0, 23)); 
-    const [selectedBranchId, setSelectedBranchId] = useState('b1');
-    const [selectedSlots, setSelectedSlots] = useState([]); // Array of {bedId, time}
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStartSlot, setDragStartSlot] = useState(null);
-    
-    // Manage blocked slots in local state for immediate UI feedback
-    const [localBlockedSlots, setLocalBlockedSlots] = useState(MOCK_DATA.blockedSlots);
-    
-    const [notification, setNotification] = useState(null);
-    const [loading, setLoading] = useState(false);
-
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
-
-    const formatDateStr = (date) => {
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    };
-
-    const getDisplayDate = (date) => {
-        return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
-    };
-
-    const formatTime24to12 = (hr24) => {
-        const hr = parseInt(hr24);
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        const displayHr = hr % 12 || 12;
-        return `${String(displayHr).padStart(2, '0')}:00 ${ampm}`;
-    };
-
-    const timeSlots = useMemo(() => {
-        return Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}:00`);
-    }, []);
-
-    const selectedBranch = useMemo(() => {
-        return MOCK_DATA.branches.find(b => b.id === selectedBranchId);
-    }, [selectedBranchId]);
-
-    const bedIds = useMemo(() => {
-        return Array.from({ length: selectedBranch.beds }, (_, i) => `Bed-${i + 1}`);
-    }, [selectedBranch]);
-
-    // --- LOGIC ---
-    const changeDate = (date) => {
-        setSelectedDate(date);
-        setSelectedSlots([]);
-    };
-
-    const changeWeek = (direction) => {
-        const newDate = new Date(selectedDate);
-        newDate.setDate(selectedDate.getDate() + (direction * 7));
-        setSelectedDate(newDate);
-        setSelectedSlots([]);
-    };
-
-    const handleMouseDown = (bedId, time, type) => {
-        if (type === 'unavailable' || type === 'booked') return;
-        setIsDragging(true);
-        setDragStartSlot({ bedId, time });
-        setSelectedSlots([{ bedId, time }]);
-    };
-
-    const handleMouseEnter = (bedId, time, type) => {
-        if (!isDragging || type === 'unavailable' || type === 'booked') return;
-        if (bedId !== dragStartSlot.bedId) return;
-
-        const startIdx = timeSlots.indexOf(dragStartSlot.time);
-        const currentIdx = timeSlots.indexOf(time);
-        const minIdx = Math.min(startIdx, currentIdx);
-        const maxIdx = Math.max(startIdx, currentIdx);
-
-        const newSelection = [];
-        for (let i = minIdx; i <= maxIdx; i++) {
-            const t = timeSlots[i];
-            const dateKey = formatDateStr(selectedDate);
-            const isBooked = MOCK_DATA.bookedSlots[selectedBranchId]?.[dateKey]?.[bedId]?.includes(t);
-            const isOut = i < selectedBranch.open || i >= selectedBranch.close;
-            
-            if (!isBooked && !isOut) {
-                newSelection.push({ bedId, time: t });
-            }
+        if (!_blockedSlots[_selectedBranchId]![dateKey]![slot.bedId]!.contains(slot.time)) {
+          _blockedSlots[_selectedBranchId]![dateKey]![slot.bedId]!.add(slot.time);
         }
-        setSelectedSlots(newSelection);
-    };
+      }
 
-    const handleMouseUp = () => {
-        setIsDragging(false);
-    };
+      _showNotification('${_selectedSlots.length} slots blocked (Red)', 'error');
+      _selectedSlots.clear();
+    });
+  }
 
-    // ACTION: BLOCK SLOTS (Turn Red)
-    const handleBlock = () => {
-        if (selectedSlots.length === 0) return;
-        
-        const dateKey = formatDateStr(selectedDate);
-        const updatedBlocked = { ...localBlockedSlots };
-        
-        if (!updatedBlocked[selectedBranchId]) updatedBlocked[selectedBranchId] = {};
-        if (!updatedBlocked[selectedBranchId][dateKey]) updatedBlocked[selectedBranchId][dateKey] = {};
+  void _handleFree() {
+    if (_selectedSlots.isEmpty) return;
 
-        selectedSlots.forEach(slot => {
-            if (!updatedBlocked[selectedBranchId][dateKey][slot.bedId]) {
-                updatedBlocked[selectedBranchId][dateKey][slot.bedId] = [];
-            }
-            if (!updatedBlocked[selectedBranchId][dateKey][slot.bedId].includes(slot.time)) {
-                updatedBlocked[selectedBranchId][dateKey][slot.bedId].push(slot.time);
-            }
-        });
+    final dateKey = _formatDateStr(_selectedDate);
 
-        setLocalBlockedSlots(updatedBlocked);
-        showNotify(`${selectedSlots.length} slots blocked (Red)`, 'error');
-        setSelectedSlots([]);
-    };
-
-    // ACTION: FREE UP SLOTS (Turn White)
-    const handleFree = () => {
-        if (selectedSlots.length === 0) return;
-        
-        const dateKey = formatDateStr(selectedDate);
-        const updatedBlocked = { ...localBlockedSlots };
-        
-        if (updatedBlocked[selectedBranchId] && updatedBlocked[selectedBranchId][dateKey]) {
-            selectedSlots.forEach(slot => {
-                if (updatedBlocked[selectedBranchId][dateKey][slot.bedId]) {
-                    updatedBlocked[selectedBranchId][dateKey][slot.bedId] = 
-                        updatedBlocked[selectedBranchId][dateKey][slot.bedId].filter(t => t !== slot.time);
-                }
-            });
+    setState(() {
+      if (_blockedSlots[_selectedBranchId]?[dateKey] != null) {
+        for (var slot in _selectedSlots) {
+          _blockedSlots[_selectedBranchId]![dateKey]![slot.bedId]?.remove(slot.time);
         }
+      }
 
-        setLocalBlockedSlots(updatedBlocked);
-        showNotify(`${selectedSlots.length} slots freed up (White)`);
-        setSelectedSlots([]);
-    };
+      _showNotification('${_selectedSlots.length} slots freed up (White)');
+      _selectedSlots.clear();
+    });
+  }
 
-    // --- RENDERERS ---
+  Branch get _selectedBranch {
+    return _branches.firstWhere((b) => b.id == _selectedBranchId);
+  }
 
-    const renderDayIterator = () => {
-        const days = [];
-        const startOfWeek = new Date(selectedDate);
-        startOfWeek.setDate(selectedDate.getDate() - selectedDate.getDay()); // Go to Sunday
+  List<String> get _bedIds {
+    return List.generate(_selectedBranch.beds, (i) => 'Bed-${i + 1}');
+  }
 
-        for (let i = 0; i < 7; i++) {
-            const day = new Date(startOfWeek);
-            day.setDate(startOfWeek.getDate() + i);
-            const isSelected = formatDateStr(day) === formatDateStr(selectedDate);
-            days.push(
-                <button 
-                    key={i}
-                    onClick={() => changeDate(day)}
-                    className={`flex-1 flex flex-col items-center py-3 rounded-2xl transition-all duration-300 ${isSelected ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'}`}
-                >
-                    <span className="text-[10px] font-black uppercase tracking-widest">{day.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-                    <span className="text-sm font-black mt-1">{day.getDate()}</span>
-                </button>
-            );
-        }
-        return (
-            <div className="space-y-4">
-                <div className="flex items-center justify-between px-1">
-                    <button onClick={() => changeWeek(-1)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-blue-600 transition-colors">
-                        <ChevronLeft className="w-5 h-5" />
-                    </button>
-                    <span className="text-xs font-black text-gray-800 uppercase tracking-widest">
-                        {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                    </span>
-                    <button onClick={() => changeWeek(1)} className="p-2 bg-gray-50 rounded-xl text-gray-400 hover:text-blue-600 transition-colors">
-                        <ChevronRight className="w-5 h-5" />
-                    </button>
-                </div>
-                <div className="flex space-x-2">{days}</div>
-            </div>
-        );
-    };
+  List<String> get _timeSlots {
+    return List.generate(24, (i) => '${i.toString().padLeft(2, '0')}:00');
+  }
 
-    const renderGrid = () => {
-        const dateKey = formatDateStr(selectedDate);
-        const branchBlocked = localBlockedSlots[selectedBranchId]?.[dateKey] || {};
-        const branchBooked = MOCK_DATA.bookedSlots[selectedBranchId]?.[dateKey] || {};
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                            ),
+                            child: const Icon(Icons.calendar_today, color: Colors.white, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Availability', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5, height: 1.0)),
+                              SizedBox(height: 4),
+                              Text('BRANCH CAPACITY MANAGEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.close, color: Color(0xFF9CA3AF), size: 24),
+                      ),
+                    ],
+                  ),
+                ),
 
-        return (
-            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden flex flex-col">
-                <div className="flex border-b border-gray-50 bg-gray-50/50">
-                    <div className="w-20 p-3 text-[10px] font-black text-gray-400 uppercase border-r border-gray-100">Time</div>
-                    {bedIds.map(bed => (
-                        <div key={bed} className="flex-1 p-3 text-[10px] font-black text-gray-600 uppercase text-center border-r border-gray-100 last:border-0">{bed.replace('-', ' ')}</div>
-                    ))}
-                </div>
+                // Main Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Branch & Date Card
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: const Color(0xFFF3F4F6)),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('ACTIVE BRANCH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.business, size: 20, color: Color(0xFF9CA3AF)),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: DropdownButton<String>(
+                                        value: _selectedBranchId,
+                                        isExpanded: true,
+                                        underline: const SizedBox(),
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                        items: _branches.map((b) => DropdownMenuItem(value: b.id, child: Text(b.name))).toList(),
+                                        onChanged: (value) => setState(() => _selectedBranchId = value!),
+                                      ),
+                                    ),
+                                    const Icon(Icons.arrow_drop_down, color: Color(0xFF9CA3AF)),
+                                  ],
+                                ),
+                              ),
 
-                <div className="overflow-y-auto max-h-[420px] no-scrollbar select-none" onMouseLeave={handleMouseUp}>
-                    {timeSlots.map(time => {
-                        const hour = parseInt(time.split(':')[0]);
-                        const isOutside = hour < selectedBranch.open || hour >= selectedBranch.close;
+                              const SizedBox(height: 24),
 
-                        return (
-                            <div key={time} className="flex border-b border-gray-50 last:border-0">
-                                <div className="w-20 p-2 text-[10px] font-bold text-gray-400 text-center border-r border-gray-100 bg-gray-50/30">
-                                    {formatTime24to12(time)}
-                                </div>
-                                {bedIds.map(bed => {
-                                    const isBooked = branchBooked[bed]?.includes(time);
-                                    const isBlocked = branchBlocked[bed]?.includes(time);
-                                    const isSelected = selectedSlots.some(s => s.bedId === bed && s.time === time);
+                              // Week Navigator
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  InkWell(
+                                    onTap: () => _changeWeek(-1),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(Icons.chevron_left, color: Color(0xFF9CA3AF), size: 20),
+                                    ),
+                                  ),
+                                  Text(
+                                    DateFormat('MMMM yyyy').format(_selectedDate).toUpperCase(),
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 3.0),
+                                  ),
+                                  InkWell(
+                                    onTap: () => _changeWeek(1),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 20),
+                                    ),
+                                  ),
+                                ],
+                              ),
 
-                                    let status = 'available';
-                                    if (isOutside) status = 'unavailable';
-                                    else if (isSelected) status = 'selected';
-                                    else if (isBooked) status = 'booked';
-                                    else if (isBlocked) status = 'blocked';
+                              const SizedBox(height: 16),
 
-                                    return (
-                                        <div 
-                                            key={bed}
-                                            onMouseDown={() => handleMouseDown(bed, time, status)}
-                                            onMouseEnter={() => handleMouseEnter(bed, time, status)}
-                                            onMouseUp={handleMouseUp}
-                                            className={`flex-1 h-11 border-r border-gray-50 last:border-0 transition-all duration-150 relative
-                                                ${status === 'unavailable' ? 'bg-gray-100/50 cursor-not-allowed opacity-40' : ''}
-                                                ${status === 'available' ? 'bg-white cursor-pointer hover:bg-blue-50/30' : ''}
-                                                ${status === 'selected' ? 'bg-blue-500 shadow-inner' : ''}
-                                                ${status === 'booked' ? 'bg-emerald-500 cursor-not-allowed' : ''}
-                                                ${status === 'blocked' ? 'bg-rose-500' : ''}
-                                            `}
-                                        >
-                                            {status === 'booked' && <Check className="w-3 h-3 text-white absolute inset-0 m-auto opacity-40" />}
-                                            {status === 'blocked' && <ShieldOff className="w-4 h-4 text-white absolute inset-0 m-auto opacity-40" />}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        );
-                    })}
-                </div>
-            </div>
-        );
-    };
+                              // Day Iterator
+                              Row(
+                                children: List.generate(7, (i) {
+                                  final startOfWeek = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day - _selectedDate.weekday % 7);
+                                  final day = startOfWeek.add(Duration(days: i));
+                                  final isSelected = _formatDateStr(day) == _formatDateStr(_selectedDate);
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse">SWIM 360</div>;
+                                  return Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                      child: InkWell(
+                                        onTap: () => _changeDate(day),
+                                        child: AnimatedContainer(
+                                          duration: const Duration(milliseconds: 300),
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF9FAFB),
+                                            borderRadius: BorderRadius.circular(16),
+                                            boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 10))] : [],
+                                          ),
+                                          child: Column(
+                                            children: [
+                                              Text(
+                                                DateFormat('E').format(day).toUpperCase(),
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: isSelected ? Colors.white : const Color(0xFF9CA3AF),
+                                                  letterSpacing: 3.0,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                day.day.toString(),
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: isSelected ? Colors.white : Colors.black,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
 
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            
-            {/* Header */}
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30">
-                <div className="flex items-center justify-between text-left">
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
-                            <Calendar className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tight leading-none">Availability</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">Branch Capacity Management</p>
-                        </div>
-                    </div>
-                    <button onClick={() => window.history.back()} className="p-2 text-gray-400 active:scale-90 transition-transform"><X className="w-6 h-6" /></button>
-                </div>
-            </header>
+                              const SizedBox(height: 24),
 
-            <main className="p-6 space-y-6 animate-in">
-                
-                {/* Branch Selection & Date Card */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
-                    <div className="space-y-2 text-left">
-                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">Active Branch</label>
-                        <div className="flex items-center bg-gray-50 rounded-2xl px-4 py-1 border border-transparent focus-within:border-blue-500 transition-all">
-                            <Building2 className="w-5 h-5 text-gray-400 mr-3" />
-                            <select 
-                                value={selectedBranchId}
-                                onChange={(e) => setSelectedBranchId(e.target.value)}
-                                className="flex-1 bg-transparent py-4 text-sm font-bold outline-none appearance-none"
-                            >
-                                {MOCK_DATA.branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
-                            <ChevronDown className="w-4 h-4 text-gray-400 ml-2" />
-                        </div>
-                    </div>
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.access_time, size: 12, color: Color(0xFF9CA3AF)),
+                                  const SizedBox(width: 4),
+                                  Text('${_selectedBranch.open}:00 - ${_selectedBranch.close}:00', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                                  const SizedBox(width: 16),
+                                  const Icon(Icons.layers, size: 12, color: Color(0xFF9CA3AF)),
+                                  const SizedBox(width: 4),
+                                  Text('${_selectedBranch.beds} Beds Total', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
 
-                    {renderDayIterator()}
-                    
-                    <div className="pt-2 flex items-center justify-center space-x-4 text-[10px] font-black text-gray-400 uppercase tracking-tighter">
-                        <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> {selectedBranch.open}:00 - {selectedBranch.close}:00</span>
-                        <span className="flex items-center"><Layers className="w-3 h-3 mr-1" /> {selectedBranch.beds} Beds Total</span>
-                    </div>
-                </div>
+                        const SizedBox(height: 24),
 
-                {/* Legend Chips */}
-                <div className="flex space-x-3 overflow-x-auto no-scrollbar py-1">
-                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
-                        <div className="w-2.5 h-2.5 rounded-full bg-white border border-gray-300"></div>
-                        <span className="text-[9px] font-black text-gray-500 uppercase">Free</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                        <span className="text-[9px] font-black text-gray-500 uppercase">Booked</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
-                        <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                        <span className="text-[9px] font-black text-gray-500 uppercase">Blocked</span>
-                    </div>
-                    <div className="flex items-center space-x-1.5 px-3 py-1.5 bg-white rounded-full border border-gray-100 flex-shrink-0">
-                        <div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div>
-                        <span className="text-[9px] font-black text-gray-500 uppercase">Closed</span>
-                    </div>
-                </div>
+                        // Legend
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildLegendChip('Free', const Color(0xFFFFFFFF), const Color(0xFFE5E7EB)),
+                              const SizedBox(width: 12),
+                              _buildLegendChip('Booked', const Color(0xFF10B981), null),
+                              const SizedBox(width: 12),
+                              _buildLegendChip('Blocked', const Color(0xFFEF4444), null),
+                              const SizedBox(width: 12),
+                              _buildLegendChip('Closed', const Color(0xFFE5E7EB), null),
+                            ],
+                          ),
+                        ),
 
-                {/* Interactive Grid */}
-                {renderGrid()}
+                        const SizedBox(height: 24),
 
-                {/* Actions Footer */}
-                <div className="grid grid-cols-2 gap-4">
-                    <button 
-                        onClick={handleBlock}
-                        disabled={selectedSlots.length === 0}
-                        className={`py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-2
-                        ${selectedSlots.length > 0 ? 'bg-rose-500 text-white shadow-rose-100 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                    >
-                        <ShieldOff className="w-5 h-5" /> <span>Block</span>
-                    </button>
-                    <button 
-                        onClick={handleFree}
-                        disabled={selectedSlots.length === 0}
-                        className={`py-5 rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl transition-all flex items-center justify-center space-x-2
-                        ${selectedSlots.length > 0 ? 'bg-blue-600 text-white shadow-blue-100 active:scale-95' : 'bg-gray-100 text-gray-300 cursor-not-allowed'}`}
-                    >
-                        <RotateCcw className="w-5 h-5" /> <span>Free Up</span>
-                    </button>
-                </div>
+                        // Grid
+                        _buildGrid(),
 
-                {selectedSlots.length > 0 && (
-                    <div className="flex items-center justify-center space-x-2 text-blue-600 animate-pulse">
-                        <Info className="w-4 h-4" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{selectedSlots.length} Slots Selected</span>
-                    </div>
-                )}
-            </main>
+                        const SizedBox(height: 24),
 
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    <CheckCircle className="w-4 h-4" />
-                    <span>{notification.msg}</span>
-                </div>
-            )}
+                        // Actions
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: _selectedSlots.isEmpty ? null : _handleBlock,
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: _selectedSlots.isEmpty ? const Color(0xFFF3F4F6) : const Color(0xFFEF4444),
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: _selectedSlots.isEmpty ? [] : [BoxShadow(color: const Color(0xFFEF4444).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.block, color: _selectedSlots.isEmpty ? const Color(0xFFD1D5DB) : Colors.white, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text('BLOCK', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _selectedSlots.isEmpty ? const Color(0xFFD1D5DB) : Colors.white, letterSpacing: 2.0)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: InkWell(
+                                onTap: _selectedSlots.isEmpty ? null : _handleFree,
+                                child: Container(
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: _selectedSlots.isEmpty ? const Color(0xFFF3F4F6) : const Color(0xFF2563EB),
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: _selectedSlots.isEmpty ? [] : [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.refresh, color: _selectedSlots.isEmpty ? const Color(0xFFD1D5DB) : Colors.white, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text('FREE UP', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: _selectedSlots.isEmpty ? const Color(0xFFD1D5DB) : Colors.white, letterSpacing: 2.0)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
 
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
-        </div>
+                        if (_selectedSlots.isNotEmpty) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.info_outline, color: Color(0xFF2563EB), size: 16),
+                              const SizedBox(width: 8),
+                              Text('${_selectedSlots.length} SLOTS SELECTED', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), letterSpacing: 3.0)),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Notification
+          if (_notificationMsg != null)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: _notificationType == 'error' ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Text(_notificationMsg!.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildLegendChip(String label, Color color, Color? borderColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(color: const Color(0xFFF3F4F6)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(5),
+              border: borderColor != null ? Border.all(color: borderColor, width: 2) : null,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(label.toUpperCase(), style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Color(0xFF6B7280))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGrid() {
+    final dateKey = _formatDateStr(_selectedDate);
+    final branchBlocked = _blockedSlots[_selectedBranchId]?[dateKey] ?? {};
+    final branchBooked = _bookedSlots[_selectedBranchId]?[dateKey] ?? {};
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: const Color(0xFFF3F4F6)),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            decoration: const BoxDecoration(
+              color: Color(0xFFFBFCFD),
+              borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
+              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 80,
+                  padding: const EdgeInsets.all(12),
+                  child: const Text('TIME', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                ),
+                ..._bedIds.map((bed) => Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      border: Border(left: BorderSide(color: Color(0xFFF3F4F6))),
+                    ),
+                    child: Text(bed.replaceAll('-', ' ').toUpperCase(), textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF6B7280))),
+                  ),
+                )),
+              ],
+            ),
+          ),
+
+          // Grid Body
+          SizedBox(
+            height: 420,
+            child: SingleChildScrollView(
+              child: Column(
+                children: _timeSlots.map((time) {
+                  final hour = int.parse(time.split(':')[0]);
+                  final isOutside = hour < _selectedBranch.open || hour >= _selectedBranch.close;
+
+                  return Container(
+                    decoration: const BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 80,
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFBFCFD),
+                            border: Border(right: BorderSide(color: Color(0xFFF3F4F6))),
+                          ),
+                          child: Text(_formatTime24to12(time), textAlign: TextAlign.center, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+                        ),
+                        ..._bedIds.map((bed) {
+                          final isBooked = branchBooked[bed]?.contains(time) ?? false;
+                          final isBlocked = branchBlocked[bed]?.contains(time) ?? false;
+                          final isSelected = _selectedSlots.any((s) => s.bedId == bed && s.time == time);
+
+                          String status = 'available';
+                          if (isOutside) status = 'unavailable';
+                          else if (isSelected) status = 'selected';
+                          else if (isBooked) status = 'booked';
+                          else if (isBlocked) status = 'blocked';
+
+                          Color bgColor = Colors.white;
+                          if (status == 'unavailable') bgColor = const Color(0xFFF3F4F6);
+                          else if (status == 'selected') bgColor = const Color(0xFF3B82F6);
+                          else if (status == 'booked') bgColor = const Color(0xFF10B981);
+                          else if (status == 'blocked') bgColor = const Color(0xFFEF4444);
+
+                          return Expanded(
+                            child: InkWell(
+                              onTap: () => _handleSlotTap(bed, time, status),
+                              child: Container(
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: bgColor,
+                                  border: const Border(left: BorderSide(color: Color(0xFFF3F4F6))),
+                                ),
+                                child: Center(
+                                  child: status == 'booked'
+                                      ? const Icon(Icons.check, color: Colors.white, size: 12)
+                                      : status == 'blocked'
+                                          ? const Icon(Icons.block, color: Colors.white, size: 16)
+                                          : null,
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class Branch {
+  final String id;
+  final String name;
+  final int beds;
+  final int open;
+  final int close;
+  final String city;
+
+  Branch({
+    required this.id,
+    required this.name,
+    required this.beds,
+    required this.open,
+    required this.close,
+    required this.city,
+  });
+}
+
+class SlotSelection {
+  final String bedId;
+  final String time;
+
+  SlotSelection({required this.bedId, required this.time});
 }

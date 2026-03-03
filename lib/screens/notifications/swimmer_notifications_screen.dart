@@ -1,188 +1,468 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swim 360 - Notifications</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-        
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-in { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .notif-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border-radius: 28px;
-        }
-        .notif-card:active { transform: scale(0.97); }
-        
-        /* Bottom Sheet Transition */
-        .modal-sheet {
-            transform: translateY(100%);
-            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
-        }
-        .modal-overlay.active .modal-sheet { transform: translateY(0); }
-        
-        .unread-pulse {
-            box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
-        }
-    </style>
-</head>
-<body class="no-scrollbar">
+import 'package:flutter/material.dart';
 
-    <div class="max-w-md mx-auto min-h-screen pb-10">
-        <header class="px-6 pt-12 pb-6 flex items-center justify-between bg-white/90 backdrop-blur-xl border-b border-slate-50 sticky top-0 z-40">
-            <div class="flex items-center space-x-4">
-                <button onclick="window.history.back()" class="p-2.5 bg-slate-50 rounded-2xl text-slate-600 active:scale-90 transition-transform">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-                </button>
-                <div>
-                    <h1 class="text-2xl font-black text-slate-900 tracking-tight leading-none uppercase italic">Updates</h1>
-                    <p id="unread-counter" class="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1.5">2 New Updates</p>
-                </div>
-            </div>
-            <button onclick="markAllRead()" class="p-3 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5M15 6l-6 6"/></svg>
-            </button>
-        </header>
+class SwimmerNotificationsScreen extends StatefulWidget {
+  const SwimmerNotificationsScreen({super.key});
 
-        <main class="p-5">
-            <div class="flex space-x-3 overflow-x-auto no-scrollbar pb-6" id="filter-container">
-                <button onclick="setFilter('all')" class="filter-tab px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-900 text-white shadow-xl shadow-slate-900/10 whitespace-nowrap">All</button>
-                <button onclick="setFilter('unread')" class="filter-tab px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-slate-400 border border-slate-100 whitespace-nowrap">Unread</button>
-                <button onclick="setFilter('bookings')" class="filter-tab px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-slate-400 border border-slate-100 whitespace-nowrap">Bookings</button>
-                <button onclick="setFilter('orders')" class="filter-tab px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-slate-400 border border-slate-100 whitespace-nowrap">Orders</button>
-            </div>
+  @override
+  State<SwimmerNotificationsScreen> createState() => _SwimmerNotificationsScreenState();
+}
 
-            <div id="notif-list" class="space-y-4">
-                </div>
-        </main>
-    </div>
+class _SwimmerNotificationsScreenState extends State<SwimmerNotificationsScreen> with SingleTickerProviderStateMixin {
+  String _currentFilter = 'all';
+  NotificationItem? _selectedNotification;
 
-    <div id="notif-overlay" class="modal-overlay fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-end justify-center" onclick="closeNotif()">
-        <div class="modal-sheet bg-white w-full max-w-sm rounded-t-[44px] p-8 shadow-2xl relative overflow-hidden" onclick="event.stopPropagation()">
-            <div class="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-10 shadow-inner"></div>
-            
-            <div id="modal-icon-bg" class="w-20 h-20 rounded-3xl flex items-center justify-center shadow-lg mb-8">
-                </div>
+  final List<NotificationItem> _notifications = [];
 
-            <div class="space-y-4 text-left">
-                <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest leading-none">Notification Detail</p>
-                <h2 id="modal-title" class="text-3xl font-black text-slate-900 leading-tight uppercase italic tracking-tighter">Title</h2>
-                <p id="modal-message" class="text-sm text-slate-500 font-medium leading-relaxed">Message goes here...</p>
-                
-                <div class="flex items-center space-x-2 text-[10px] font-black text-slate-300 uppercase tracking-widest pt-4">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                    <span id="modal-time">Received 2m ago</span>
-                </div>
-            </div>
+  List<NotificationItem> get _filteredNotifications {
+    return _notifications.where((n) {
+      if (_currentFilter == 'unread') return !n.isRead;
+      if (_currentFilter == 'orders') return n.type == 'order';
+      if (_currentFilter == 'bookings') return ['academy', 'clinic', 'event'].contains(n.type);
+      return true;
+    }).toList();
+  }
 
-            <div class="pt-10 space-y-4">
-                <button onclick="closeNotif()" class="w-full py-5 bg-slate-900 text-white rounded-[24px] font-black text-xs uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all">View Related Activity</button>
-                <button onclick="closeNotif()" class="w-full py-3 text-slate-400 font-black text-[10px] uppercase tracking-widest">Dismiss</button>
-            </div>
-        </div>
-    </div>
+  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
-    <script>
-        const INITIAL_DATA = [
-            { id: 'n1', type: 'order', title: 'Order Out for Delivery', message: 'Your Pro Racing Goggles are on the way! Estimated arrival by 6:00 PM today.', time: '2m ago', isRead: false, color: '#f97316', icon: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/>' },
-            { id: 'n2', type: 'academy', title: 'Class Reminder', message: 'Friendly reminder: Your Intermediate Squad session starts in 2 hours.', time: '1h ago', isRead: false, color: '#2563eb', icon: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3.33 3 8.67 3 12 0v-5"/>' },
-            { id: 'n3', type: 'online', title: 'New Content', message: 'Coach Michael Thorne just uploaded "Week 4: Advanced Breathing".', time: '3h ago', isRead: true, color: '#7c3aed', icon: '<path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2" ry="2"/>' },
-            { id: 'n4', type: 'event', title: 'Result Published', message: 'The official times for the Regional Championship 2026 are now available.', time: 'Yesterday', isRead: true, color: '#e11d48', icon: '<path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>' }
-        ];
+  void _markAllRead() {
+    setState(() {
+      for (var notification in _notifications) {
+        notification.isRead = true;
+      }
+    });
+  }
 
-        let currentFilter = 'all';
+  void _openNotification(NotificationItem notification) {
+    setState(() {
+      notification.isRead = true;
+      _selectedNotification = notification;
+    });
+    _showNotificationDetail();
+  }
 
-        function renderNotifs() {
-            const container = document.getElementById('notif-list');
-            const unreadCounter = document.getElementById('unread-counter');
-            
-            const filtered = INITIAL_DATA.filter(n => {
-                if (currentFilter === 'unread') return !n.isRead;
-                if (currentFilter === 'orders') return n.type === 'order';
-                if (currentFilter === 'bookings') return ['academy', 'clinic', 'event'].includes(n.type);
-                return true;
-            });
+  void _showNotificationDetail() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _buildNotificationDetailSheet(),
+    );
+  }
 
-            const unreadCount = INITIAL_DATA.filter(n => !n.isRead).length;
-            unreadCounter.innerText = unreadCount > 0 ? `${unreadCount} New Update${unreadCount > 1 ? 's' : ''}` : 'All caught up';
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(),
+            _buildFilterTabs(),
+            Expanded(child: _buildNotificationsList()),
+          ],
+        ),
+      ),
+    );
+  }
 
-            container.innerHTML = filtered.map((n, index) => `
-                <div onclick="openNotif('${n.id}')" class="notif-card p-5 bg-white border ${n.isRead ? 'border-slate-50 opacity-60' : 'border-blue-100 shadow-xl shadow-blue-600/5 ring-1 ring-blue-50'} flex items-start space-x-4 animate-in" style="animation-delay: ${index * 0.1}s">
-                    <div class="relative flex-shrink-0">
-                        <div class="w-12 h-12 rounded-2xl flex items-center justify-center" style="background-color: ${n.color}15; color: ${n.color}">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">${n.icon}</svg>
-                        </div>
-                        ${!n.isRead ? '<span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-blue-600 rounded-full border-2 border-white unread-pulse"></span>' : ''}
-                    </div>
-                    <div class="flex-grow min-w-0 text-left">
-                        <div class="flex justify-between items-start">
-                            <h3 class="text-sm font-black text-slate-900 leading-none uppercase italic tracking-tighter truncate">${n.title}</h3>
-                            <span class="text-[8px] font-black text-slate-300 uppercase tracking-widest whitespace-nowrap ml-2">${n.time}</span>
-                        </div>
-                        <p class="text-[11px] mt-2 leading-relaxed text-slate-500 font-medium line-clamp-2">${n.message}</p>
-                    </div>
-                </div>
-            `).join('');
-        }
+  Widget _buildHeader() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              InkWell(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.chevron_left, size: 24),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'UPDATES',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.5,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _unreadCount > 0 ? '$_unreadCount New Update${_unreadCount > 1 ? 's' : ''}' : 'All caught up',
+                    style: const TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF2563EB),
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          InkWell(
+            onTap: _markAllRead,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.done_all, color: Color(0xFF2563EB), size: 24),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-        function setFilter(f) {
-            currentFilter = f;
-            document.querySelectorAll('.filter-tab').forEach(btn => {
-                const isActive = btn.innerText.toLowerCase() === f;
-                btn.className = `filter-tab px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-all ${isActive ? 'bg-slate-900 text-white shadow-xl' : 'bg-white text-slate-400 border border-slate-100'}`;
-            });
-            renderNotifs();
-        }
+  Widget _buildFilterTabs() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: ['all', 'unread', 'bookings', 'orders'].map((filter) {
+            final isActive = _currentFilter == filter;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InkWell(
+                onTap: () => setState(() => _currentFilter = filter),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isActive ? const Color(0xFF0F172A) : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: isActive ? null : Border.all(color: const Color(0xFFF1F5F9)),
+                    boxShadow: isActive
+                        ? [BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))]
+                        : null,
+                  ),
+                  child: Text(
+                    filter.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: isActive ? Colors.white : const Color(0xFF9CA3AF),
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
 
-        function openNotif(id) {
-            const n = INITIAL_DATA.find(x => x.id === id);
-            n.isRead = true;
-            
-            document.getElementById('modal-title').innerText = n.title;
-            document.getElementById('modal-message').innerText = n.message;
-            document.getElementById('modal-time').innerText = `Received ${n.time}`;
-            
-            const iconBg = document.getElementById('modal-icon-bg');
-            iconBg.style.backgroundColor = `${n.color}15`;
-            iconBg.style.color = n.color;
-            iconBg.innerHTML = `<svg class="w-10 h-10" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">${n.icon}</svg>`;
+  Widget _buildNotificationsList() {
+    if (_filteredNotifications.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.notifications_off, size: 80, color: Colors.grey.shade300),
+            const SizedBox(height: 16),
+            Text(
+              'No notifications',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey.shade400),
+            ),
+          ],
+        ),
+      );
+    }
 
-            const overlay = document.getElementById('notif-overlay');
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
-            setTimeout(() => overlay.classList.add('active'), 10);
-            renderNotifs();
-        }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _filteredNotifications.length,
+      itemBuilder: (context, index) {
+        final notification = _filteredNotifications[index];
+        return _buildNotificationCard(notification, index);
+      },
+    );
+  }
 
-        function closeNotif() {
-            const overlay = document.getElementById('notif-overlay');
-            overlay.classList.remove('active');
-            setTimeout(() => {
-                overlay.classList.remove('flex');
-                overlay.classList.add('hidden');
-            }, 500);
-        }
+  Widget _buildNotificationCard(NotificationItem notification, int index) {
+    return AnimatedOpacity(
+      opacity: 1.0,
+      duration: Duration(milliseconds: 100 * index),
+      child: InkWell(
+        onTap: () => _openNotification(notification),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: notification.isRead ? const Color(0xFFF1F5F9) : const Color(0xFFDCEEFE),
+              width: notification.isRead ? 1 : 2,
+            ),
+            boxShadow: notification.isRead
+                ? null
+                : [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withOpacity(0.05),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    )
+                  ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: notification.color.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(notification.icon, color: notification.color, size: 24),
+                  ),
+                  if (!notification.isRead)
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            notification.title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.5,
+                              fontStyle: FontStyle.italic,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          notification.time,
+                          style: const TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            color: Color(0xFFD1D5DB),
+                            letterSpacing: 2.0,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      notification.message,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF6B7280),
+                        height: 1.5,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-        function markAllRead() {
-            INITIAL_DATA.forEach(n => n.isRead = true);
-            renderNotifs();
-        }
+  Widget _buildNotificationDetailSheet() {
+    if (_selectedNotification == null) return const SizedBox();
 
-        window.onload = renderNotifs;
-    </script>
-</body>
-</html>
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(44)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 16),
+          Container(
+            width: 48,
+            height: 6,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(
+              children: [
+                Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: _selectedNotification!.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  child: Icon(_selectedNotification!.icon, color: _selectedNotification!.color, size: 40),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  'NOTIFICATION DETAIL',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF2563EB),
+                    letterSpacing: 2.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _selectedNotification!.title,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1.0,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _selectedNotification!.message,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Color(0xFF6B7280),
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.access_time, size: 16, color: Color(0xFFD1D5DB)),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Received ${_selectedNotification!.time}',
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFD1D5DB),
+                        letterSpacing: 2.5,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 40),
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0F172A).withOpacity(0.2),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        )
+                      ],
+                    ),
+                    child: const Text(
+                      'VIEW RELATED ACTIVITY',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'DISMISS',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF9CA3AF),
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class NotificationItem {
+  final String id;
+  final String type;
+  final String title;
+  final String message;
+  final String time;
+  bool isRead;
+  final Color color;
+  final IconData icon;
+
+  NotificationItem({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.message,
+    required this.time,
+    required this.isRead,
+    required this.color,
+    required this.icon,
+  });
+}

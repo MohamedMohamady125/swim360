@@ -1,483 +1,400 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  Plus, UploadCloud, ChevronDown, Check, 
-  Layers, Package, Ruler, Palette, Building2, 
-  X, Info, ArrowLeft, Camera, Settings,
-  AlertCircle, Tag, Percent, Ticket, Edit3,
-  MoreHorizontal, Eye, ChevronRight, CheckCircle, Clock, Calendar
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:swim360/core/services/store_service.dart';
+import 'package:swim360/core/models/store_models.dart';
 
-// --- DATA DEFINITIONS ---
-const BRANDS = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
-const CATEGORIES = ["Cap", "Goggles", "Suit", "Kickboard", "Paddles", "Fins", "Snorkels", "Other"];
-const SIZES = ["XS", "S", "M", "L", "XL", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "ONE SIZE", "OTHER"];
-const COLORS = [
-    { name: 'Red', code: '#EF4444' },
-    { name: 'Blue', code: '#3B82F6' },
-    { name: 'Yellow', code: '#FACC15' },
-    { name: 'Orange', code: '#F97316' },
-    { name: 'Gold', code: '#FFD700' },
-    { name: 'Green', code: '#10B981' },
-    { name: 'Black', code: '#000000' },
-    { name: 'White', code: '#FFFFFF' },
-    { name: 'Pink', code: '#EC4899' },
-    { name: 'Purple', code: '#8B5CF6' }
-];
-const BRANCHES = ["Zamalek Main", "New Cairo Hub", "Alexandria Branch", "Giza Outlet"];
+class MyProductsScreen extends StatefulWidget {
+  const MyProductsScreen({super.key});
 
-// --- MOCK INVENTORY DATA ---
-const INITIAL_PRODUCTS = [
-    {
-        id: 'p1',
-        name: 'Pro Racing Goggles',
-        brand: 'Speedo',
-        category: 'Goggles',
-        price: 49.99,
-        description: 'Elite racing goggles with mirrored lenses.',
-        selectedSizes: ['ONE SIZE'],
-        selectedColors: ['Black', 'Blue', 'Gold'],
-        selectedBranches: ["Zamalek Main", "New Cairo Hub"],
-        outOfStockBranches: ["Zamalek Main"],
-        photo: 'https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?q=80&w=400'
-    },
-    {
-        id: 'p2',
-        name: 'Carbon Fiber Jammer',
-        brand: 'Arena',
-        category: 'Suit',
-        price: 280.00,
-        description: 'Professional competition suit for high performance.',
-        selectedSizes: ['26', '28', '30'],
-        selectedColors: ['Black', 'Purple'],
-        selectedBranches: ["New Cairo Hub", "Alexandria Branch"],
-        outOfStockBranches: [],
-        photo: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?q=80&w=400'
-    }
-];
+  @override
+  State<MyProductsScreen> createState() => _MyProductsScreenState();
+}
 
-export default function App() {
-    const [view, setView] = useState('list'); // 'list' or 'edit'
-    const [products, setProducts] = useState(INITIAL_PRODUCTS);
-    const [editingProduct, setEditingProduct] = useState(null);
-    const [activeModal, setActiveModal] = useState(null); // 'stock', 'discount', 'promo', 'global-promo'
-    
-    const [loading, setLoading] = useState(false);
-    const [notification, setNotification] = useState(null);
-    const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
-    
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+class _MyProductsScreenState extends State<MyProductsScreen> {
+  final StoreApiService _storeService = StoreApiService();
 
-    const handleEditProduct = (product) => {
-        setEditingProduct({ ...product });
-        setView('edit');
-    };
+  String _view = 'list'; // 'list' or 'edit'
+  String? _activeModal; // 'stock', 'discount', 'promo', 'global-promo'
+  StoreProduct? _editingProduct;
+  StoreProduct? _selectedProduct;
 
-    const toggleSize = (size) => {
-        const isOneSize = size === 'ONE SIZE' || size === 'OTHER';
-        setEditingProduct(prev => {
-            if (!prev) return null;
-            let newSizes = [...prev.selectedSizes];
-            if (newSizes.includes(size)) {
-                newSizes = newSizes.filter(s => s !== size);
-            } else {
-                if (isOneSize) newSizes = [size];
-                else {
-                    newSizes = newSizes.filter(s => s !== 'ONE SIZE' && s !== 'OTHER');
-                    newSizes.push(size);
-                }
-            }
-            return { ...prev, selectedSizes: newSizes };
+  List<StoreProduct> _products = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  final List<String> _categories = ["Cap", "Goggles", "Suit", "Kickboard", "Paddles", "Fins", "Snorkels", "Other"];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final products = await _storeService.getMyProducts();
+
+      if (mounted) {
+        setState(() {
+          _products = products;
+          _isLoading = false;
         });
-    };
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load products: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
-    // --- VIEW RENDERERS ---
+  void _showNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: const Color(0xFF1F2937)));
+  }
 
-    const renderInventoryList = () => (
-        <div className="p-6 space-y-8 animate-in text-left">
-            <div className="space-y-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Inventory</h1>
-                <p className="text-sm text-gray-400 font-medium">Manage your products and promotions</p>
-            </div>
+  @override
+  Widget build(BuildContext context) {
+    // Show loading state
+    if (_isLoading && _products.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading products...'),
+            ],
+          ),
+        ),
+      );
+    }
 
-            {/* Global Promo Banner */}
-            <button 
-                onClick={() => setActiveModal('global-promo')}
-                className="w-full p-4 bg-orange-500 rounded-[20px] shadow-lg shadow-orange-100 flex items-center justify-between group active:scale-[0.98] transition-all"
-            >
-                <div className="flex items-center space-x-3 text-white">
-                    <div className="p-2 bg-white/20 rounded-xl">
-                        <Ticket className="w-6 h-6" />
-                    </div>
-                    <span className="font-black uppercase text-sm tracking-widest">Global Store Promo</span>
-                </div>
-                <ChevronRight className="w-5 h-5 text-white/60 group-hover:translate-x-1 transition-transform" />
-            </button>
+    // Show error state
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
+                const SizedBox(height: 16),
+                Text(_errorMessage!),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadProducts,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-            {/* Categorized List */}
-            <div className="space-y-10 pb-20">
-                {CATEGORIES.map(cat => {
-                    const catProds = products.filter(p => p.category === cat);
-                    if (catProds.length === 0) return null;
 
-                    return (
-                        <div key={cat} className="space-y-4">
-                            <h2 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] ml-2 flex items-center">
-                                <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mr-2"></span>
-                                {cat}
-                            </h2>
-                            {catProds.map(product => {
-                                const isOOS = product.outOfStockBranches.length > 0;
-                                const isFullyOOS = product.outOfStockBranches.length === product.selectedBranches.length && product.selectedBranches.length > 0;
-
-                                return (
-                                    <div key={product.id} className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-4 flex items-center space-x-4">
-                                        <div className="w-24 h-24 rounded-3xl bg-gray-50 overflow-hidden flex-shrink-0">
-                                            <img src={product.photo} className="w-full h-full object-cover" alt="item" />
-                                        </div>
-                                        <div className="flex-grow min-w-0">
-                                            <div className="flex items-center space-x-2">
-                                                <h3 className="font-black text-gray-900 truncate text-lg leading-tight">{product.name}</h3>
-                                                {isFullyOOS ? (
-                                                    <span className="px-1.5 py-0.5 bg-red-50 text-red-600 text-[8px] font-black rounded uppercase">OOS</span>
-                                                ) : isOOS ? (
-                                                    <span className="px-1.5 py-0.5 bg-amber-50 text-amber-600 text-[8px] font-black rounded uppercase">Partial</span>
-                                                ) : (
-                                                    <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-600 text-[8px] font-black rounded uppercase">Live</span>
-                                                )}
-                                            </div>
-                                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">{product.brand}</p>
-                                            <p className="text-xl font-black text-blue-600 mt-2">${product.price.toFixed(2)}</p>
-                                        </div>
-                                        
-                                        {/* Action Icon Cluster */}
-                                        <div className="flex flex-col space-y-2">
-                                            <div className="flex space-x-1">
-                                                <button onClick={() => handleEditProduct(product)} className="p-2.5 bg-gray-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm" title="Edit Product">
-                                                    <Edit3 className="w-4 h-4" />
-                                                </button>
-                                                <button onClick={() => { setEditingProduct(product); setActiveModal('stock'); }} className="p-2.5 bg-gray-50 text-red-600 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm" title="Stock Status">
-                                                    <AlertCircle className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                            <div className="flex space-x-1">
-                                                <button onClick={() => { setEditingProduct(product); setActiveModal('discount'); }} className="p-2.5 bg-gray-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Apply Discount">
-                                                    <Tag className="w-4 h-4" />
-                                                </button>
-                                                <button onClick={() => { setEditingProduct(product); setActiveModal('promo'); }} className="p-2.5 bg-gray-50 text-amber-600 rounded-xl hover:bg-amber-600 hover:text-white transition-all shadow-sm" title="Add Promo">
-                                                    <Ticket className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    );
-                })}
-            </div>
-        </div>
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: _view == 'list' ? _buildInventoryList() : _buildEditForm(),
+          ),
+          if (_activeModal != null) _buildModal(),
+        ],
+      ),
     );
+  }
 
-    const renderEditForm = () => (
-        <div className="animate-in flex flex-col min-h-screen pb-12">
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30 flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <button onClick={() => setView('list')} className="p-2.5 bg-gray-50 rounded-2xl text-gray-500 active:scale-90 transition-transform">
-                        <ArrowLeft className="w-6 h-6" />
-                    </button>
-                    <h1 className="text-2xl font-black tracking-tight">{editingProduct?.id ? 'Edit Product' : 'New Product'}</h1>
-                </div>
-                <button onClick={() => { showNotify("Product information saved!"); setView('list'); }} className="px-6 py-3 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-100">
-                    Save
-                </button>
-            </header>
+  Widget _buildInventoryList() {
+    final Map<String, List<StoreProduct>> grouped = {};
+    for (var product in _products) {
+      grouped.putIfAbsent(product.category ?? 'Other', () => []).add(product);
+    }
 
-            <div className="p-6 space-y-6">
-                {/* 1. Base Info */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5 text-left">
-                    <div className="flex items-center space-x-2">
-                        <Layers className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Information</h3>
-                    </div>
-                    <div className="space-y-4">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Title</label>
-                            <input type="text" value={editingProduct?.name || ''} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Brand</label>
-                                <select value={editingProduct?.brand || 'Speedo'} onChange={e => setEditingProduct({...editingProduct, brand: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none">
-                                    {BRANDS.map(b => <option key={b}>{b}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Category</label>
-                                <select value={editingProduct?.category || 'Suit'} onChange={e => setEditingProduct({...editingProduct, category: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none">
-                                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Price ($)</label>
-                            <input type="number" value={editingProduct?.price || 0} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value) || 0})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                        </div>
-                    </div>
-                </div>
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const Text('Inventory', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+        const SizedBox(height: 4),
+        const Text('Manage your products and promotions', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF))),
+        const SizedBox(height: 32),
 
-                {/* 2. Media Section */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4 text-left">
-                    <div className="flex items-center space-x-2">
-                        <Camera className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Media Gallery</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="p-6 bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 hover:bg-blue-50 transition-colors cursor-pointer">
-                            <Plus className="w-6 h-6 mb-1 text-blue-600" />
-                            <span className="text-[8px] font-black uppercase">Add Images</span>
-                        </div>
-                        <div className="p-6 bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 cursor-pointer">
-                            <Ruler className="w-6 h-6 mb-1" />
-                            <span className="text-[8px] font-black uppercase text-center">Size Guide</span>
-                        </div>
-                    </div>
-                </div>
+        // Global Promo Banner
+        InkWell(
+          onTap: () => setState(() => _activeModal = 'global-promo'),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF97316),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [BoxShadow(color: const Color(0xFFF97316).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))],
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.local_offer, color: Colors.white, size: 24),
+                    SizedBox(width: 12),
+                    Text('GLOBAL STORE PROMO', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                  ],
+                ),
+                Icon(Icons.chevron_right, color: Colors.white),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 40),
 
-                {/* 3. Variants Section */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6 text-left">
-                    <div className="flex items-center space-x-2">
-                        <Palette className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Variants</h3>
-                    </div>
+        // Categorized Products
+        ...grouped.entries.map((entry) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF2563EB), shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                  Text(entry.key.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), letterSpacing: 3.0)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...entry.value.map((product) {
+                final isFullyOOS = false; // Simplified for now
+                final isPartialOOS = false; // Simplified for now
 
-                    <div className="relative">
-                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Sizes</label>
-                        <button 
-                            type="button"
-                            onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
-                            className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold flex items-center justify-between transition-all"
-                        >
-                            <span className={editingProduct?.selectedSizes.length > 0 ? 'text-blue-600' : 'text-gray-400'}>
-                                {editingProduct?.selectedSizes.length > 0 ? `${editingProduct.selectedSizes.length} Selected` : 'Choose Sizes'}
-                            </span>
-                            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isSizeDropdownOpen ? 'rotate-180' : ''}`} />
-                        </button>
-                        {isSizeDropdownOpen && (
-                            <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[24px] shadow-2xl border border-gray-100 z-50 p-4 max-h-60 overflow-y-auto no-scrollbar space-y-2">
-                                {SIZES.map(size => {
-                                    const isSelected = editingProduct?.selectedSizes.includes(size);
-                                    return (
-                                        <button key={size} type="button" onClick={() => toggleSize(size)} className={`w-full p-3.5 rounded-xl flex items-center justify-between transition-all ${isSelected ? 'bg-blue-600 text-white' : 'bg-gray-50 text-gray-700'}`}>
-                                            <span className="text-xs font-bold uppercase">{size}</span>
-                                            <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 ${isSelected ? 'bg-white border-white' : 'border-gray-200 bg-white'}`}>
-                                                {isSelected && <Check className="w-4 h-4 text-blue-600" />}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="space-y-3">
-                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Colors</label>
-                        <div className="flex flex-wrap gap-4">
-                            {COLORS.map(color => {
-                                const isSelected = editingProduct?.selectedColors.includes(color.name);
-                                return (
-                                    <button 
-                                        key={color.name} 
-                                        type="button" 
-                                        onClick={() => setEditingProduct(prev => ({ ...prev, selectedColors: isSelected ? prev.selectedColors.filter(c => c !== color.name) : [...prev.selectedColors, color.name] }))}
-                                        className={`w-11 h-11 rounded-full border-4 transition-all relative ${isSelected ? 'border-blue-600 scale-110 shadow-lg' : 'border-white shadow-sm'}`} 
-                                        style={{ backgroundColor: color.code }}
-                                    >
-                                        {isSelected && <Check className="w-5 h-5 text-white absolute inset-0 m-auto" />}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-
-                {/* 4. Branch Distribution */}
-                <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4 text-left">
-                    <div className="flex items-center space-x-2">
-                        <Building2 className="w-4 h-4 text-blue-600" />
-                        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Branch Allocation</h3>
-                    </div>
-                    <div className="space-y-2">
-                        {BRANCHES.map(branch => {
-                            const isAllocated = editingProduct?.selectedBranches.includes(branch);
-                            return (
-                                <button key={branch} type="button" 
-                                    onClick={() => setEditingProduct(prev => ({ ...prev, selectedBranches: isAllocated ? prev.selectedBranches.filter(b => b !== branch) : [...prev.selectedBranches, branch] }))}
-                                    className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border ${isAllocated ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-50' : 'bg-gray-50 border-transparent'}`}
-                                >
-                                    <span className={`text-sm font-bold ${isAllocated ? 'text-blue-700' : 'text-gray-500'}`}>{branch}</span>
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${isAllocated ? 'bg-blue-600 border-blue-600' : 'border-gray-200 bg-white'}`}>
-                                        {isAllocated && <Check className="w-3.5 h-3.5 text-white" />}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-        </div>
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: (product.photoUrl != null && product.photoUrl!.isNotEmpty)
+                            ? Image.network(product.photoUrl!, width: 96, height: 96, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Container(width: 96, height: 96, color: const Color(0xFFF3F4F6), child: const Icon(Icons.image_not_supported, color: Color(0xFF9CA3AF))))
+                            : Container(width: 96, height: 96, color: const Color(0xFFF3F4F6), child: const Icon(Icons.image, color: Color(0xFF9CA3AF))),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(child: Text(product.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900))),
+                                  if (isFullyOOS) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(4)), child: const Text('OOS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFEF4444))))
+                                  else if (isPartialOOS) Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(4)), child: const Text('Partial', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFF59E0B))))
+                                  else Container(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(4)), child: const Text('Live', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF10B981)))),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              if (product.brand != null && product.brand!.isNotEmpty) Text(product.brand!.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                              if (product.brand != null && product.brand!.isNotEmpty) const SizedBox(height: 8),
+                              Text('\$${product.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Column(
+                          children: [
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: () => setState(() {
+                                    _editingProduct = product as StoreProduct;
+                                    _view = 'edit';
+                                  }),
+                                  child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.edit, color: Color(0xFF2563EB), size: 16)),
+                                ),
+                                const SizedBox(width: 4),
+                                InkWell(
+                                  onTap: () => setState(() {
+                                    _selectedProduct = product as StoreProduct;
+                                    _activeModal = 'stock';
+                                  }),
+                                  child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 16)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                InkWell(
+                                  onTap: () => setState(() {
+                                    _selectedProduct = product as StoreProduct;
+                                    _activeModal = 'discount';
+                                  }),
+                                  child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.local_offer, color: Color(0xFF10B981), size: 16)),
+                                ),
+                                const SizedBox(width: 4),
+                                InkWell(
+                                  onTap: () => setState(() {
+                                    _selectedProduct = product as StoreProduct;
+                                    _activeModal = 'promo';
+                                  }),
+                                  child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.confirmation_number, color: Color(0xFFF59E0B), size: 16)),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+              const SizedBox(height: 32),
+            ],
+          );
+        }),
+      ],
     );
+  }
 
-    // --- MODAL COMPONENTS ---
+  Widget _buildEditForm() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+          decoration: const BoxDecoration(color: Colors.white, border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6)))),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  InkWell(
+                    onTap: () => setState(() => _view = 'list'),
+                    child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(16)), child: const Icon(Icons.arrow_back, size: 24)),
+                  ),
+                  const SizedBox(width: 16),
+                  const Text('Edit Product', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                ],
+              ),
+              InkWell(
+                onTap: () async {
+                  if (_editingProduct == null) return;
 
-    const renderActionModal = () => {
-        if (!activeModal) return null;
+                  try {
+                    setState(() => _isLoading = true);
 
-        const onClose = () => { setActiveModal(null); setEditingProduct(null); };
+                    final data = _editingProduct!.toJson();
+                    await _storeService.updateProduct(_editingProduct!.id, data);
+                    await _loadProducts();
 
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in">
-                <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 relative overflow-hidden">
-                    <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400"><X className="w-5 h-5" /></button>
-                    
-                    {activeModal === 'stock' && (
-                        <div className="space-y-6 text-left">
-                            <div className="p-3 bg-red-50 text-red-600 rounded-2xl flex items-center space-x-2">
-                                <AlertCircle className="w-5 h-5" />
-                                <span className="text-[10px] font-black uppercase">Out of Stock Management</span>
-                            </div>
-                            <h3 className="text-xl font-black text-gray-900 leading-tight">Branch Availability for {editingProduct?.name}</h3>
-                            <div className="space-y-2">
-                                {editingProduct?.selectedBranches.map(branch => {
-                                    const isOOS = editingProduct.outOfStockBranches.includes(branch);
-                                    return (
-                                        <button key={branch} 
-                                            onClick={() => setEditingProduct(prev => ({ ...prev, outOfStockBranches: isOOS ? prev.outOfStockBranches.filter(b => b !== branch) : [...prev.outOfStockBranches, branch] }))}
-                                            className={`w-full p-4 rounded-2xl flex items-center justify-between border-2 transition-all ${isOOS ? 'border-red-600 bg-red-50' : 'border-transparent bg-gray-50'}`}
-                                        >
-                                            <span className="text-sm font-bold text-gray-800">{branch}</span>
-                                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded ${isOOS ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{isOOS ? 'Out of Stock' : 'Active'}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                            <button onClick={() => { showNotify("Stock status synced!"); onClose(); }} className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-red-100 mt-4">Confirm Status</button>
-                        </div>
-                    )}
-
-                    {activeModal === 'discount' && (
-                        <div className="space-y-6 text-left">
-                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center space-x-2">
-                                <Tag className="w-5 h-5" />
-                                <span className="text-[10px] font-black uppercase">Fixed Discount Manager</span>
-                            </div>
-                            <h3 className="text-xl font-black text-gray-900">Set Discount Price</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Discounted Price ($)</label>
-                                    <input type="number" placeholder="0.00" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Duration (Days)</label>
-                                    <input type="number" placeholder="7" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                                </div>
-                            </div>
-                            <button onClick={() => { showNotify("Discount applied!"); onClose(); }} className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-emerald-100">Activate Discount</button>
-                        </div>
-                    )}
-
-                    {activeModal === 'promo' && (
-                        <div className="space-y-6 text-left">
-                            <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl flex items-center space-x-2">
-                                <Ticket className="w-5 h-5" />
-                                <span className="text-[10px] font-black uppercase">Coupon Code Manager</span>
-                            </div>
-                            <h3 className="text-xl font-black text-gray-900 leading-tight">Create Promo for {editingProduct?.name}</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Code Name</label>
-                                    <input type="text" placeholder="e.g. SWIM20" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold uppercase outline-none" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Usage Limit (Total times usable)</label>
-                                    <input type="number" placeholder="e.g. 100" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Expiry Date</label>
-                                        <input type="date" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-xs font-bold outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Expiry Hour</label>
-                                        <input type="time" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-xs font-bold outline-none" />
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={() => { showNotify("Promo code active!"); onClose(); }} className="w-full py-4 bg-amber-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-amber-100">Publish Code</button>
-                        </div>
-                    )}
-
-                    {activeModal === 'global-promo' && (
-                        <div className="space-y-6 text-left">
-                            <div className="p-3 bg-orange-50 text-orange-600 rounded-2xl flex items-center space-x-2">
-                                <Percent className="w-5 h-5" />
-                                <span className="text-[10px] font-black uppercase">Store-Wide Campaign</span>
-                            </div>
-                            <h3 className="text-xl font-black text-gray-900 leading-tight">Apply to All Products</h3>
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Universal Promo Code</label>
-                                    <input type="text" placeholder="SWIM360" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold uppercase outline-none" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Usage Limit (Max Redeems)</label>
-                                    <input type="number" placeholder="500" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Expiry Date</label>
-                                        <input type="date" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-xs font-bold outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Expiry Hour</label>
-                                        <input type="time" className="w-full mt-1 p-4 bg-gray-50 border-none rounded-2xl text-xs font-bold outline-none" />
-                                    </div>
-                                </div>
-                            </div>
-                            <button onClick={() => { showNotify("Global promo live!"); onClose(); }} className="w-full py-4 bg-orange-500 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-orange-100">Confirm Launch</button>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse">Swim 360</div>;
-
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            {view === 'list' && renderInventoryList()}
-            {view === 'edit' && renderEditForm()}
-
-            {renderActionModal()}
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-            `}</style>
-        </div>
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                        _view = 'list';
+                      });
+                      _showNotification('Product information saved!');
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      setState(() => _isLoading = false);
+                      _showNotification('Failed to save product: $e');
+                    }
+                  }
+                },
+                child: Container(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), decoration: BoxDecoration(color: const Color(0xFF2563EB), borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 8))]), child: Text(_isLoading ? 'SAVING...' : 'SAVE', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0))),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(32), border: Border.all(color: const Color(0xFFF3F4F6)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(children: [Icon(Icons.layers, color: Color(0xFF2563EB), size: 16), SizedBox(width: 8), Text('INFORMATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0))]),
+                    const SizedBox(height: 16),
+                    const Text('Title', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: TextEditingController(text: _editingProduct?.name),
+                      decoration: InputDecoration(filled: true, fillColor: const Color(0xFFF9FAFB), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), contentPadding: const EdgeInsets.all(16)),
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _buildModal() {
+    return Positioned.fill(
+      child: GestureDetector(
+        onTap: () => setState(() => _activeModal = null),
+        child: Container(
+          color: const Color(0xFF0F172A).withOpacity(0.6),
+          child: Center(
+            child: GestureDetector(
+              onTap: () {},
+              child: Container(
+                margin: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(40), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(0, 10))]),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(
+                      alignment: Alignment.topRight,
+                      child: InkWell(
+                        onTap: () => setState(() => _activeModal = null),
+                        child: Container(padding: const EdgeInsets.all(8), decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(100)), child: const Icon(Icons.close, color: Color(0xFF9CA3AF), size: 20)),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    if (_activeModal == 'stock') ...[
+                      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFFEE2E2), borderRadius: BorderRadius.circular(16)), child: const Row(children: [Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20), SizedBox(width: 8), Text('OUT OF STOCK MANAGEMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), letterSpacing: 3.0))])),
+                      const SizedBox(height: 16),
+                      Text('Branch Availability for ${_selectedProduct?.name}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                    ] else if (_activeModal == 'discount') ...[
+                      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFDCFCE7), borderRadius: BorderRadius.circular(16)), child: const Row(children: [Icon(Icons.local_offer, color: Color(0xFF10B981), size: 20), SizedBox(width: 8), Text('FIXED DISCOUNT MANAGER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF10B981), letterSpacing: 3.0))])),
+                      const SizedBox(height: 16),
+                      const Text('Set Discount Price', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                    ] else if (_activeModal == 'promo') ...[
+                      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFFEF3C7), borderRadius: BorderRadius.circular(16)), child: const Row(children: [Icon(Icons.confirmation_number, color: Color(0xFFF59E0B), size: 20), SizedBox(width: 8), Text('COUPON CODE MANAGER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFF59E0B), letterSpacing: 3.0))])),
+                      const SizedBox(height: 16),
+                      const Text('Create Promo Code', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                    ] else if (_activeModal == 'global-promo') ...[
+                      Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFFFEDD5), borderRadius: BorderRadius.circular(16)), child: const Row(children: [Icon(Icons.percent, color: Color(0xFFF97316), size: 20), SizedBox(width: 8), Text('STORE-WIDE CAMPAIGN', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFF97316), letterSpacing: 3.0))])),
+                      const SizedBox(height: 16),
+                      const Text('Apply to All Products', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF1F2937))),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }

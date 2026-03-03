@@ -1,89 +1,215 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - Dashboard</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F3F4F6; color: #1F2937; }
-        
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .view-animate { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        
-        @keyframes notifyPulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.4); opacity: 0.7; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .notify-dot { animation: notifyPulse 2s infinite ease-in-out; }
+import 'package:flutter/material.dart';
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-    </style>
-</head>
-<body class="flex flex-col min-h-screen no-scrollbar overflow-x-hidden">
+class TopBar extends StatefulWidget implements PreferredSizeWidget {
+  final VoidCallback? onNotificationTap;
+  final VoidCallback? onSettingsTap;
+  final VoidCallback? onProfileTap;
+  final int notificationCount;
 
-    <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-gray-100 px-6 py-5 flex items-center justify-between">
-        <button onclick="clearNotifications()" class="relative w-12 h-12 bg-amber-400 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200/40 transition-all active:scale-90">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-            </svg>
-            <span id="notif-dot" class="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full border-2 border-white notify-dot transition-all duration-300"></span>
-        </button>
+  const TopBar({
+    super.key,
+    this.onNotificationTap,
+    this.onSettingsTap,
+    this.onProfileTap,
+    this.notificationCount = 0,
+  });
 
-        <div class="flex flex-col items-center">
-            <h2 class="text-xl font-black text-gray-900 uppercase italic tracking-tighter leading-none">Swim 360</h2>
-            <div class="w-8 h-1 bg-blue-600 rounded-full mt-1 opacity-20"></div>
-        </div>
+  @override
+  State<TopBar> createState() => _TopBarState();
 
-        <div class="flex items-center space-x-3">
-            <button class="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-500 shadow-inner active:scale-90">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
-            </button>
-            
-            <div class="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white shadow-lg active:scale-90 transition-all bg-gray-200">
-                <img src="https://images.unsplash.com/photo-1530549387631-f535c7658f8c?w=100&h=100&fit=crop&q=80" alt="Profile" class="w-full h-full object-cover">
-            </div>
-        </div>
-    </header>
+  @override
+  Size get preferredSize => const Size.fromHeight(80);
+}
 
-    <main class="flex-grow p-6 pt-8" id="main-content">
-        <div class="bg-white p-8 rounded-[40px] shadow-sm border border-gray-50 text-left view-animate">
-            <h1 class="text-4xl font-black text-blue-600 uppercase italic tracking-tighter leading-none">Dashboard</h1>
-            <p class="text-gray-400 text-[10px] font-black uppercase tracking-[0.2em] mt-3 italic">Interface Loaded</p>
-            <p class="mt-8 text-sm font-bold text-gray-500 leading-relaxed">
-                Tap the yellow notification bell to clear the active unread state.
-            </p>
-        </div>
-    </main>
+class _TopBarState extends State<TopBar> with SingleTickerProviderStateMixin {
+  bool _showNotificationDot = true;
+  late AnimationController _pulseController;
 
-    <nav class="sticky bottom-0 bg-white border-t border-gray-100 px-6 py-4 flex justify-between items-center rounded-t-[32px] shadow-2xl z-50">
-        <button class="flex flex-col items-center space-y-1 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>
-            <span class="text-[10px] font-black uppercase tracking-widest">Home</span>
-        </button>
-        <button class="flex flex-col items-center space-y-1 text-gray-400"><svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="text-[10px] font-black uppercase tracking-widest">Profile</span></button>
-    </nav>
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
 
-    <script>
-        let unreadCount = 5;
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
 
-        function clearNotifications() {
-            unreadCount = 0;
-            const dot = document.getElementById('notif-dot');
-            dot.style.opacity = '0';
-            dot.style.transform = 'scale(0)';
-            setTimeout(() => dot.classList.add('hidden'), 300);
-            console.log("Notifications Cleared");
-        }
-    </script>
-</body>
-</html>
+  void _clearNotifications() {
+    setState(() {
+      _showNotificationDot = false;
+    });
+    if (widget.onNotificationTap != null) {
+      widget.onNotificationTap!();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        border: const Border(
+          bottom: BorderSide(color: Color(0xFFF1F5F9)),
+        ),
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildNotificationButton(),
+              _buildLogo(),
+              _buildActionButtons(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationButton() {
+    return InkWell(
+      onTap: _clearNotifications,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: const Color(0xFFFBBF24),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFBBF24).withOpacity(0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Center(
+              child: Icon(
+                Icons.notifications,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+            if (_showNotificationDot && widget.notificationCount > 0)
+              Positioned(
+                top: -4,
+                right: -4,
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: 1.0 + (_pulseController.value * 0.4),
+                      child: Opacity(
+                        opacity: 1.0 - (_pulseController.value * 0.3),
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF43F5E),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogo() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'SWIM 360',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            fontStyle: FontStyle.italic,
+            letterSpacing: -0.5,
+          ),
+        ),
+        Container(
+          width: 32,
+          height: 4,
+          margin: const EdgeInsets.only(top: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB).withOpacity(0.2),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        InkWell(
+          onTap: widget.onSettingsTap,
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.settings,
+              color: Color(0xFF64748B),
+              size: 24,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        InkWell(
+          onTap: widget.onProfileTap,
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: Image.network(
+                'https://images.unsplash.com/photo-1530549387631-f535c7658f8c?w=100&h=100&fit=crop&q=80',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: const Color(0xFFE5E7EB),
+                    child: const Icon(Icons.person, color: Color(0xFF9CA3AF)),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

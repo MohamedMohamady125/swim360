@@ -1,194 +1,448 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Swim 360 - Welcome</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #FFFFFF;
-            -webkit-tap-highlight-color: transparent;
-        }
+import 'package:flutter/material.dart';
 
-        .premium-shadow {
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
-        }
+class SwimmerHomeScreen extends StatefulWidget {
+  const SwimmerHomeScreen({super.key});
 
-        .action-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-        }
+  @override
+  State<SwimmerHomeScreen> createState() => _SwimmerHomeScreenState();
+}
 
-        .action-card:active {
-            transform: scale(0.96);
-        }
+class _SwimmerHomeScreenState extends State<SwimmerHomeScreen> {
+  bool _showNotificationBadge = true;
 
-        /* Gradient Themes */
-        .banner-blue { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); }
-        .card-purple { background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%); }
-        .card-teal { background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%); }
-        .card-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
-        .card-red { background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%); }
+  void _clearNotifications() {
+    setState(() {
+      _showNotificationBadge = false;
+    });
+    _navigate('notifications');
+  }
 
-        /* Shared Action Button Styles */
-        .btn-yellow-action {
-            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-            border: 1px solid #fcd34d;
-        }
+  void _navigate(String view) {
+    final snackBar = SnackBar(
+      content: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: Color(0xFF60A5FA),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Diving into ${view.replaceAll('-', ' ').toUpperCase()}...',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900),
+          ),
+        ],
+      ),
+      backgroundColor: const Color(0xFF1F2937).withOpacity(0.9),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      margin: const EdgeInsets.only(bottom: 40, left: 24, right: 24),
+      duration: const Duration(seconds: 2),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snackBar);
+  }
 
-        .btn-blue-action {
-            background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%);
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
-        }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+              color: Colors.white,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Hey Yehia 👋',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Ready to dive in?',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF9CA3AF),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      // Notification Button
+                      InkWell(
+                        onTap: _clearNotifications,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFFFBBF24), Color(0xFFF59E0B)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFFCD34D)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFF59E0B).withOpacity(0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              const Icon(Icons.notifications, color: Colors.white, size: 24),
+                              if (_showNotificationBadge)
+                                Positioned(
+                                  top: 0,
+                                  right: 0,
+                                  child: Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: const Color(0xFFFBBF24), width: 2),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Profile Button
+                      InkWell(
+                        onTap: () => _navigate('profile'),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF2563EB).withOpacity(0.3),
+                                blurRadius: 15,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: Colors.white.withOpacity(0.2), width: 2),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Image.network(
+                                'https://placehold.co/100x100/2563eb/white?text=Y',
+                                width: 44,
+                                height: 44,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
 
-        /* Glassmorphism Chips */
-        .action-chip {
-            background: rgba(255, 255, 255, 0.2);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+            // Main Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 40),
+                child: Column(
+                  children: [
+                    // Primary Action: Book Now
+                    InkWell(
+                      onTap: () => _navigate('booking'),
+                      child: Container(
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF0EA5E9), Color(0xFF2563EB)],
+                          ),
+                          borderRadius: BorderRadius.circular(32),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 25,
+                              offset: const Offset(0, 20),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Stack(
+                          children: [
+                            // Decorative Wave
+                            Positioned(
+                              bottom: -40,
+                              right: -40,
+                              child: Opacity(
+                                opacity: 0.2,
+                                child: Icon(
+                                  Icons.water,
+                                  size: 192,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Book Your\nNext Session',
+                                  style: TextStyle(
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                    height: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Find a pool or clinic',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: const Color(0xFFDEF3FF).withOpacity(0.9),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.1),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: const [
+                                      Text(
+                                        'Book Now',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color(0xFF2563EB),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      Icon(Icons.arrow_forward, color: Color(0xFF2563EB), size: 16),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
 
-        /* Decorative Background Shapes */
-        .decor-circle {
-            position: absolute;
-            border-radius: 50%;
-            background: white;
-            opacity: 0.1;
-            z-index: 0;
-        }
-    </style>
-</head>
-<body class="max-w-md mx-auto min-h-screen">
+                    const SizedBox(height: 24),
 
-    <!-- Header Section -->
-    <header class="px-6 pt-12 pb-6 flex justify-between items-center bg-white sticky top-0 z-20">
-        <div>
-            <h1 class="text-2xl font-black text-gray-900 tracking-tight">Hey Yehia 👋</h1>
-            <p class="text-sm font-medium text-gray-400 mt-0.5">Ready to dive in?</p>
-        </div>
-        <div class="flex items-center space-x-3">
-            <!-- Refined Yellow Notification Button -->
-            <button id="notif-btn" onclick="clearNotifications()" class="p-3 btn-yellow-action rounded-2xl text-white relative hover:scale-105 transition-all">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                <span id="notif-badge" class="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-amber-400 animate-pulse"></span>
-            </button>
-            
-            <!-- User Account Button (Unified Blue UI, No Yellow Border) -->
-            <button onclick="navigate('profile')" class="p-0.5 btn-blue-action rounded-2xl relative hover:scale-105 transition-all shadow-sm overflow-hidden border-none">
-                <div class="w-11 h-11 rounded-[14px] overflow-hidden border-2 border-white/20">
-                    <img src="https://placehold.co/100x100/2563eb/white?text=Y" alt="Profile" class="w-full h-full object-cover">
-                </div>
-            </button>
-        </div>
-    </header>
+                    // 2x2 Action Grid
+                    GridView.count(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      children: [
+                        // My Bookings
+                        _buildActionCard(
+                          title: 'My\nBookings',
+                          subtitle: '2 Upcoming',
+                          icon: Icons.access_time,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFA855F7), Color(0xFF7C3AED)],
+                          ),
+                          decorCircleTop: -20,
+                          decorCircleRight: -20,
+                          decorCircleSize: 80,
+                          onTap: () => _navigate('my-bookings'),
+                        ),
+                        // My Programs
+                        _buildActionCard(
+                          title: 'My\nPrograms',
+                          subtitle: '3 Active',
+                          icon: Icons.verified,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFF14B8A6), Color(0xFF0D9488)],
+                          ),
+                          decorCircleBottom: -40,
+                          decorCircleLeft: -20,
+                          decorCircleSize: 96,
+                          onTap: () => _navigate('my-programs'),
+                        ),
+                        // My Orders
+                        _buildActionCard(
+                          title: 'My\nOrders',
+                          subtitle: '2 Orders',
+                          icon: Icons.shopping_bag_outlined,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFF97316), Color(0xFFEA580C)],
+                          ),
+                          decorCircleTop: 40,
+                          decorCircleRight: -32,
+                          decorCircleSize: 64,
+                          onTap: () => _navigate('my-orders'),
+                        ),
+                        // Calendar
+                        _buildActionCard(
+                          title: 'Activity\nCalendar',
+                          subtitle: 'Full View',
+                          icon: Icons.calendar_today,
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [Color(0xFFF43F5E), Color(0xFFE11D48)],
+                          ),
+                          decorCircleTop: -64,
+                          decorCircleLeft: -40,
+                          decorCircleSize: 128,
+                          onTap: () => _navigate('calendar'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    <!-- Main Content -->
-    <main class="px-6 pb-10 space-y-6">
-
-        <!-- Primary Action: Book Now -->
-        <section class="action-card banner-blue rounded-[32px] p-8 text-white premium-shadow cursor-pointer" onclick="navigate('booking')">
-            <div class="relative z-10">
-                <h2 class="text-3xl font-black leading-tight">Book Your<br>Next Session</h2>
-                <p class="text-blue-100 text-sm font-bold mt-2 opacity-90">Find a pool or clinic</p>
-                <div class="mt-6 inline-flex items-center px-5 py-2.5 bg-white text-blue-600 rounded-2xl font-black text-sm shadow-lg">
-                    Book Now
-                    <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
-                </div>
-            </div>
-            <!-- Decorative Waves -->
-            <svg class="absolute bottom-0 right-0 w-48 h-48 opacity-20 -mb-10 -mr-10" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
-                <path fill="#FFFFFF" d="M44.7,-76.4C58.2,-69.2,70,-58.1,78.9,-44.9C87.8,-31.7,93.8,-15.8,92.5,-0.7C91.3,14.3,82.8,28.7,73.1,41.2C63.5,53.7,52.7,64.4,40.1,71.5C27.5,78.5,13.8,82,0.4,81.4C-13,80.8,-26,76,-38.4,68.8C-50.7,61.6,-62.4,51.9,-71,39.9C-79.6,28,-85.1,14,-86.1,-0.6C-87.1,-15.2,-83.6,-30.3,-75.6,-43.3C-67.6,-56.3,-55.1,-67.2,-41.2,-74.1C-27.4,-81,-13.7,-83.9,0.5,-84.8C14.7,-85.6,29.4,-83.5,44.7,-76.4Z" transform="translate(100 100)" />
-            </svg>
-        </section>
-
-        <!-- 2x2 High-Impact Action Grid -->
-        <section class="grid grid-cols-2 gap-4">
-            
-            <!-- My Bookings (Purple) -->
-            <div class="action-card card-purple rounded-[30px] p-6 text-white cursor-pointer flex flex-col justify-between aspect-square" onclick="navigate('my-bookings')">
-                <div class="decor-circle w-20 h-20 -top-5 -right-5"></div>
-                <div class="w-10 h-10 action-chip rounded-xl flex items-center justify-center relative z-10">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                </div>
-                <div class="relative z-10">
-                    <h3 class="font-black text-xl leading-tight">My<br>Bookings</h3>
-                    <p class="text-[10px] font-black uppercase tracking-widest mt-2 opacity-80">2 Upcoming</p>
-                </div>
-            </div>
-
-            <!-- My Programs (Teal) -->
-            <div class="action-card card-teal rounded-[30px] p-6 text-white cursor-pointer flex flex-col justify-between aspect-square" onclick="navigate('my-programs')">
-                <div class="decor-circle w-24 h-24 -bottom-10 -left-5"></div>
-                <div class="w-10 h-10 action-chip rounded-xl flex items-center justify-center relative z-10">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-3.06 3.5 3.5 0 016.438 0 3.42 3.42 0 001.946 3.06 3.5 3.5 0 011.612 6.21 3.42 3.42 0 000 3.646 3.5 3.5 0 01-1.612 6.21 3.42 3.42 0 00-1.946 3.06 3.5 3.5 0 01-6.438 0 3.42 3.42 0 00-1.946-3.06 3.5 3.5 0 01-1.612-6.21 3.42 3.42 0 000-3.646 3.5 3.5 0 011.612-6.21z"></path></svg>
-                </div>
-                <div class="relative z-10">
-                    <h3 class="font-black text-xl leading-tight">My<br>Programs</h3>
-                    <p class="text-[10px] font-black uppercase tracking-widest mt-2 opacity-80">3 Active</p>
-                </div>
-            </div>
-
-            <!-- My Orders (Orange) -->
-            <div class="action-card card-orange rounded-[30px] p-6 text-white cursor-pointer flex flex-col justify-between aspect-square" onclick="navigate('my-orders')">
-                <div class="decor-circle w-16 h-16 top-10 -right-8"></div>
-                <div class="w-10 h-10 action-chip rounded-xl flex items-center justify-center relative z-10">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"></path></svg>
-                </div>
-                <div class="relative z-10">
-                    <h3 class="font-black text-xl leading-tight">My<br>Orders</h3>
-                    <p class="text-[10px] font-black uppercase tracking-widest mt-2 opacity-80">2 Orders</p>
-                </div>
-            </div>
-
-            <!-- Calendar (Red) -->
-            <div class="action-card card-red rounded-[30px] p-6 text-white cursor-pointer flex flex-col justify-between aspect-square" onclick="navigate('calendar')">
-                <div class="decor-circle w-32 h-32 -top-16 -left-10"></div>
-                <div class="w-10 h-10 action-chip rounded-xl flex items-center justify-center relative z-10">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                </div>
-                <div class="relative z-10">
-                    <h3 class="font-black text-xl leading-tight">Activity<br>Calendar</h3>
-                    <p class="text-[10px] font-black uppercase tracking-widest mt-2 opacity-80">Full View</p>
-                </div>
-            </div>
-
-        </section>
-
-    </main>
-
-    <script>
-        /**
-         * Simulates clearing the notification badge
-         */
-        function clearNotifications() {
-            const badge = document.getElementById('notif-badge');
-            if (badge) {
-                badge.style.display = 'none';
-            }
-            navigate('notifications');
-        }
-
-        function navigate(view) {
-            const snackbar = document.createElement('div');
-            snackbar.className = "fixed bottom-10 left-1/2 -translate-x-1/2 bg-gray-900/90 backdrop-blur-md text-white px-8 py-4 rounded-[20px] text-sm font-black shadow-2xl z-50 animate-bounce flex items-center";
-            snackbar.innerHTML = `
-                <span class="mr-3 w-2 h-2 bg-blue-400 rounded-full"></span>
-                Diving into ${view.replace('-', ' ').toUpperCase()}...
-            `;
-            document.body.appendChild(snackbar);
-            setTimeout(() => {
-                snackbar.style.opacity = '0';
-                snackbar.style.transition = 'opacity 0.5s ease';
-                setTimeout(() => snackbar.remove(), 500);
-            }, 2000);
-        }
-    </script>
-</body>
-</html>
+  Widget _buildActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Gradient gradient,
+    double? decorCircleTop,
+    double? decorCircleBottom,
+    double? decorCircleLeft,
+    double? decorCircleRight,
+    required double decorCircleSize,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            // Decorative Circle
+            Positioned(
+              top: decorCircleTop,
+              bottom: decorCircleBottom,
+              left: decorCircleLeft,
+              right: decorCircleRight,
+              child: Container(
+                width: decorCircleSize,
+                height: decorCircleSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 24),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      subtitle.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white.withOpacity(0.8),
+                        letterSpacing: 2.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

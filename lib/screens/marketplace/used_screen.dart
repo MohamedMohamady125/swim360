@@ -1,470 +1,892 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, doc, addDoc, deleteDoc, onSnapshot, collection, query, Timestamp, updateDoc } from 'firebase/firestore';
-import { 
-  Search, Plus, Trash2, List, Phone, 
-  UploadCloud, X, CheckCircle, MapPin, 
-  ChevronLeft, MessageSquare, MessageCircle, 
-  ArrowLeft, ChevronRight, Share2, Star
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/store_service.dart';
+import 'package:swim360/core/models/store_models.dart';
 
-// --- Global Context/Setup ---
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+class UsedScreen extends StatefulWidget {
+  const UsedScreen({super.key});
 
-let app, db, auth;
-if (Object.keys(firebaseConfig).length) {
-    app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
+  @override
+  State<UsedScreen> createState() => _UsedScreenState();
 }
 
-const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/usedItems`;
+class _UsedScreenState extends State<UsedScreen> {
+  final StoreApiService _storeService = StoreApiService();
 
-// --- DATA DEFINITIONS ---
-const GOVERNORATES = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Luxor", "Matrouh", "Minya", "Monufia", "New Valley", "North Sinai", "Port Said", "Qalyubia", "Qena", "Sharqia", "Sohag", "South Sinai", "Suez"];
-const BRANDS = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
-const SIZES = ["Adult (One Size)", "Youth (One Size)", "Small (S)", "Medium (M)", "Large (L)", "XL", "22", "24", "26", "28", "30", "32", "34", "36"];
+  String _view = 'home';
+  UsedItem? _selectedItem;
+  String _searchQuery = '';
+  String _activeFilter = 'All';
+  bool _isLoading = false;
+  String? _errorMessage;
 
-// --- Mock Data ---
-const GLOBAL_TEST_ITEMS = [
-    {
-        id: 'test-1',
-        title: 'Speedo Fastskin LZR Pure Intent',
-        description: 'Used for one championship only. Perfect compression and water repellency.',
-        condition: 'Excellent',
-        governorate: 'Cairo',
-        brand: 'Speedo',
-        size: '26',
-        price: 320.00,
-        contactNumber: '1234567890',
-        photos: [
-            'https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?q=80&w=800&auto=format&fit=crop',
-            'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=800&auto=format&fit=crop'
-        ],
-        postedBy: 'system',
-        status: 'available',
-        createdAt: Timestamp.now()
-    },
-    {
-        id: 'test-2',
-        title: 'Arena Powerfin Pro - Black/Gold',
-        description: 'Elite training fins. Brand new, never used in water.',
-        condition: 'New',
-        governorate: 'Alexandria',
-        brand: 'Arena',
-        size: 'Large',
-        price: 75.00,
-        contactNumber: '9876543210',
-        photos: ['https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?q=80&w=800&auto=format&fit=crop'],
-        postedBy: 'user-456',
-        status: 'available',
-        createdAt: Timestamp.now()
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _contactController = TextEditingController();
+  String _selectedGovernorate = 'Cairo';
+  String _selectedCondition = 'New';
+  String _selectedBrand = 'Speedo';
+  String _selectedSize = 'Medium (M)';
+  String _selectedCategory = 'Goggles';
+
+  List<UsedItem> _items = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final items = await _storeService.getMarketplaceItems();
+
+      if (mounted) {
+        setState(() {
+          _items = items;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load items: $e';
+          _isLoading = false;
+        });
+      }
     }
-];
+  }
 
-// --- Custom Sub-Components ---
+  List<UsedItem> get _filteredItems {
+    return _items.where((item) {
+      final matchesSearch = item.title.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesFilter = _activeFilter == 'All' || item.condition == _activeFilter;
+      return matchesSearch && matchesFilter && item.isActive && !item.isSold;
+    }).toList();
+  }
 
-const PhotoCarousel = ({ photos }) => {
-    const [index, setIndex] = useState(0);
-    const scrollRef = useRef(null);
+  Future<List<UsedItem>> _getMyItems() async {
+    try {
+      return await _storeService.getMyUsedItems();
+    } catch (e) {
+      _showNotification('Failed to load your items: $e');
+      return [];
+    }
+  }
 
-    const handleScroll = (e) => {
-        const scrollPos = e.target.scrollLeft;
-        const width = e.target.offsetWidth;
-        const newIndex = Math.round(scrollPos / width);
-        setIndex(newIndex);
-    };
+  Future<void> _launchWhatsApp(String phone) async {
+    final url = Uri.parse('https://wa.me/$phone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
 
-    return (
-        <div className="relative aspect-square bg-gray-100 overflow-hidden">
-            <div 
-                ref={scrollRef}
-                onScroll={handleScroll}
-                className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar h-full"
-            >
-                {photos.map((src, i) => (
-                    <div key={i} className="flex-shrink-0 w-full h-full snap-center">
-                        <img src={src} className="w-full h-full object-cover" alt={`Product ${i}`} />
-                    </div>
-                ))}
-            </div>
-            {photos.length > 1 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-1.5 px-3 py-1.5 bg-black/20 backdrop-blur-md rounded-full">
-                    {photos.map((_, i) => (
-                        <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${index === i ? 'bg-white w-4' : 'bg-white/50'}`} />
-                    ))}
-                </div>
-            )}
-        </div>
+  void _showNotification(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
     );
-};
+  }
 
-// --- Main App ---
-export default function App() {
-    const [view, setView] = useState('home'); 
-    const [items, setItems] = useState([]);
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [userId, setUserId] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [notification, setNotification] = useState(null);
+  Future<void> _handlePost() async {
+    if (_titleController.text.isEmpty || _priceController.text.isEmpty || _contactController.text.isEmpty) {
+      _showNotification('Please fill in required fields');
+      return;
+    }
 
-    const [searchTerm, setSearchTerm] = useState('');
-    const [activeFilter, setActiveFilter] = useState('All');
+    try {
+      setState(() => _isLoading = true);
 
-    const [sellForm, setSellForm] = useState({ 
-        title: '', price: '', description: '', governorate: 'Cairo', 
-        condition: 'New', size: 'Medium (M)', brand: 'Speedo', contactNumber: '' 
-    });
+      final data = {
+        'title': _titleController.text,
+        'description': _descriptionController.text,
+        'category': _selectedCategory,
+        'condition': _selectedCondition,
+        'governorate': _selectedGovernorate,
+        'brand': _selectedBrand,
+        'size': _selectedSize,
+        'price': double.tryParse(_priceController.text) ?? 0,
+        'contact_phone': _contactController.text,
+        'photos': ['https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?q=80&w=800&auto=format&fit=crop'],
+      };
 
-    useEffect(() => {
-        if (!auth) return;
-        const initAuth = async () => {
-            if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
-            else await signInAnonymously(auth);
-        };
-        const unsubscribe = onAuthStateChanged(auth, (user) => {
-            setUserId(user ? user.uid : null);
-            setLoading(false);
+      await _storeService.createUsedItem(data);
+      await _loadItems();
+
+      if (mounted) {
+        setState(() {
+          _view = 'home';
+          _isLoading = false;
         });
-        initAuth();
-        return () => unsubscribe();
-    }, []);
 
-    useEffect(() => {
-        if (!db || !userId) return;
-        const unsubscribe = onSnapshot(collection(db, PUBLIC_COLLECTION_PATH), (snapshot) => {
-            const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            
-            // Generate some mock items specific to the CURRENT USER for the demo
-            const myMockItems = [
-                {
-                    id: 'my-mock-1',
-                    title: 'Your Pro Training Snorkel',
-                    description: 'This is a mock item assigned to your account to test "Your Listings". Excellent condition.',
-                    condition: 'Excellent',
-                    governorate: 'Cairo',
-                    brand: 'Finis',
-                    size: 'Adult (One Size)',
-                    price: 25.00,
-                    contactNumber: '0100000000',
-                    photos: ['https://images.unsplash.com/photo-1544923246-77307dd654ca?q=80&w=800&auto=format&fit=crop'],
-                    postedBy: userId, // Assigned to you
-                    status: 'available',
-                    createdAt: Timestamp.now()
-                },
-                {
-                    id: 'my-mock-2',
-                    title: 'Your Elite Kickboard (Blue)',
-                    description: 'Used for one season. Minor wear on edges but perfect for drill work.',
-                    condition: 'Good',
-                    governorate: 'Giza',
-                    brand: 'Arena',
-                    size: 'Standard',
-                    price: 15.00,
-                    contactNumber: '0100000000',
-                    photos: ['https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=800&auto=format&fit=crop'],
-                    postedBy: userId, // Assigned to you
-                    status: 'available',
-                    createdAt: Timestamp.now()
+        _titleController.clear();
+        _priceController.clear();
+        _descriptionController.clear();
+        _contactController.clear();
+
+        _showNotification('Listing published!');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showNotification('Failed to create listing: $e');
+      }
+    }
+  }
+
+  Future<void> _markAsSold(String id) async {
+    try {
+      setState(() => _isLoading = true);
+      await _storeService.updateUsedItem(id, {'is_sold': true});
+      await _loadItems();
+      _showNotification('Marked as sold');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showNotification('Failed to mark as sold: $e');
+      }
+    }
+  }
+
+  Future<void> _deleteItem(String id) async {
+    try {
+      setState(() => _isLoading = true);
+      await _storeService.deleteUsedItem(id);
+      await _loadItems();
+      _showNotification('Item removed');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showNotification('Failed to delete item: $e');
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _priceController.dispose();
+    _descriptionController.dispose();
+    _contactController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: _buildCurrentView(),
+      floatingActionButton: _view == 'home'
+          ? FloatingActionButton.extended(
+              onPressed: () => setState(() => _view = 'sell'),
+              backgroundColor: const Color(0xFF2563EB),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text('SELL', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+            )
+          : null,
+    );
+  }
+
+  Widget _buildCurrentView() {
+    switch (_view) {
+      case 'home':
+        return _buildHome();
+      case 'details':
+        return _buildDetails();
+      case 'sell':
+        return _buildSellForm();
+      case 'my-items':
+        return _buildMyItems();
+      default:
+        return _buildHome();
+    }
+  }
+
+  Widget _buildHome() {
+    return SafeArea(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Marketplace', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                    InkWell(
+                      onTap: () => setState(() => _view = 'my-items'),
+                      child: Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF9FAFB),
+                          borderRadius: BorderRadius.circular(100),
+                        ),
+                        child: const Icon(Icons.list, color: Color(0xFF6B7280), size: 24),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  onChanged: (value) => setState(() => _searchQuery = value),
+                  decoration: InputDecoration(
+                    hintText: 'Search items, brands, or cities...',
+                    hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF)),
+                    prefixIcon: const Icon(Icons.search, color: Color(0xFF9CA3AF), size: 20),
+                    filled: true,
+                    fillColor: const Color(0xFFF9FAFB),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(100), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.all(10),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: ['All', 'New', 'Excellent', 'Good'].map((filter) {
+                      final isActive = _activeFilter == filter;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: InkWell(
+                          onTap: () => setState(() => _activeFilter = filter),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isActive ? const Color(0xFF2563EB) : const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(100),
+                              boxShadow: isActive ? [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 10)] : null,
+                            ),
+                            child: Text(filter, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isActive ? Colors.white : const Color(0xFF6B7280))),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: GridView.builder(
+              padding: const EdgeInsets.all(8),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.75,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: _filteredItems.length,
+              itemBuilder: (context, index) {
+                final item = _filteredItems[index];
+                return _buildItemCard(item);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildItemCard(UsedItem item) {
+    return InkWell(
+      onTap: () => setState(() {
+        _selectedItem = item;
+        _view = 'details';
+      }),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                child: Image.network((item.photos?.isNotEmpty ?? false) ? item.photos![0] : 'https://via.placeholder.com/400', width: double.infinity, fit: BoxFit.cover),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('\$${item.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                  const SizedBox(height: 4),
+                  Text(item.title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF6B7280)), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.location_on, color: Color(0xFF9CA3AF), size: 10),
+                      const SizedBox(width: 4),
+                      Text(item.governorate ?? 'N/A', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF), letterSpacing: 1.0)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetails() {
+    if (_selectedItem == null) return const SizedBox();
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Stack(
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.width,
+                        child: PageView.builder(
+                          itemCount: _selectedItem!.photos?.length ?? 0,
+                          itemBuilder: (context, index) {
+                            return Image.network(
+                              (_selectedItem!.photos?.isNotEmpty ?? false) ? _selectedItem!.photos![index] : 'https://via.placeholder.com/400',
+                              fit: BoxFit.cover
+                            );
+                          },
+                        ),
+                      ),
+                      Positioned(
+                        top: 40,
+                        left: 16,
+                        child: InkWell(
+                          onTap: () => setState(() => _view = 'home'),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withOpacity(0.3),
+                              borderRadius: BorderRadius.circular(100),
+                            ),
+                            child: const Icon(Icons.chevron_left, color: Colors.white, size: 24),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_selectedItem!.title, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                        const SizedBox(height: 8),
+                        Text('\$${_selectedItem!.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                border: Border.all(color: const Color(0xFFDCEEFE)),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.location_on, color: Color(0xFF2563EB), size: 16),
+                                  const SizedBox(width: 8),
+                                  Text((_selectedItem!.governorate ?? 'N/A').toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), letterSpacing: 2.5)),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFB),
+                                border: Border.all(color: const Color(0xFFF1F5F9)),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.star, color: Color(0xFF6B7280), size: 16),
+                                  const SizedBox(width: 8),
+                                  Text(_selectedItem!.condition.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF6B7280), letterSpacing: 2.5)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: const Color(0xFFF3F4F6)),
+                            borderRadius: BorderRadius.circular(32),
+                          ),
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('BRAND', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                                  Text(_selectedItem!.brand ?? 'N/A', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                                ],
+                              ),
+                              const Divider(height: 24, color: Color(0xFFF3F4F6)),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('SIZE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                                  Text(_selectedItem!.size ?? 'N/A', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900)),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text('DESCRIPTION', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        const SizedBox(height: 12),
+                        Text(_selectedItem!.description, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF6B7280), height: 1.6)),
+                        const SizedBox(height: 120),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              border: const Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20)],
+            ),
+            child: InkWell(
+              onTap: () => _launchWhatsApp(_selectedItem!.contactPhone),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF25D366),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [BoxShadow(color: const Color(0xFF25D366).withOpacity(0.3), blurRadius: 15)],
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.chat_bubble, color: Colors.white, size: 24),
+                    SizedBox(width: 12),
+                    Text('MESSAGE SELLER', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSellForm() {
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                InkWell(
+                  onTap: () => setState(() => _view = 'home'),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.arrow_back, size: 24),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Text('New Listing', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+              ],
+            ),
+            const SizedBox(height: 32),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(32),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(32),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      border: Border.all(color: const Color(0xFFE5E7EB), width: 2, style: BorderStyle.solid),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: const Column(
+                      children: [
+                        Icon(Icons.upload_file, color: Color(0xFF2563EB), size: 40),
+                        SizedBox(height: 8),
+                        Text('ADD PHOTOS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                        SizedBox(height: 4),
+                        Text('Maximum 10 images', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('WHAT ARE YOU SELLING?', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _titleController,
+                    decoration: const InputDecoration(
+                      hintText: 'Title',
+                      filled: true,
+                      fillColor: Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('PRICE (\$)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _priceController,
+                              keyboardType: TextInputType.number,
+                              decoration: const InputDecoration(
+                                hintText: 'Amount',
+                                filled: true,
+                                fillColor: Color(0xFFF9FAFB),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                                contentPadding: EdgeInsets.all(16),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('CONDITION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: _selectedCondition,
+                              decoration: const InputDecoration(
+                                filled: true,
+                                fillColor: Color(0xFFF9FAFB),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                                contentPadding: EdgeInsets.all(16),
+                              ),
+                              items: ['New', 'Excellent', 'Good', 'Fair'].map((condition) {
+                                return DropdownMenuItem(value: condition, child: Text(condition));
+                              }).toList(),
+                              onChanged: (value) => setState(() => _selectedCondition = value!),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('GOVERNORATE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _selectedGovernorate,
+                    decoration: const InputDecoration(
+                      filled: true,
+                      fillColor: Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                    items: ['Cairo', 'Giza', 'Alexandria', 'Dakahlia'].map((gov) {
+                      return DropdownMenuItem(value: gov, child: Text(gov));
+                    }).toList(),
+                    onChanged: (value) => setState(() => _selectedGovernorate = value!),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('BRAND', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: _selectedBrand,
+                              decoration: const InputDecoration(
+                                filled: true,
+                                fillColor: Color(0xFFF9FAFB),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                                contentPadding: EdgeInsets.all(16),
+                              ),
+                              items: ['Speedo', 'Arena', 'TYR', 'Finis', 'Other'].map((brand) {
+                                return DropdownMenuItem(value: brand, child: Text(brand));
+                              }).toList(),
+                              onChanged: (value) => setState(() => _selectedBrand = value!),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('SIZE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                            const SizedBox(height: 8),
+                            DropdownButtonFormField<String>(
+                              value: _selectedSize,
+                              decoration: const InputDecoration(
+                                filled: true,
+                                fillColor: Color(0xFFF9FAFB),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                                contentPadding: EdgeInsets.all(16),
+                              ),
+                              items: ['Small (S)', 'Medium (M)', 'Large (L)', 'XL', '26', '28', '30'].map((size) {
+                                return DropdownMenuItem(value: size, child: Text(size));
+                              }).toList(),
+                              onChanged: (value) => setState(() => _selectedSize = value!),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('WHATSAPP NUMBER', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _contactController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      hintText: '+20',
+                      filled: true,
+                      fillColor: Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text('DESCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _descriptionController,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      hintText: 'Describe the condition, usage, and special features...',
+                      filled: true,
+                      fillColor: Color(0xFFF9FAFB),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(16)), borderSide: BorderSide.none),
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 32),
+            InkWell(
+              onTap: _handlePost,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 20)],
+                ),
+                child: const Text('PUBLISH LISTING', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.5)),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMyItems() {
+    return SafeArea(
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+            ),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () => setState(() => _view = 'home'),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9FAFB),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(Icons.chevron_left, size: 24),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                const Text('Your Listings', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: FutureBuilder<List<UsedItem>>(
+              future: _getMyItems(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
-            ];
 
-            setItems([...GLOBAL_TEST_ITEMS, ...myMockItems, ...fetched]);
-        });
-        return () => unsubscribe();
-    }, [userId]);
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+                final myItems = snapshot.data ?? [];
 
-    const handlePost = async () => {
-        if (!sellForm.title || !sellForm.price || !sellForm.contactNumber) {
-            showNotify("Please fill in required fields", "error");
-            return;
-        }
-        try {
-            await addDoc(collection(db, PUBLIC_COLLECTION_PATH), {
-                ...sellForm,
-                price: parseFloat(sellForm.price),
-                photos: ['https://images.unsplash.com/photo-1552650272-b8a34e21bc4b?q=80&w=800&auto=format&fit=crop'],
-                postedBy: userId,
-                status: 'available',
-                createdAt: Timestamp.now()
-            });
-            showNotify("Listing published!");
-            setView('home');
-        } catch (e) { showNotify("Error posting item", 'error'); }
-    };
+                if (myItems.isEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text('No listings yet', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
+                      ],
+                    ),
+                  );
+                }
 
-    const handleMarkSold = async (id) => {
-        // If it's a local mock item, we just update state for the demo
-        if (id.startsWith('my-mock')) {
-            setItems(items.map(i => i.id === id ? { ...i, status: 'sold' } : i));
-            showNotify("Marked as sold");
-            return;
-        }
-        try {
-            await updateDoc(doc(db, PUBLIC_COLLECTION_PATH, id), { status: 'sold' });
-            showNotify("Marked as sold");
-        } catch (e) { showNotify("Error updating item", 'error'); }
-    };
-
-    const handleDelete = async (id) => {
-        // If it's a local mock item, we just update state for the demo
-        if (id.startsWith('my-mock')) {
-            setItems(items.filter(i => i.id !== id));
-            showNotify("Item removed");
-            return;
-        }
-        try {
-            await deleteDoc(doc(db, PUBLIC_COLLECTION_PATH, id));
-            showNotify("Item removed");
-        } catch (e) { showNotify("Error deleting item", 'error'); }
-    };
-
-    const filteredItems = useMemo(() => {
-        return items.filter(item => {
-            const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = activeFilter === 'All' || item.condition === activeFilter;
-            return matchesSearch && matchesCategory && item.status === 'available';
-        }).sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-    }, [items, searchTerm, activeFilter]);
-
-    const myItems = useMemo(() => items.filter(i => i.postedBy === userId), [items, userId]);
-
-    // --- RENDERING ---
-
-    const renderHome = () => (
-        <div className="flex flex-col animate-in">
-            <div className="sticky top-0 z-20 bg-white border-b border-gray-100 p-4 pb-2 space-y-4">
-                <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">Marketplace</h1>
-                    <button onClick={() => setView('my-items')} className="p-2.5 bg-gray-50 rounded-full text-gray-700 active:scale-90 transition-transform">
-                        <List className="w-6 h-6" />
-                    </button>
-                </div>
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input 
-                        type="text" 
-                        placeholder="Search items, brands, or cities..." 
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-gray-100 border-none rounded-full py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-blue-500 transition-all outline-none"
-                    />
-                </div>
-                <div className="flex space-x-2 overflow-x-auto no-scrollbar pb-2">
-                    {['All', 'New', 'Excellent', 'Good'].map(cat => (
-                        <button key={cat} onClick={() => setActiveFilter(cat)} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeFilter === cat ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-100 text-gray-600'}`}>{cat}</button>
-                    ))}
-                </div>
-            </div>
-
-            <div className="p-2 grid grid-cols-2 gap-2 pb-24">
-                {filteredItems.map(item => (
-                    <div key={item.id} className="bg-white rounded-lg overflow-hidden group cursor-pointer active:opacity-80 transition-all shadow-sm"
-                         onClick={() => { setSelectedItem(item); setView('details'); }}>
-                        <div className="aspect-square relative overflow-hidden bg-gray-100">
-                            <img src={item.photos[0]} alt={item.title} className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-700" />
-                        </div>
-                        <div className="p-2.5 space-y-0.5 text-left">
-                            <p className="text-sm font-black text-gray-900">${item.price}</p>
-                            <h3 className="text-xs text-gray-700 line-clamp-1 font-medium">{item.title}</h3>
-                            <div className="flex items-center text-[9px] text-gray-400 font-bold uppercase tracking-tighter">
-                                <MapPin className="w-2.5 h-2.5 mr-1" /> {item.governorate}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
+                return ListView.builder(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: myItems.length,
+                  itemBuilder: (context, index) {
+                    final item = myItems[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15)],
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.network((item.photos?.isNotEmpty ?? false) ? item.photos![0] : 'https://via.placeholder.com/80', width: 80, height: 80, fit: BoxFit.cover),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 4),
+                              Text('\$${item.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF2563EB))),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: item.isSold ? const Color(0xFFFEF2F2) : const Color(0xFFECFDF5),
+                                  borderRadius: BorderRadius.circular(100),
+                                ),
+                                child: Text(
+                                  item.isSold ? 'SOLD' : 'AVAILABLE',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    color: item.isSold ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+                                    letterSpacing: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Column(
+                          children: [
+                            if (!item.isSold)
+                              InkWell(
+                                onTap: () => _markAsSold(item.id),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFECFDF5),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20),
+                                ),
+                              ),
+                            const SizedBox(height: 8),
+                            InkWell(
+                              onTap: () => _deleteItem(item.id),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEF2F2),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: const Icon(Icons.delete, color: Color(0xFFEF4444), size: 20),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        ),
+      ),
+        ],
+      ),
     );
-
-    const renderDetails = () => (
-        <div className="flex flex-col bg-white min-h-screen pb-24 animate-in">
-            <div className="relative">
-                <button onClick={() => setView('home')} className="absolute top-10 left-4 z-10 p-2.5 bg-black/30 backdrop-blur rounded-full text-white active:scale-90 transition-transform">
-                    <ChevronLeft className="w-6 h-6" />
-                </button>
-                <PhotoCarousel photos={selectedItem.photos} />
-            </div>
-
-            <div className="p-6 space-y-8 text-left">
-                <div className="space-y-4">
-                    <div className="space-y-1">
-                        <h1 className="text-2xl font-black text-gray-900 tracking-tight leading-tight">{selectedItem.title}</h1>
-                        <p className="text-3xl font-black text-blue-600">${selectedItem.price}</p>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-2 pt-2">
-                        <div className="px-4 py-2 bg-blue-50 border border-blue-100 rounded-2xl flex items-center text-blue-700">
-                            <MapPin className="w-4 h-4 mr-2" />
-                            <span className="text-xs font-black uppercase tracking-widest">{selectedItem.governorate}</span>
-                        </div>
-                        <div className="px-4 py-2 bg-gray-50 border border-gray-100 rounded-2xl flex items-center text-gray-600">
-                            <Star className="w-4 h-4 mr-2" />
-                            <span className="text-xs font-black uppercase tracking-widest">{selectedItem.condition}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 border-y border-gray-50 py-6">
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Brand</p>
-                        <p className="text-sm font-bold text-gray-900">{selectedItem.brand}</p>
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Size</p>
-                        <p className="text-sm font-bold text-gray-900">{selectedItem.size}</p>
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    <h2 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Description</h2>
-                    <p className="text-sm text-gray-600 leading-relaxed font-medium">{selectedItem.description}</p>
-                </div>
-
-                <div className="fixed bottom-0 left-0 right-0 p-6 bg-white/95 backdrop-blur border-t border-gray-100 max-w-md mx-auto rounded-t-[32px] shadow-2xl z-40">
-                    <a href={`https://wa.me/${selectedItem.contactNumber}`} target="_blank" className="w-full flex items-center justify-center py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm shadow-xl hover:brightness-110 transition-all tracking-widest">
-                        <MessageCircle className="w-6 h-6 mr-2" />
-                        MESSAGE SELLER
-                    </a>
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderSell = () => (
-        <div className="p-6 animate-in space-y-8 pb-32 text-left">
-            <div className="flex items-center space-x-4">
-                <button onClick={() => setView('home')} className="p-2.5 bg-gray-100 rounded-2xl active:scale-90 transition-transform"><ArrowLeft className="w-6 h-6" /></button>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">New Listing</h2>
-            </div>
-
-            <div className="space-y-6 bg-white p-6 rounded-[32px] shadow-sm border border-gray-100">
-                <div className="space-y-6">
-                    <div className="p-8 bg-gray-50 rounded-3xl flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 cursor-pointer hover:border-blue-300 transition-colors">
-                        <UploadCloud className="w-10 h-10 mb-2 text-blue-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-center">Add Photos<br/><span className="lowercase font-medium opacity-60">Maximum 10 images</span></span>
-                    </div>
-
-                    <div className="space-y-5">
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">What are you selling?</label>
-                            <input type="text" placeholder="Title" value={sellForm.title} onChange={e => setSellForm({...sellForm, title: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Price ($)</label>
-                                <input type="number" placeholder="Amount" value={sellForm.price} onChange={e => setSellForm({...sellForm, price: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Condition</label>
-                                <select value={sellForm.condition} onChange={e => setSellForm({...sellForm, condition: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                                    <option>New</option><option>Excellent</option><option>Good</option><option>Fair</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Governorate</label>
-                            <select value={sellForm.governorate} onChange={e => setSellForm({...sellForm, governorate: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                                {GOVERNORATES.map(g => <option key={g}>{g}</option>)}
-                            </select>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Brand</label>
-                                <select value={sellForm.brand} onChange={e => setSellForm({...sellForm, brand: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                                    {BRANDS.map(b => <option key={b}>{b}</option>)}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Size</label>
-                                <select value={sellForm.size} onChange={e => setSellForm({...sellForm, size: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none">
-                                    {SIZES.map(s => <option key={s}>{s}</option>)}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">WhatsApp Number</label>
-                            <input type="tel" placeholder="+20" value={sellForm.contactNumber} onChange={e => setSellForm({...sellForm, contactNumber: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Description</label>
-                            <textarea placeholder="Describe the condition, usage, and special features..." rows="4" value={sellForm.description} onChange={e => setSellForm({...sellForm, description: e.target.value})} className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <button onClick={handlePost} className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-widest">Publish Listing</button>
-        </div>
-    );
-
-    const renderMyItems = () => (
-        <div className="p-6 animate-in space-y-8 text-left pb-24">
-            <div className="flex items-center space-x-4">
-                <button onClick={() => setView('home')} className="p-2.5 bg-gray-100 rounded-2xl active:scale-90 transition-transform"><ChevronLeft className="w-6 h-6" /></button>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tight">Your Listings</h2>
-            </div>
-            <div className="space-y-4">
-                {myItems.map(item => (
-                    <div key={item.id} className="bg-white p-5 rounded-[32px] shadow-lg border border-gray-50 flex items-center space-x-4">
-                        <img src={item.photos[0]} className="w-20 h-20 rounded-2xl object-cover shadow-sm" />
-                        <div className="flex-grow min-w-0">
-                            <h3 className="font-black text-gray-900 truncate leading-tight">{item.title}</h3>
-                            <p className="text-blue-600 font-bold text-sm mt-1">${item.price}</p>
-                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full mt-2 inline-block ${item.status === 'sold' ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>{item.status}</span>
-                        </div>
-                        <div className="flex flex-col space-y-2">
-                            {item.status !== 'sold' && (
-                                <button onClick={() => handleMarkSold(item.id)} className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl active:scale-90 transition-transform shadow-sm"><CheckCircle className="w-5 h-5" /></button>
-                            )}
-                            <button onClick={() => handleDelete(item.id)} className="p-3 bg-rose-50 text-rose-600 rounded-2xl active:scale-90 transition-transform shadow-sm"><Trash2 className="w-5 h-5" /></button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse uppercase tracking-[0.3em]">Swim 360</div>;
-
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative selection:bg-blue-100">
-            {view === 'home' && renderHome()}
-            {view === 'details' && renderDetails()}
-            {view === 'sell' && renderSell()}
-            {view === 'my-items' && renderMyItems()}
-
-            {view === 'home' && (
-                <button onClick={() => setView('sell')} className="fixed bottom-8 right-6 z-30 flex items-center space-x-2 bg-blue-600 text-white px-7 py-4 rounded-[28px] font-black shadow-2xl active:scale-90 transition-all border-4 border-white/20 uppercase text-xs tracking-widest">
-                    <Plus className="w-6 h-6" /> <span>Sell</span>
-                </button>
-            )}
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
-        </div>
-    );
+  }
 }
+

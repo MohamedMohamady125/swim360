@@ -1,196 +1,628 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - Create Account</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2563eb; }
-        
-        /* Staggered Entrance Animations matching Flutter Intervals */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+import 'package:flutter/material.dart';
+import 'package:swim360/screens/home/main_navigation.dart';
+import 'package:swim360/core/services/auth_service.dart';
+import 'package:swim360/core/models/auth/signup_request.dart';
+
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({Key? key}) : super(key: key);
+
+  @override
+  State<SignupScreen> createState() => _SignupScreenState();
+}
+
+class _SignupScreenState extends State<SignupScreen>
+    with SingleTickerProviderStateMixin {
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _authService = AuthService();
+  late AnimationController _animationController;
+  final List<Animation<double>> _animations = [];
+  bool _isLoading = false;
+
+  int _passwordStrength = 0; // 0=None, 1=Weak, 2=Fair, 3=Strong
+  String _strengthText = 'None';
+  Color _strengthColor = const Color(0xFFE2E8F0);
+  Color _strengthTextColor = const Color(0xFFD1D5DB);
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+
+    // Create staggered animations for 9 items (delay-0 through delay-8)
+    for (int i = 0; i < 9; i++) {
+      _animations.add(
+        Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Interval(
+              i * 0.1,
+              0.6 + (i * 0.1),
+              curve: Curves.easeOutCubic,
+            ),
+          ),
+        ),
+      );
+    }
+
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _showToast(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2.0,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        backgroundColor: isError ? const Color(0xFFE11D48) : const Color(0xFF111827),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(100),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _updatePasswordStrength(String password) {
+    setState(() {
+      if (password.length >= 8) {
+        final hasNumbers = RegExp(r'\d').hasMatch(password);
+        final hasLetters = RegExp(r'[a-zA-Z]').hasMatch(password);
+        final hasUppercase = RegExp(r'[A-Z]').hasMatch(password);
+        final hasSymbols = RegExp(r'[!@#$%^&*()_+\-=\[\]{};:\\|,.<>\/?]').hasMatch(password);
+
+        if (hasLetters && hasNumbers && hasUppercase && hasSymbols) {
+          _passwordStrength = 3; // Strong
+          _strengthText = 'Strong';
+          _strengthColor = const Color(0xFF10B981);
+          _strengthTextColor = const Color(0xFF10B981);
+        } else if ((hasLetters && hasNumbers) || hasUppercase) {
+          _passwordStrength = 2; // Fair
+          _strengthText = 'Fair';
+          _strengthColor = const Color(0xFFFACC15);
+          _strengthTextColor = const Color(0xFFFACC15);
+        } else {
+          _passwordStrength = 1; // Weak
+          _strengthText = 'Weak';
+          _strengthColor = const Color(0xFFF43F5E);
+          _strengthTextColor = const Color(0xFFF43F5E);
         }
-        .animate-item { opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .delay-0 { animation-delay: 0.1s; }
-        .delay-1 { animation-delay: 0.2s; }
-        .delay-2 { animation-delay: 0.3s; }
-        .delay-3 { animation-delay: 0.4s; }
-        .delay-4 { animation-delay: 0.5s; }
-        .delay-5 { animation-delay: 0.6s; }
-        .delay-6 { animation-delay: 0.7s; }
-        .delay-7 { animation-delay: 0.8s; }
-        .delay-8 { animation-delay: 0.9s; }
+      } else if (password.isNotEmpty) {
+        _passwordStrength = 1;
+        _strengthText = 'Weak';
+        _strengthColor = const Color(0xFFF43F5E);
+        _strengthTextColor = const Color(0xFFF43F5E);
+      } else {
+        _passwordStrength = 0;
+        _strengthText = 'None';
+        _strengthColor = const Color(0xFFE2E8F0);
+        _strengthTextColor = const Color(0xFFD1D5DB);
+      }
+    });
+  }
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .shadow-blueprint { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
-        #strength-bar { transition: width 0.4s ease, background-color 0.4s ease; }
-    </style>
-</head>
-<body class="flex items-center justify-center min-h-screen p-6 no-scrollbar">
+  Future<void> _handleSignup() async {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
 
-    <div class="w-full max-w-md bg-white p-8 md:p-10 rounded-[40px] shadow-2xl animate-item text-center relative">
-        
-        <div class="animate-item delay-0 flex justify-center mb-6">
-            <div class="w-16 h-16 bg-blue-50 rounded-[24px] flex items-center justify-center text-blue-600 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path d="M2 6c.6.5 1.2 1 2.5 1C5.8 7 7.2 6 8.5 6c1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                    <path d="M2 12c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                    <path d="M2 18c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                </svg>
-            </div>
-        </div>
+    if (name.split(RegExp(r'\s+')).length < 2) {
+      _showToast('Enter First & Last Name', isError: true);
+      return;
+    }
 
-        <h1 class="animate-item delay-1 text-3xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">
-            Create Account
-        </h1>
+    if (password != confirmPassword) {
+      _showToast('Passwords do not match', isError: true);
+      return;
+    }
 
-        <p class="animate-item delay-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-3 mb-8">
-            Join the Swim 360 community
-        </p>
+    if (_strengthText == 'Weak' || _strengthText == 'None') {
+      _showToast('Password is too weak', isError: true);
+      return;
+    }
 
-        <form onsubmit="event.preventDefault(); triggerSignup();" class="space-y-5 text-left">
-            
-            <div class="animate-item delay-3 space-y-1.5">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
-                <div class="relative flex items-center group">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 w-5 h-5 text-gray-300 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <input type="text" id="signup-name" required placeholder="John Doe" 
-                        class="w-full pl-12 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-blueprint transition-all uppercase">
-                </div>
-            </div>
+    setState(() {
+      _isLoading = true;
+    });
 
-            <div class="animate-item delay-4 space-y-1.5">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
-                <div class="relative flex items-center group">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 w-5 h-5 text-gray-300 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    </svg>
-                    <input type="email" id="signup-email" required placeholder="you@example.com" 
-                        class="w-full pl-12 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-blueprint transition-all">
-                </div>
-            </div>
+    try {
+      final request = SignupRequest(
+        email: email,
+        password: password,
+        fullName: name,
+      );
 
-            <div class="animate-item delay-5 space-y-1.5">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label>
-                <div class="relative flex items-center group">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 w-5 h-5 text-gray-300 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                    </svg>
-                    <input type="password" id="signup-pass" required placeholder="••••••••" oninput="updateStrength(this.value)"
-                        class="w-full pl-12 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-blueprint transition-all">
-                </div>
-                <div class="pt-2 px-1">
-                    <div class="flex justify-between items-center mb-1.5">
-                        <span class="text-[8px] font-black text-gray-400 uppercase tracking-widest">Security Level</span>
-                        <span id="strength-text" class="text-[8px] font-black uppercase tracking-widest text-gray-300">None</span>
-                    </div>
-                    <div class="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div id="strength-bar" class="h-full w-0 bg-gray-300 transition-all duration-500"></div>
-                    </div>
-                </div>
-            </div>
+      final response = await _authService.signup(request);
 
-            <div class="animate-item delay-6 space-y-1.5">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm Password</label>
-                <div class="relative flex items-center group">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 w-5 h-5 text-gray-300 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    </svg>
-                    <input type="password" id="confirm-pass" required placeholder="••••••••" 
-                        class="w-full pl-12 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-blueprint transition-all">
-                </div>
-            </div>
+      if (!mounted) return;
 
-            <div class="animate-item delay-7 pt-4">
-                <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
-                    Create Account
-                </button>
-            </div>
-        </form>
+      if (response.success) {
+        _showToast('Account Created Successfully!');
 
-        <p class="animate-item delay-8 mt-10 text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">
-            Already have an account? 
-            <a href="#" class="text-blue-600 ml-1 hover:underline underline-offset-4">Sign in</a>
-        </p>
+        // Navigate to main app
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const MainNavigation()),
+        );
+      } else {
+        _showToast(response.error ?? 'Signup failed. Please try again.', isError: true);
+      }
+    } catch (e) {
+      if (mounted) {
+        _showToast('An error occurred: ${e.toString()}', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
-    </div>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF2563EB),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: _buildCard(),
+          ),
+        ),
+      ),
+    );
+  }
 
-    <div id="toast" class="fixed top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] hidden uppercase tracking-widest animate-bounce">
-    </div>
+  Widget _buildCard() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 448),
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 25,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildAnimatedItem(0, _buildIcon()),
+          const SizedBox(height: 24),
+          _buildAnimatedItem(1, _buildTitle()),
+          const SizedBox(height: 12),
+          _buildAnimatedItem(2, _buildSubtitle()),
+          const SizedBox(height: 32),
+          _buildForm(),
+        ],
+      ),
+    );
+  }
 
-    <script>
-        function showToast(msg, isError = false) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.className = `fixed top-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] uppercase animate-bounce ${isError ? 'bg-rose-600' : 'bg-gray-900'} text-white tracking-widest`;
-            t.classList.remove('hidden');
-            setTimeout(() => t.classList.add('hidden'), 3000);
-        }
+  Widget _buildIcon() {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+            spreadRadius: 0,
+            blurStyle: BlurStyle.inner,
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.waves,
+        color: Color(0xFF2563EB),
+        size: 40,
+      ),
+    );
+  }
 
-        function updateStrength(p) {
-            const bar = document.getElementById('strength-bar');
-            const text = document.getElementById('strength-text');
-            
-            let strength = 0;
-            if (p.length >= 8) {
-                const hasNumbers = /\d/.test(p);
-                const hasLetters = /[a-zA-Z]/.test(p);
-                const hasUppercase = /[A-Z]/.test(p);
-                const hasSymbols = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p);
+  Widget _buildTitle() {
+    return Text(
+      'CREATE ACCOUNT',
+      style: TextStyle(
+        fontSize: 30,
+        fontWeight: FontWeight.w900,
+        color: const Color(0xFF111827),
+        letterSpacing: -0.5,
+        fontStyle: FontStyle.italic,
+        height: 1.0,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
 
-                if (hasLetters && hasNumbers && hasUppercase && hasSymbols) strength = 3; // strong
-                else if ((hasLetters && hasNumbers) || hasUppercase) strength = 2; // fair
-                else strength = 1; // weak
-            } else if (p.length > 0) {
-                strength = 1;
-            }
+  Widget _buildSubtitle() {
+    return Text(
+      'JOIN THE SWIM 360 COMMUNITY',
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w900,
+        color: const Color(0xFF9CA3AF),
+        letterSpacing: 2.0,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
 
-            switch(strength) {
-                case 3:
-                    bar.style.width = '100%'; bar.style.backgroundColor = '#10b981';
-                    text.textContent = 'Strong'; text.className = 'text-[8px] font-black uppercase tracking-widest text-emerald-500';
-                    break;
-                case 2:
-                    bar.style.width = '66%'; bar.style.backgroundColor = '#facc15';
-                    text.textContent = 'Fair'; text.className = 'text-[8px] font-black uppercase tracking-widest text-yellow-500';
-                    break;
-                case 1:
-                    bar.style.width = '33%'; bar.style.backgroundColor = '#f43f5e';
-                    text.textContent = 'Weak'; text.className = 'text-[8px] font-black uppercase tracking-widest text-rose-500';
-                    break;
-                default:
-                    bar.style.width = '0%'; bar.style.backgroundColor = '#E2E8F0';
-                    text.textContent = 'None'; text.className = 'text-[8px] font-black uppercase tracking-widest text-gray-300';
-            }
-        }
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildAnimatedItem(3, _buildTextField(
+            controller: _nameController,
+            label: 'FULL NAME',
+            hint: 'John Doe',
+            icon: Icons.person_outline,
+            textCapitalization: TextCapitalization.words,
+          )),
+          const SizedBox(height: 20),
+          _buildAnimatedItem(4, _buildTextField(
+            controller: _emailController,
+            label: 'EMAIL ADDRESS',
+            hint: 'you@example.com',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
+          )),
+          const SizedBox(height: 20),
+          _buildAnimatedItem(5, _buildPasswordFieldWithStrength()),
+          const SizedBox(height: 20),
+          _buildAnimatedItem(6, _buildTextField(
+            controller: _confirmPasswordController,
+            label: 'CONFIRM PASSWORD',
+            hint: '••••••••',
+            icon: Icons.shield_outlined,
+            obscureText: true,
+          )),
+          const SizedBox(height: 16),
+          _buildAnimatedItem(7, _buildSignupButton()),
+          const SizedBox(height: 40),
+          _buildAnimatedItem(8, _buildLoginPrompt()),
+        ],
+      ),
+    );
+  }
 
-        function triggerSignup() {
-            const name = document.getElementById('signup-name').value.trim();
-            const p1 = document.getElementById('signup-pass').value;
-            const p2 = document.getElementById('confirm-pass').value;
-            const strength = document.getElementById('strength-text').textContent;
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    bool obscureText = false,
+    TextInputType? keyboardType,
+    TextCapitalization textCapitalization = TextCapitalization.none,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF9CA3AF),
+              letterSpacing: 2.5,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+                blurStyle: BlurStyle.inner,
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            obscureText: obscureText,
+            keyboardType: keyboardType,
+            textCapitalization: textCapitalization,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              hintText: hint,
+              hintStyle: TextStyle(
+                color: const Color(0xFFD1D5DB),
+                fontWeight: FontWeight.w700,
+              ),
+              prefixIcon: Icon(
+                icon,
+                color: const Color(0xFFD1D5DB),
+                size: 20,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF2563EB),
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-            if (name.split(/\s+/).length < 2) {
-                showToast("Enter First & Last Name", true);
-                return;
-            }
-            if (p1 !== p2) {
-                showToast("Passwords do not match", true);
-                return;
-            }
-            if (strength === 'Weak' || strength === 'None') {
-                showToast("Password is too weak", true);
-                return;
-            }
+  Widget _buildPasswordFieldWithStrength() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
+          child: Text(
+            'PASSWORD',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF9CA3AF),
+              letterSpacing: 2.5,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+                blurStyle: BlurStyle.inner,
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: _passwordController,
+            obscureText: true,
+            onChanged: _updatePasswordStrength,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              hintText: '••••••••',
+              hintStyle: TextStyle(
+                color: const Color(0xFFD1D5DB),
+                fontWeight: FontWeight.w700,
+              ),
+              prefixIcon: const Icon(
+                Icons.lock_outline,
+                color: Color(0xFFD1D5DB),
+                size: 20,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF2563EB),
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(top: 8, left: 4, right: 4),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'SECURITY LEVEL',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF9CA3AF),
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                  Text(
+                    _strengthText.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                      color: _strengthTextColor,
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                height: 6,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: AnimatedFractionallySizedBox(
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeInOut,
+                  widthFactor: _passwordStrength == 0 ? 0 :
+                             _passwordStrength == 1 ? 0.33 :
+                             _passwordStrength == 2 ? 0.66 : 1.0,
+                  alignment: Alignment.centerLeft,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: _strengthColor,
+                      borderRadius: BorderRadius.circular(100),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-            showToast("Account Created Successfully!");
-        }
-    </script>
-</body>
-</html>
+  Widget _buildSignupButton() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleSignup,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                'CREATE ACCOUNT',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.8,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildLoginPrompt() {
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Text(
+          'ALREADY HAVE AN ACCOUNT? ',
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: const Color(0xFF9CA3AF),
+            letterSpacing: 2.5,
+            height: 1.0,
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            // Navigate back to login
+            Navigator.of(context).pop();
+          },
+          child: Text(
+            'SIGN IN',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF2563EB),
+              letterSpacing: 2.5,
+              decoration: TextDecoration.underline,
+              decorationColor: const Color(0xFF2563EB),
+              height: 1.0,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAnimatedItem(int index, Widget child) {
+    return FadeTransition(
+      opacity: _animations[index],
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.1),
+          end: Offset.zero,
+        ).animate(_animations[index]),
+        child: child,
+      ),
+    );
+  }
+}

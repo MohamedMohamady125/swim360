@@ -1,138 +1,391 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - Forgot Password</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2563eb; }
-        
-        /* Standardized Entrance Animations */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-item { opacity: 0; animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .delay-0 { animation-delay: 0.1s; }
-        .delay-1 { animation-delay: 0.2s; }
-        .delay-2 { animation-delay: 0.3s; }
-        .delay-3 { animation-delay: 0.4s; }
-        .delay-4 { animation-delay: 0.5s; }
-        .delay-5 { animation-delay: 0.6s; }
+import 'package:flutter/material.dart';
 
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .shadow-blueprint { box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05); }
+class ForgotPasswordScreen extends StatefulWidget {
+  const ForgotPasswordScreen({Key? key}) : super(key: key);
 
-        /* Spinner for Loading State */
-        .spinner {
-            border: 2px solid rgba(0, 0, 0, 0.1);
-            width: 20px; height: 20px;
-            border-radius: 50%;
-            border-left-color: #4b5563;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
-</head>
-<body class="flex items-center justify-center min-h-screen p-6 no-scrollbar">
+  @override
+  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+}
 
-    <div class="w-full max-w-md bg-white p-8 md:p-10 rounded-[40px] shadow-2xl animate-item text-center relative">
-        
-        <div class="animate-item delay-0 flex justify-center mb-6">
-            <div class="w-16 h-16 bg-blue-50 rounded-[24px] flex items-center justify-center text-blue-600 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path d="M2 6c.6.5 1.2 1 2.5 1C5.8 7 7.2 6 8.5 6c1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                    <path d="M2 12c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                    <path d="M2 18c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                </svg>
-            </div>
-        </div>
+class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
+    with SingleTickerProviderStateMixin {
+  final _emailController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
+  String? _statusMessage;
+  bool _showStatus = false;
+  late AnimationController _animationController;
+  final List<Animation<double>> _animations = [];
 
-        <h1 class="animate-item delay-1 text-3xl font-black text-gray-900 tracking-tight leading-none italic uppercase">
-            Forgot Password?
-        </h1>
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
 
-        <p class="animate-item delay-2 text-xs font-bold text-gray-400 leading-relaxed px-4 mt-4 mb-8">
-            Don't worry, it happens to everyone. Enter your email and we'll send you a reset link.
-        </p>
+    // Create staggered animations for 6 items (delay-0 through delay-5)
+    for (int i = 0; i < 6; i++) {
+      _animations.add(
+        Tween<double>(begin: 0.0, end: 1.0).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Interval(
+              i * 0.1,
+              0.6 + (i * 0.1),
+              curve: Curves.easeOutCubic,
+            ),
+          ),
+        ),
+      );
+    }
 
-        <form id="reset-form" onsubmit="event.preventDefault(); handleReset();" class="space-y-6 text-left">
-            
-            <div class="animate-item delay-3 space-y-2">
-                <label class="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
-                <div class="relative flex items-center group">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 w-5 h-5 text-gray-300 group-focus-within:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                        <polyline points="22,6 12,13 2,6"></polyline>
-                    </svg>
-                    <input id="email-input" type="email" required placeholder="you@example.com" 
-                        class="w-full pl-12 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-blueprint transition-all">
-                </div>
-            </div>
+    _animationController.forward();
+  }
 
-            <div id="status-msg" class="animate-item delay-4 min-h-[20px] text-center hidden">
-                <p class="text-[10px] font-black uppercase tracking-widest"></p>
-            </div>
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
 
-            <div class="animate-item delay-5">
-                <button id="submit-btn" type="submit" class="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all flex justify-center items-center">
-                    <span id="btn-text">Reset Password</span>
-                    <div id="btn-loader" class="hidden"><div class="spinner"></div></div>
-                </button>
-            </div>
-        </form>
+  void _showToast(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message.toUpperCase(),
+          style: const TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 2.0,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        backgroundColor: isError ? const Color(0xFFE11D48) : const Color(0xFF111827),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(100),
+        ),
+        margin: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
 
-        <button onclick="window.history.back()" class="animate-item delay-5 mt-10 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline underline-offset-4">
-            Return to Sign in
-        </button>
+  Future<void> _handleReset() async {
+    final email = _emailController.text.trim();
 
-    </div>
+    if (!email.contains('@')) {
+      _showToast('Invalid email address', isError: true);
+      return;
+    }
 
-    <div id="toast" class="fixed top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] hidden uppercase tracking-widest animate-bounce">
-    </div>
+    setState(() {
+      _isLoading = true;
+      _showStatus = false;
+    });
 
-    <script>
-        function showToast(msg, isError = false) {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.className = `fixed top-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] uppercase tracking-widest animate-bounce ${isError ? 'bg-rose-600' : 'bg-gray-900'} text-white`;
-            t.classList.remove('hidden');
-            setTimeout(() => t.classList.add('hidden'), 3000);
-        }
+    // Simulate network delay (2 seconds)
+    await Future.delayed(const Duration(seconds: 2));
 
-        function handleReset() {
-            const email = document.getElementById('email-input').value;
-            const btnText = document.getElementById('btn-text');
-            const btnLoader = document.getElementById('btn-loader');
-            const submitBtn = document.getElementById('submit-btn');
-            const statusMsg = document.getElementById('status-msg');
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _showStatus = true;
+        _statusMessage = 'A 6 digit code has been sent!';
+      });
+      _showToast('Reset code sent!');
+    }
+  }
 
-            if (!email.includes('@')) {
-                showToast("Invalid email address", true);
-                return;
-            }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF2563EB),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: _buildCard(),
+          ),
+        ),
+      ),
+    );
+  }
 
-            // Start Loading (matches Flutter _isLoading)
-            btnText.classList.add('hidden');
-            btnLoader.classList.remove('hidden');
-            submitBtn.classList.add('opacity-50', 'pointer-events-none');
+  Widget _buildCard() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 448),
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 25,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildAnimatedItem(0, _buildIcon()),
+          const SizedBox(height: 24),
+          _buildAnimatedItem(1, _buildTitle()),
+          const SizedBox(height: 16),
+          _buildAnimatedItem(2, _buildSubtitle()),
+          const SizedBox(height: 32),
+          _buildForm(),
+        ],
+      ),
+    );
+  }
 
-            // Simulate Network Delay (2 seconds)
-            setTimeout(() => {
-                btnLoader.classList.add('hidden');
-                btnText.classList.remove('hidden');
-                submitBtn.classList.remove('opacity-50', 'pointer-events-none');
-                
-                // Show Success
-                statusMsg.classList.remove('hidden');
-                statusMsg.querySelector('p').textContent = "A 6 digit code has been sent!";
-                statusMsg.querySelector('p').className = "text-[10px] font-black uppercase tracking-widest text-emerald-500";
-                
-                showToast("Reset code sent!");
-            }, 2000);
-        }
-    </script>
-</body>
-</html>
+  Widget _buildIcon() {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+            spreadRadius: 0,
+            blurStyle: BlurStyle.inner,
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.waves,
+        color: Color(0xFF2563EB),
+        size: 40,
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return Text(
+      'FORGOT PASSWORD?',
+      style: TextStyle(
+        fontSize: 30,
+        fontWeight: FontWeight.w900,
+        color: const Color(0xFF111827),
+        letterSpacing: -0.5,
+        fontStyle: FontStyle.italic,
+        height: 1.0,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildSubtitle() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Text(
+        "Don't worry, it happens to everyone. Enter your email and we'll send you a reset link.",
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: const Color(0xFF9CA3AF),
+          height: 1.5,
+        ),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildForm() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildAnimatedItem(3, _buildEmailField()),
+          const SizedBox(height: 24),
+          _buildAnimatedItem(4, _buildStatusMessage()),
+          const SizedBox(height: 24),
+          _buildAnimatedItem(5, _buildSubmitButton()),
+          const SizedBox(height: 40),
+          _buildAnimatedItem(5, _buildBackButton()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmailField() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'EMAIL ADDRESS',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w900,
+              color: const Color(0xFF9CA3AF),
+              letterSpacing: 2.5,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+                spreadRadius: 0,
+                blurStyle: BlurStyle.inner,
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+            decoration: InputDecoration(
+              hintText: 'you@example.com',
+              hintStyle: TextStyle(
+                color: const Color(0xFFD1D5DB),
+                fontWeight: FontWeight.w700,
+              ),
+              prefixIcon: const Icon(
+                Icons.email_outlined,
+                color: Color(0xFFD1D5DB),
+                size: 20,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: Color(0xFF2563EB),
+                  width: 2,
+                ),
+              ),
+              filled: true,
+              fillColor: const Color(0xFFF9FAFB),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusMessage() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: _showStatus ? null : 20,
+      child: _showStatus
+          ? Center(
+              child: Text(
+                _statusMessage?.toUpperCase() ?? '',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF10B981),
+                  letterSpacing: 2.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            )
+          : const SizedBox(height: 20),
+    );
+  }
+
+  Widget _buildSubmitButton() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _isLoading ? null : _handleReset,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+          disabledBackgroundColor: const Color(0xFF2563EB).withOpacity(0.5),
+        ),
+        child: _isLoading
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B7280)),
+                ),
+              )
+            : Text(
+                'RESET PASSWORD',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.8,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildBackButton() {
+    return TextButton(
+      onPressed: () => Navigator.of(context).pop(),
+      child: Text(
+        'RETURN TO SIGN IN',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          color: const Color(0xFF2563EB),
+          letterSpacing: 2.5,
+          decoration: TextDecoration.underline,
+          decorationColor: const Color(0xFF2563EB),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnimatedItem(int index, Widget child) {
+    return FadeTransition(
+      opacity: _animations[index],
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, 0.1),
+          end: Offset.zero,
+        ).animate(_animations[index]),
+        child: child,
+      ),
+    );
+  }
+}

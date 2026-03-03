@@ -1,171 +1,586 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - My Programs</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; color: #0F172A; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        .tab-btn { position: relative; transition: all 0.3s ease; }
-        .tab-btn.active { color: #2563eb; }
-        .tab-btn.active::after {
-            content: ''; position: absolute; bottom: 0; left: 50%;
-            transform: translateX(-50%); width: 20px; height: 4px;
-            background-color: #2563eb; border-radius: 99px;
-        }
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-        .progress-track { height: 10px; background-color: #F1F5F9; border-radius: 99px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
-        .progress-fill { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(0.65, 0, 0.35, 1); }
-        
-        .shadow-blueprint { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
-    </style>
-</head>
-<body class="no-scrollbar">
+class MyProgramsScreen extends StatefulWidget {
+  const MyProgramsScreen({super.key});
 
-    <div class="max-w-md mx-auto min-h-screen relative flex flex-col">
-        
-        <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50 text-left">
-            <div class="flex items-center space-x-4">
-                <button onclick="window.history.back()" class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                </button>
-                <div>
-                    <h1 class="text-2xl font-black text-gray-900 tracking-tight uppercase leading-none italic">Programs</h1>
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-1.5">Learning Journey</p>
-                </div>
-            </div>
-            <div class="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 shadow-inner overflow-hidden">
-                <img src="https://placehold.co/100x100/2563eb/white?text=Y" class="w-full h-full object-cover">
-            </div>
-        </header>
+  @override
+  State<MyProgramsScreen> createState() => _MyProgramsScreenState();
+}
 
-        <nav class="flex bg-white px-8 border-b border-gray-50 sticky top-[74px] z-20">
-            <button onclick="switchTab('active')" id="tab-active" class="tab-btn active py-5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mr-8">Active</button>
-            <button onclick="switchTab('past')" id="tab-past" class="tab-btn py-5 text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">Past</button>
-        </nav>
+class _MyProgramsScreenState extends State<MyProgramsScreen> {
+  String _currentTab = 'active';
+  Program? _selectedProgram;
 
-        <main id="programs-container" class="p-6 space-y-6 animate-in text-left">
-            </main>
+  final List<Program> _programs = [];
 
-        <div id="modal-overlay" class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/60 backdrop-blur-sm hidden transition-opacity" onclick="closeModal()">
-            <div id="modal-sheet" class="bg-white w-full max-w-md rounded-t-[44px] p-10 shadow-2xl transition-transform duration-500 translate-y-full relative" onclick="event.stopPropagation()">
-                <div class="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-10 shadow-inner"></div>
-                <div id="modal-body" class="space-y-8 text-left max-h-[70vh] overflow-y-auto no-scrollbar">
-                    </div>
-            </div>
-        </div>
-    </div>
+  List<Program> get _filteredPrograms => _programs.where((p) => p.status == _currentTab).toList();
 
-    <script>
-        const myPrograms = [
-            { id: 'p1', type: 'ACADEMY', name: 'Intermediate Stroke Mastery', provider: 'Elite Swim Academy', schedule: 'Mon / Wed • 5:00 PM', end: 'Dec 20, 2025', count: 12, completed: 8, status: 'active', color: '#2563eb', desc: 'Intensive technique correction focused on competitive stroke efficiency and start-line explosive power.' },
-            { id: 'p2', type: 'COACH', name: 'Personal Endurance Plan', provider: 'Sarah Wilson', schedule: 'Fridays • 7:00 AM', end: 'Nov 15, 2025', count: 8, completed: 3, status: 'active', color: '#7c3aed', desc: 'Custom tailored open water transition program focusing on sighting technique and long-distance pacing.' }
-        ];
+  void _openDetails(Program program) {
+    setState(() {
+      _selectedProgram = program;
+    });
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildDetailModal(program),
+    );
+  }
 
-        let currentTab = 'active';
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 48, 24, 20),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: const Color(0xFFF1F5F9)),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.arrow_back_ios_new, size: 24),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'PROGRAMS',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -1.0,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'LEARNING JOURNEY',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF9CA3AF),
+                              letterSpacing: 3.0,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFDCEEFE)),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.network(
+                        'https://placehold.co/100x100/2563eb/white?text=Y',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-        function render() {
-            const container = document.getElementById('programs-container');
-            const filtered = myPrograms.filter(p => p.status === currentTab);
+            // Tabs
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+              ),
+              child: Row(
+                children: [
+                  _buildTabButton('Active', 'active'),
+                  const SizedBox(width: 32),
+                  _buildTabButton('Past', 'past'),
+                ],
+              ),
+            ),
 
-            if (!filtered.length) {
-                container.innerHTML = `<div class="py-20 text-center"><p class="text-[10px] font-black text-gray-300 uppercase tracking-widest italic">No Programs Found</p></div>`;
-                return;
-            }
+            // Programs List
+            Expanded(
+              child: _filteredPrograms.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'NO PROGRAMS FOUND',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFE5E7EB),
+                          letterSpacing: 2.5,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(24),
+                      itemCount: _filteredPrograms.length,
+                      itemBuilder: (context, index) {
+                        final program = _filteredPrograms[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 24),
+                          child: _buildProgramCard(program),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-            container.innerHTML = filtered.map(p => `
-                <div class="bg-white p-6 rounded-[32px] border border-gray-100 shadow-blueprint cursor-pointer active:scale-[0.98] transition-all" onclick="openDetails('${p.id}')">
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <span class="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest" style="background-color: ${p.color}10; color: ${p.color}">${p.type}</span>
-                            <h3 class="text-xl font-black text-gray-900 mt-3 tracking-tighter uppercase italic leading-none">${p.name}</h3>
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1.5">${p.provider}</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-300 shadow-inner">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </div>
-                    </div>
+  Widget _buildTabButton(String label, String tab) {
+    final isActive = _currentTab == tab;
+    return InkWell(
+      onTap: () => setState(() => _currentTab = tab),
+      child: Container(
+        padding: const EdgeInsets.only(bottom: 20, top: 20),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isActive ? const Color(0xFF2563EB) : Colors.transparent,
+              width: 4,
+            ),
+          ),
+        ),
+        child: Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            color: isActive ? const Color(0xFF2563EB) : const Color(0xFF9CA3AF),
+            letterSpacing: 3.0,
+          ),
+        ),
+      ),
+    );
+  }
 
-                    <div class="space-y-3">
-                        <div class="flex justify-between items-end">
-                            <p class="text-[9px] font-black text-gray-400 uppercase tracking-widest">Training Progress</p>
-                            <p class="text-[10px] font-black text-gray-900 uppercase">${p.completed} / ${p.count} Sessions</p>
-                        </div>
-                        <div class="progress-track">
-                            <div class="progress-fill" style="width: ${(p.completed/p.count)*100}%; background-color: ${p.color}"></div>
-                        </div>
-                    </div>
+  Widget _buildProgramCard(Program program) {
+    final progress = program.completedSessions / program.sessionCount;
+    return InkWell(
+      onTap: () => _openDetails(program),
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 20),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: program.color.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          program.type,
+                          style: TextStyle(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w900,
+                            color: program.color,
+                            letterSpacing: 2.5,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        program.name.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        program.provider.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF9CA3AF),
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF9FAFB),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.chevron_right, color: Color(0xFF9CA3AF), size: 20),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const Text(
+                  'TRAINING PROGRESS',
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF9CA3AF),
+                    letterSpacing: 2.5,
+                  ),
+                ),
+                Text(
+                  '${program.completedSessions} / ${program.sessionCount} SESSIONS',
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF111827),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Container(
+              height: 10,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(99),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: progress,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: program.color,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.only(top: 20),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: Color(0xFFF3F4F6))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, size: 14, color: const Color(0xFF2563EB)),
+                      const SizedBox(width: 8),
+                      Text(
+                        program.schedule.toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF9CA3AF),
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    'End: ${program.endDate}',
+                    style: const TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFFD1D5DB),
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                    <div class="mt-6 pt-5 border-t border-gray-50 flex items-center justify-between">
-                        <div class="flex items-center text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">
-                            <svg class="w-3.5 h-3.5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                            ${p.schedule}
-                        </div>
-                        <span class="text-[8px] font-black text-gray-300 uppercase tracking-widest">End: ${p.end}</span>
-                    </div>
-                </div>
-            `).join('');
-        }
+  Widget _buildDetailModal(Program program) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(44),
+          topRight: Radius.circular(44),
+        ),
+      ),
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 48,
+            height: 6,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(99),
+            ),
+          ),
+          const SizedBox(height: 40),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: program.color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${program.type} ACTIVE',
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+                color: program.color,
+                letterSpacing: 2.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            program.name.toUpperCase(),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Led by ${program.provider}',
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF9CA3AF),
+            ),
+          ),
+          const SizedBox(height: 32),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF9FAFB),
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: const Color(0xFFF1F5F9)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'OVERVIEW',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF9CA3AF),
+                    letterSpacing: 2.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '"${program.description}"',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF6B7280),
+                    fontStyle: FontStyle.italic,
+                    height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: const Color(0xFFF3F4F6)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.person, color: Color(0xFF2563EB), size: 20),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'REGULAR SCHEDULE',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFFD1D5DB),
+                          letterSpacing: 2.5,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Mon / Wed • 5:00 PM',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          InkWell(
+            onTap: () async {
+              final url = Uri.parse('https://wa.me/20123456789');
+              if (await canLaunchUrl(url)) {
+                await launchUrl(url, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF25D366).withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble, color: Colors.white, size: 20),
+                  SizedBox(width: 12),
+                  Text(
+                    'MESSAGE SUPPORT',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 2.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 
-        function openDetails(id) {
-            const p = myPrograms.find(prog => prog.id === id);
-            const body = document.getElementById('modal-body');
-            
-            body.innerHTML = `
-                <div class="space-y-4">
-                    <span class="px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest" style="background-color: ${p.color}10; color: ${p.color}">${p.type} ACTIVE</span>
-                    <h2 class="text-3xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">${p.name}</h2>
-                    <p class="text-sm font-bold text-gray-400">Led by ${p.provider}</p>
-                </div>
+class Program {
+  final String id;
+  final String type;
+  final String name;
+  final String provider;
+  final String schedule;
+  final String endDate;
+  final int sessionCount;
+  final int completedSessions;
+  final String status;
+  final Color color;
+  final String description;
 
-                <div class="p-6 bg-gray-50 rounded-[32px] border border-gray-100 shadow-inner space-y-4">
-                    <p class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Overview</p>
-                    <p class="text-sm font-bold text-gray-600 leading-relaxed italic">"${p.desc}"</p>
-                </div>
-
-                <div class="p-6 bg-white rounded-[32px] border border-gray-50 shadow-sm flex items-center justify-between">
-                    <div class="flex items-center space-x-4">
-                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-inner">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                        </div>
-                        <div>
-                            <p class="text-[9px] font-black text-gray-300 uppercase tracking-widest">Regular Schedule</p>
-                            <p class="text-xs font-black text-gray-900">${p.schedule}</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-4">
-                    <button onclick="window.open('https://wa.me/20123456789', '_blank')" class="w-full py-5 bg-[#25D366] text-white rounded-[24px] font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-100 flex items-center justify-center active:scale-95 transition-all">
-                        <svg class="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/></svg>
-                        Message Support
-                    </button>
-                </div>
-            `;
-
-            document.getElementById('modal-overlay').classList.remove('hidden');
-            setTimeout(() => document.getElementById('modal-sheet').classList.remove('translate-y-full'), 10);
-        }
-
-        function switchTab(tab) {
-            currentTab = tab;
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById(`tab-${tab}`).classList.add('active');
-            render();
-        }
-
-        function closeModal() {
-            document.getElementById('modal-sheet').classList.add('translate-y-full');
-            setTimeout(() => document.getElementById('modal-overlay').classList.add('hidden'), 400);
-        }
-
-        window.onload = render;
-    </script>
-</body>
-</html>
+  Program({
+    required this.id,
+    required this.type,
+    required this.name,
+    required this.provider,
+    required this.schedule,
+    required this.endDate,
+    required this.sessionCount,
+    required this.completedSessions,
+    required this.status,
+    required this.color,
+    required this.description,
+  });
+}

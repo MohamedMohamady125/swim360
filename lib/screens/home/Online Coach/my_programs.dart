@@ -1,143 +1,364 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - My Programs</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        @keyframes fadeIn { 
-            from { opacity: 0; transform: translateY(15px); } 
-            to { opacity: 1; transform: translateY(0); } 
-        }
-        .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .shadow-soft { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02); }
-    </style>
-</head>
-<body class="bg-[#F8FAFC]">
+import 'package:flutter/material.dart';
 
-    <div class="max-w-md mx-auto min-h-screen bg-[#F8FAFC] text-gray-900 pb-12 relative overflow-x-hidden">
-        
-        <header class="bg-white/90 backdrop-blur-md px-6 pt-12 pb-5 flex items-center justify-between sticky top-0 z-30 border-b border-gray-50">
-            <div class="flex items-center space-x-4 text-left">
-                <button class="p-2.5 rounded-2xl border border-gray-100 bg-white text-gray-900 shadow-sm active:scale-90 transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-                </button>
-                <div>
-                    <h1 class="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase">My Programs</h1>
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Official Inventory</p>
-                </div>
-            </div>
-            <div class="w-11 h-11 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-100">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-            </div>
-        </header>
+class MyProgramsScreen extends StatefulWidget {
+  const MyProgramsScreen({super.key});
 
-        <main class="p-6 space-y-6 animate-in">
-            <div id="program-list" class="space-y-4 pb-20">
-                </div>
-        </main>
+  @override
+  State<MyProgramsScreen> createState() => _MyProgramsScreenState();
+}
 
-        <div id="edit-modal-overlay" class="fixed inset-0 z-50 flex items-end justify-center px-4 pb-10 bg-slate-900/60 backdrop-blur-sm hidden transition-opacity">
-            <div class="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl animate-in relative overflow-hidden text-left">
-                <button id="close-modal-btn" class="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400 active:scale-90">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-                
-                <div class="mb-6">
-                    <h3 class="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase">Edit Details</h3>
-                    <p id="modal-program-title" class="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-2"></p>
-                </div>
+class _MyProgramsScreenState extends State<MyProgramsScreen> {
+  List<Program> _programs = [
+    Program(
+      id: 'prog1',
+      title: '12-Week Stroke Mastery',
+      price: 199.99,
+      duration: '12 Weeks',
+      endDate: '2026-12-31',
+      photoUrl: 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=800',
+      description: 'Comprehensive stroke mastery curriculum.',
+    ),
+    Program(
+      id: 'prog2',
+      title: 'Nutrition for Triathletes',
+      price: 49.00,
+      duration: '8 Sessions',
+      endDate: '',
+      photoUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800',
+      description: 'Fueling endurance athletes.',
+    ),
+  ];
 
-                <form id="edit-program-form" class="space-y-5">
-                    <input type="hidden" id="edit-program-id">
+  Program? _editingProgram;
+  bool _showModal = false;
 
-                    <div>
-                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Detailed Description</label>
-                        <textarea id="edit-description" rows="4" required
-                                  class="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner transition-all"></textarea>
-                    </div>
+  void _openEditModal(Program program) {
+    setState(() {
+      _editingProgram = Program(
+        id: program.id,
+        title: program.title,
+        price: program.price,
+        duration: program.duration,
+        endDate: program.endDate,
+        photoUrl: program.photoUrl,
+        description: program.description,
+      );
+      _showModal = true;
+    });
+  }
 
-                    <div>
-                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1 tracking-widest">Video URL (YouTube/Vimeo)</label>
-                        <div class="relative mt-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                            <input type="url" id="edit-intro-video-url" placeholder="Paste link..." 
-                                   class="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner">
-                        </div>
-                    </div>
+  void _handleSave(String description, String endDate) {
+    setState(() {
+      final index = _programs.indexWhere((p) => p.id == _editingProgram!.id);
+      _programs[index].description = description;
+      _programs[index].endDate = endDate;
+      _showModal = false;
+    });
+  }
 
-                    <div>
-                        <label class="text-[10px] font-black text-gray-400 uppercase ml-1">Campaign End Date</label>
-                        <div class="relative mt-1.5">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                            <input type="date" id="edit-program-end-date" 
-                                   class="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none shadow-inner">
-                        </div>
-                    </div>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 48, 24, 20),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          InkWell(
+                            onTap: () => Navigator.pop(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                border: Border.all(color: const Color(0xFFF3F4F6)),
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                              ),
+                              child: const Icon(Icons.arrow_back_ios_new, size: 24),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('MY PROGRAMS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                              SizedBox(height: 2),
+                              Text('OFFICIAL INVENTORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                        ),
+                        child: const Icon(Icons.edit, color: Colors.white, size: 24),
+                      ),
+                    ],
+                  ),
+                ),
 
-                    <div class="pt-2">
-                        <button type="submit" class="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
-                            Save Changes
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+                // Program List
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(24),
+                    itemCount: _programs.length,
+                    itemBuilder: (context, index) {
+                      final program = _programs[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: InkWell(
+                          onTap: () => _openEditModal(program),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(32),
+                              border: Border.all(color: const Color(0xFFF3F4F6)),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                            ),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Image.network(
+                                    program.photoUrl,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(program.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                                      const SizedBox(height: 4),
+                                      Text('\$${program.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${program.duration} ${program.endDate.isNotEmpty ? '• Ends ${program.endDate}' : '• Ongoing'}',
+                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF9FAFB),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.edit, color: Color(0xFF9CA3AF), size: 20),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-    <script>
-        let programs = [
-            { id: 'prog1', title: '12-Week Stroke Mastery', price: 199.99, duration: '12 Weeks', end_date: '2026-12-31', photo_url: 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=800', description: 'Comprehensive stroke mastery curriculum.' },
-            { id: 'prog2', title: 'Nutrition for Triathletes', price: 49.00, duration: '8 Sessions', end_date: '', photo_url: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800', description: 'Fueling endurance athletes.' }
-        ];
+          // Edit Modal
+          if (_showModal && _editingProgram != null)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _showModal = false),
+                child: Container(
+                  color: const Color(0xFF0F172A).withOpacity(0.6),
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        margin: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(40),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(0, 10))],
+                        ),
+                        child: _EditForm(
+                          program: _editingProgram!,
+                          onSave: _handleSave,
+                          onClose: () => setState(() => _showModal = false),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
 
-        function render() {
-            const list = document.getElementById('program-list');
-            list.innerHTML = programs.map(p => `
-                <div onclick="openEditModal('${p.id}')" class="bg-white p-4 rounded-[32px] shadow-soft border border-gray-50 flex items-center space-x-4 active:scale-[0.98] transition-all cursor-pointer">
-                    <img src="${p.photo_url}" class="w-20 h-20 object-cover rounded-[24px] shadow-inner flex-shrink-0">
-                    <div class="flex-grow text-left">
-                        <h3 class="text-lg font-black text-gray-900 leading-tight">${p.title}</h3>
-                        <p class="text-sm font-black text-blue-600 mt-0.5">$${p.price.toFixed(2)}</p>
-                        <p class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                            ${p.duration} ${p.end_date ? `• Ends ${p.end_date}` : '• Ongoing'}
-                        </p>
-                    </div>
-                    <div class="p-2.5 bg-gray-50 text-gray-300 rounded-xl group-hover:bg-blue-50 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                    </div>
-                </div>
-            `).join('');
-        }
+class _EditForm extends StatefulWidget {
+  final Program program;
+  final Function(String description, String endDate) onSave;
+  final VoidCallback onClose;
 
-        function openEditModal(id) {
-            const p = programs.find(x => x.id === id);
-            document.getElementById('edit-program-id').value = p.id;
-            document.getElementById('modal-program-title').textContent = p.title;
-            document.getElementById('edit-description').value = p.description;
-            document.getElementById('edit-program-end-date').value = p.end_date;
-            document.getElementById('edit-modal-overlay').classList.remove('hidden');
-        }
+  const _EditForm({
+    required this.program,
+    required this.onSave,
+    required this.onClose,
+  });
 
-        document.getElementById('edit-program-form').onsubmit = (e) => {
-            e.preventDefault();
-            const id = document.getElementById('edit-program-id').value;
-            const index = programs.findIndex(x => x.id === id);
-            programs[index].description = document.getElementById('edit-description').value;
-            programs[index].end_date = document.getElementById('edit-program-end-date').value;
-            
-            // Mock Success logic
-            render();
-            document.getElementById('edit-modal-overlay').classList.add('hidden');
-        };
+  @override
+  State<_EditForm> createState() => _EditFormState();
+}
 
-        document.getElementById('close-modal-btn').onclick = () => document.getElementById('edit-modal-overlay').classList.add('hidden');
+class _EditFormState extends State<_EditForm> {
+  late TextEditingController _descriptionController;
+  late TextEditingController _endDateController;
 
-        window.onload = render;
-    </script>
-</body>
-</html>
+  @override
+  void initState() {
+    super.initState();
+    _descriptionController = TextEditingController(text: widget.program.description);
+    _endDateController = TextEditingController(text: widget.program.endDate);
+  }
+
+  @override
+  void dispose() {
+    _descriptionController.dispose();
+    _endDateController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('EDIT DETAILS', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+            InkWell(
+              onTap: widget.onClose,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9FAFB),
+                  borderRadius: BorderRadius.circular(100),
+                ),
+                child: const Icon(Icons.close, color: Color(0xFF9CA3AF), size: 20),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(widget.program.title.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF2563EB), letterSpacing: 3.0)),
+        const SizedBox(height: 24),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('Detailed Description', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _descriptionController,
+          maxLines: 4,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFFF9FAFB),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.all(16),
+          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 16),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text('Campaign End Date', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+        ),
+        const SizedBox(height: 6),
+        TextField(
+          controller: _endDateController,
+          readOnly: true,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.calendar_today, color: Color(0xFF9CA3AF), size: 16),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFB),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            contentPadding: const EdgeInsets.all(16),
+          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+          onTap: () async {
+            final date = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime.now(),
+              lastDate: DateTime(2030),
+            );
+            if (date != null) {
+              _endDateController.text = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+            }
+          },
+        ),
+        const SizedBox(height: 24),
+        InkWell(
+          onTap: () => widget.onSave(_descriptionController.text, _endDateController.text),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB),
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 8))],
+            ),
+            child: const Text(
+              'SAVE CHANGES',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class Program {
+  final String id;
+  final String title;
+  final double price;
+  final String duration;
+  String endDate;
+  final String photoUrl;
+  String description;
+
+  Program({
+    required this.id,
+    required this.title,
+    required this.price,
+    required this.duration,
+    required this.endDate,
+    required this.photoUrl,
+    required this.description,
+  });
+}

@@ -1,284 +1,622 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Plus, Calendar, ChevronDown, Check, 
-  Building2, X, Info, ArrowLeft, ArrowRight,
-  ShieldOff, RotateCcw, CheckCircle, AlertCircle,
-  Clock, Layers, MapPin, Activity, Video, 
-  Tag, Users, DollarSign, Camera, Globe, 
-  Trophy, UserCheck, Navigation, Layout
-} from 'lucide-react';
+import 'package:flutter/material.dart';
 
-// --- الثوابت والقوائم ---
-const EVENT_TYPES = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
-const AUDIENCES = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
+class CreateEventScreen extends StatefulWidget {
+  const CreateEventScreen({super.key});
 
-export default function App() {
-    const [notification, setNotification] = useState(null);
-    const [loading, setLoading] = useState(false);
+  @override
+  State<CreateEventScreen> createState() => _CreateEventScreenState();
+}
 
-    // حالة النموذج لإنشاء الفعالية (مطابقة تماماً لما يراه المستخدم)
-    const [form, setForm] = useState({
-        name: '',
-        type: 'Championship',
-        description: '',
-        date: '',
-        time: '',
-        duration_value: '',
-        duration_unit: 'hours',
-        tickets: '',
-        location_name: '',
-        location_url: '',
-        price: '',
-        age_range: '',
-        target_audience: 'Swimmers',
-        video_url: '' // رابط نصي فقط
+class _CreateEventScreenState extends State<CreateEventScreen> {
+  final List<String> _eventTypes = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
+  final List<String> _audiences = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
+
+  String? _notification;
+  String _notificationType = 'success';
+  bool _loading = false;
+
+  // Form fields
+  String _name = '';
+  String _type = 'Championship';
+  String _description = '';
+  String _date = '';
+  String _time = '';
+  String _durationValue = '';
+  String _durationUnit = 'hours';
+  String _tickets = '';
+  String _locationName = '';
+  String _locationUrl = '';
+  String _price = '';
+  String _ageRange = '';
+  String _targetAudience = 'Swimmers';
+  String _videoUrl = '';
+
+  void _showNotify(String msg, [String type = 'success']) {
+    setState(() {
+      _notification = msg;
+      _notificationType = type;
     });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _notification = null);
+      }
+    });
+  }
 
-    // --- أدوات مساعدة ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+  void _handleSubmit() {
+    if (_name.isEmpty || _price.isEmpty || _locationName.isEmpty || _tickets.isEmpty) {
+      _showNotify("Please fill in all required fields.", "error");
+      return;
+    }
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
-        // التحقق من صحة البيانات الأساسية
-        if (!form.name || !form.price || !form.location_name || !form.tickets) {
-            showNotify("Please fill in all required fields.", "error");
-            return;
-        }
+    setState(() => _loading = true);
 
-        setLoading(true);
-        // محاكاة عملية الحفظ
-        setTimeout(() => {
-            setLoading(false);
-            showNotify("Event Published Successfully!");
-            console.log("Event Data Published:", form);
-            // إعادة ضبط النموذج
-            setForm({
-                name: '', type: 'Championship', description: '', date: '', time: '',
-                duration_value: '', duration_unit: 'hours', tickets: '',
-                location_name: '', location_url: '', price: '', age_range: '',
-                target_audience: 'Swimmers', video_url: ''
-            });
-        }, 1500);
-    };
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _showNotify("Event Published Successfully!");
+          // Reset form
+          _name = '';
+          _type = 'Championship';
+          _description = '';
+          _date = '';
+          _time = '';
+          _durationValue = '';
+          _durationUnit = 'hours';
+          _tickets = '';
+          _locationName = '';
+          _locationUrl = '';
+          _price = '';
+          _ageRange = '';
+          _targetAudience = 'Swimmers';
+          _videoUrl = '';
+        });
+      }
+    });
+  }
 
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 pb-12">
-            
-            {/* Header */}
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30">
-                <div className="flex items-center justify-between text-left">
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
-                            <Plus className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tight">Post Event</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">New Listing</p>
-                        </div>
-                    </div>
-                    <button onClick={() => window.history.back()} className="p-2 text-gray-400 active:scale-90 transition-transform">
-                        <X className="w-6 h-6" />
-                    </button>
-                </div>
-            </header>
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Column(
+              children: [
+                // Header
+                Container(
+                  padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2563EB),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                            ),
+                            child: const Icon(Icons.add, color: Colors.white, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          const Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Post Event', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                              SizedBox(height: 2),
+                              Text('NEW LISTING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.close, color: Color(0xFF9CA3AF), size: 24),
+                      ),
+                    ],
+                  ),
+                ),
 
-            <main className="p-6 space-y-6 animate-in">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    
-                    {/* 1. Event Details & Media Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5 text-left">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Layout className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Details & Media</h3>
-                        </div>
+                // Form Content
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        // 1. Event Details & Media Section
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: const Color(0xFFF3F4F6)),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.grid_view, size: 16, color: Color(0xFF2563EB)),
+                                  SizedBox(width: 8),
+                                  Text('DETAILS & MEDIA', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                ],
+                              ),
 
-                        <div className="space-y-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Name</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    placeholder="e.g. Regional Championship 2026" 
-                                    value={form.name} 
-                                    onChange={e => setForm({...form, name: e.target.value})}
-                                    className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                />
-                            </div>
+                              const SizedBox(height: 20),
 
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Type</label>
-                                <div className="relative">
-                                    <select 
-                                        value={form.type} 
-                                        onChange={e => setForm({...form, type: e.target.value})}
-                                        className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none appearance-none cursor-pointer"
-                                    >
-                                        {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                                    </select>
-                                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                                </div>
-                            </div>
+                              const Text('Event Name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              TextField(
+                                onChanged: (value) => setState(() => _name = value),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. Regional Championship 2026',
+                                  hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9FAFB),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.all(16),
+                                ),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
 
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Cover Photo</label>
-                                <div className="p-8 bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 cursor-pointer hover:bg-blue-50 transition-colors mt-1.5">
-                                    <Camera className="w-8 h-8 mb-2 text-blue-500" />
-                                    <span className="text-[10px] font-black uppercase">Upload Image</span>
-                                </div>
-                            </div>
+                              const SizedBox(height: 16),
 
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Promo Video URL</label>
-                                <div className="relative">
-                                    <Video className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                                    <input 
-                                        type="url" 
-                                        placeholder="Paste YouTube or Vimeo link..." 
-                                        value={form.video_url} 
-                                        onChange={e => setForm({...form, video_url: e.target.value})}
-                                        className="w-full mt-1.5 pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                    />
-                                </div>
-                            </div>
+                              const Text('Event Type', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: DropdownButton<String>(
+                                  value: _type,
+                                  isExpanded: true,
+                                  underline: const SizedBox(),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                  items: _eventTypes.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                                  onChanged: (value) => setState(() => _type = value!),
+                                ),
+                              ),
 
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Detailed Description</label>
-                                <textarea 
-                                    required
-                                    placeholder="Outline the schedule, importance, and requirements..." 
-                                    rows="4" 
-                                    value={form.description} 
-                                    onChange={e => setForm({...form, description: e.target.value})}
-                                    className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
-                                />
-                            </div>
-                        </div>
-                    </div>
+                              const SizedBox(height: 16),
 
-                    {/* 2. Time, Location & Capacity Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6 text-left">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Time & Location</h3>
-                        </div>
+                              const Text('Cover Photo', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(color: const Color(0xFFE5E7EB), width: 2, style: BorderStyle.solid),
+                                ),
+                                child: const Column(
+                                  children: [
+                                    Icon(Icons.camera_alt, color: Color(0xFF3B82F6), size: 32),
+                                    SizedBox(height: 8),
+                                    Text('UPLOAD IMAGE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                                  ],
+                                ),
+                              ),
 
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Event Date</label>
-                                    <input type="date" required value={form.date} onChange={e => setForm({...form, date: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Start Time</label>
-                                    <input type="time" required value={form.time} onChange={e => setForm({...form, time: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                                </div>
-                            </div>
+                              const SizedBox(height: 16),
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Duration</label>
-                                    <div className="flex mt-1.5 bg-gray-50 rounded-2xl overflow-hidden">
-                                        <input type="number" required placeholder="3" value={form.duration_value} onChange={e => setForm({...form, duration_value: e.target.value})} className="w-2/3 p-4 bg-transparent border-none text-sm font-bold outline-none" />
-                                        <select value={form.duration_unit} onChange={e => setForm({...form, duration_unit: e.target.value})} className="w-1/3 bg-gray-100 p-2 text-[10px] font-black uppercase outline-none">
-                                            <option value="hours">Hrs</option>
-                                            <option value="days">Days</option>
-                                            <option value="mins">Mins</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Total Seats</label>
-                                    <div className="relative mt-1.5">
-                                        <Layers className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                                        <input type="number" required placeholder="100" value={form.tickets} onChange={e => setForm({...form, tickets: e.target.value})} className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                                    </div>
-                                </div>
-                            </div>
+                              const Text('Promo Video URL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              TextField(
+                                onChanged: (value) => setState(() => _videoUrl = value),
+                                decoration: InputDecoration(
+                                  hintText: 'Paste YouTube or Vimeo link...',
+                                  hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9FAFB),
+                                  prefixIcon: const Icon(Icons.videocam, color: Color(0xFFD1D5DB), size: 16),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.all(16),
+                                ),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
 
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Venue Name</label>
-                                <input type="text" required placeholder="e.g. Central Pool (NYC)" value={form.location_name} onChange={e => setForm({...form, location_name: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                            </div>
+                              const SizedBox(height: 16),
 
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Google Maps URL (Venue)</label>
-                                <div className="relative mt-1.5">
-                                    <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                                    <input type="url" required placeholder="https://maps.app.goo.gl/..." value={form.location_url} onChange={e => setForm({...form, location_url: e.target.value})} className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                              const Text('Detailed Description', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              TextField(
+                                onChanged: (value) => setState(() => _description = value),
+                                maxLines: 4,
+                                decoration: InputDecoration(
+                                  hintText: 'Outline the schedule, importance, and requirements...',
+                                  hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9FAFB),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.all(16),
+                                ),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
 
-                    {/* 3. Audience & Pricing Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4 text-left">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Tag className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Audience & Price</h3>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Ticket Price ($)</label>
-                                <div className="relative mt-1.5">
-                                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
-                                    <input type="number" required min="0" step="0.01" placeholder="45.00" value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Age Range</label>
-                                <input type="text" placeholder="e.g. 12-18 or All Ages" value={form.age_range} onChange={e => setForm({...form, age_range: e.target.value})} className="w-full mt-1.5 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" />
-                            </div>
-                        </div>
+                        const SizedBox(height: 24),
 
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Primary Audience</label>
-                            <div className="relative mt-1.5">
-                                <Users className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300" />
-                                <select 
-                                    value={form.target_audience} 
-                                    onChange={e => setForm({...form, target_audience: e.target.value})}
-                                    className="w-full pl-11 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none appearance-none cursor-pointer"
-                                >
-                                    {AUDIENCES.map(a => <option key={a} value={a}>{a}</option>)}
-                                </select>
-                                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                            </div>
-                        </div>
-                    </div>
+                        // 2. Time, Location & Capacity Section
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: const Color(0xFFF3F4F6)),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.access_time, size: 16, color: Color(0xFF2563EB)),
+                                  SizedBox(width: 8),
+                                  Text('TIME & LOCATION', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                ],
+                              ),
 
-                    {/* Submit Button */}
-                    <div className="pt-4">
-                        <button 
-                            type="submit" 
-                            disabled={loading}
-                            className={`w-full py-5 bg-rose-600 text-white rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-[0.2em] ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:brightness-110 shadow-rose-100'}`}
-                        >
-                            {loading ? 'Publishing...' : 'Publish Event'}
-                        </button>
-                    </div>
-                </form>
-            </main>
+                              const SizedBox(height: 20),
 
-            {/* نظام التنبيهات */}
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Event Date', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                        const SizedBox(height: 6),
+                                        TextField(
+                                          onChanged: (value) => setState(() => _date = value),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: const Color(0xFFF9FAFB),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                            contentPadding: const EdgeInsets.all(16),
+                                          ),
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                          readOnly: true,
+                                          onTap: () async {
+                                            final date = await showDatePicker(
+                                              context: context,
+                                              initialDate: DateTime.now(),
+                                              firstDate: DateTime.now(),
+                                              lastDate: DateTime(2030),
+                                            );
+                                            if (date != null) {
+                                              setState(() => _date = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}');
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Start Time', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                        const SizedBox(height: 6),
+                                        TextField(
+                                          onChanged: (value) => setState(() => _time = value),
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: const Color(0xFFF9FAFB),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                            contentPadding: const EdgeInsets.all(16),
+                                          ),
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                          readOnly: true,
+                                          onTap: () async {
+                                            final time = await showTimePicker(
+                                              context: context,
+                                              initialTime: TimeOfDay.now(),
+                                            );
+                                            if (time != null) {
+                                              setState(() => _time = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}');
+                                            }
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
 
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-            `}</style>
-        </div>
+                              const SizedBox(height: 16),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Duration', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                        const SizedBox(height: 6),
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 2,
+                                              child: TextField(
+                                                onChanged: (value) => setState(() => _durationValue = value),
+                                                keyboardType: TextInputType.number,
+                                                decoration: InputDecoration(
+                                                  hintText: '3',
+                                                  hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                                  filled: true,
+                                                  fillColor: const Color(0xFFF9FAFB),
+                                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                                  contentPadding: const EdgeInsets.all(16),
+                                                ),
+                                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFF3F4F6),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: DropdownButton<String>(
+                                                  value: _durationUnit,
+                                                  isExpanded: true,
+                                                  underline: const SizedBox(),
+                                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.black),
+                                                  items: const [
+                                                    DropdownMenuItem(value: 'hours', child: Text('HRS')),
+                                                    DropdownMenuItem(value: 'days', child: Text('DAYS')),
+                                                    DropdownMenuItem(value: 'mins', child: Text('MINS')),
+                                                  ],
+                                                  onChanged: (value) => setState(() => _durationUnit = value!),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Total Seats', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                        const SizedBox(height: 6),
+                                        TextField(
+                                          onChanged: (value) => setState(() => _tickets = value),
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(
+                                            hintText: '100',
+                                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                            filled: true,
+                                            fillColor: const Color(0xFFF9FAFB),
+                                            prefixIcon: const Icon(Icons.event_seat, color: Color(0xFFD1D5DB), size: 16),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                            contentPadding: const EdgeInsets.all(16),
+                                          ),
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              const Text('Venue Name', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              TextField(
+                                onChanged: (value) => setState(() => _locationName = value),
+                                decoration: InputDecoration(
+                                  hintText: 'e.g. Central Pool (NYC)',
+                                  hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9FAFB),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.all(16),
+                                ),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              const Text('Google Maps URL (Venue)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              TextField(
+                                onChanged: (value) => setState(() => _locationUrl = value),
+                                decoration: InputDecoration(
+                                  hintText: 'https://maps.app.goo.gl/...',
+                                  hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF9FAFB),
+                                  prefixIcon: const Icon(Icons.navigation, color: Color(0xFFD1D5DB), size: 16),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                  contentPadding: const EdgeInsets.all(16),
+                                ),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // 3. Audience & Pricing Section
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(color: const Color(0xFFF3F4F6)),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Row(
+                                children: [
+                                  Icon(Icons.sell, size: 16, color: Color(0xFF2563EB)),
+                                  SizedBox(width: 8),
+                                  Text('AUDIENCE & PRICE', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                                ],
+                              ),
+
+                              const SizedBox(height: 20),
+
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Ticket Price (\$)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                        const SizedBox(height: 6),
+                                        TextField(
+                                          onChanged: (value) => setState(() => _price = value),
+                                          keyboardType: TextInputType.number,
+                                          decoration: InputDecoration(
+                                            hintText: '45.00',
+                                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                            filled: true,
+                                            fillColor: const Color(0xFFF9FAFB),
+                                            prefixIcon: const Icon(Icons.attach_money, color: Color(0xFF2563EB), size: 16),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                            contentPadding: const EdgeInsets.all(16),
+                                          ),
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Age Range', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                        const SizedBox(height: 6),
+                                        TextField(
+                                          onChanged: (value) => setState(() => _ageRange = value),
+                                          decoration: InputDecoration(
+                                            hintText: 'e.g. 12-18 or All Ages',
+                                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                                            filled: true,
+                                            fillColor: const Color(0xFFF9FAFB),
+                                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                                            contentPadding: const EdgeInsets.all(16),
+                                          ),
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+
+                              const SizedBox(height: 16),
+
+                              const Text('Primary Audience', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.people, color: Color(0xFFD1D5DB), size: 16),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: DropdownButton<String>(
+                                        value: _targetAudience,
+                                        isExpanded: true,
+                                        underline: const SizedBox(),
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                        items: _audiences.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
+                                        onChanged: (value) => setState(() => _targetAudience = value!),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 32),
+
+                        // Submit Button
+                        InkWell(
+                          onTap: _loading ? null : _handleSubmit,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(20),
+                            decoration: BoxDecoration(
+                              color: _loading ? const Color(0xFFFECDD3) : const Color(0xFFE11D48),
+                              borderRadius: BorderRadius.circular(24),
+                              boxShadow: [BoxShadow(color: const Color(0xFFE11D48).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                            ),
+                            child: Text(
+                              _loading ? 'PUBLISHING...' : 'PUBLISH EVENT',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Notification
+          if (_notification != null)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: _notificationType == 'error' ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_notificationType == 'success' ? Icons.check_circle : Icons.error, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Text(_notification!.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
 }

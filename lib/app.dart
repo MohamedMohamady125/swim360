@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import './screens/auth/signup_screen.dart';  // Your existing login screen
 import './screens/auth/login_screen.dart';  // Your existing create account screen
 
 class Swim360App extends StatelessWidget {

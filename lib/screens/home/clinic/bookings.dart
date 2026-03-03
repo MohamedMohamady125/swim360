@@ -1,278 +1,667 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  ChevronLeft, Building2, Calendar, X, 
-  CheckCircle, AlertCircle, MessageCircle, 
-  Smartphone, Clock, User, Trash2, Eye, 
-  ChevronRight, ArrowLeft, ArrowRight,
-  Activity, Layers, Truck // تم إضافة الأيقونات المفقودة هنا
-} from 'lucide-react';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:intl/intl.dart';
+import 'package:swim360/core/services/clinic_service.dart';
+import 'package:swim360/core/models/clinic_models.dart';
 
-// --- تعريف البيانات التجريبية ---
-const MOCK_DATA = {
-    branches: [
-        { id: 'b1', name: 'Family Park Clinic', beds: 3, open: 8, close: 17, city: 'Riyadh' },
-        { id: 'b2', name: 'Jeddah Coastal Center', beds: 2, open: 9, close: 18, city: 'Jeddah' }
-    ],
-    // مواعيد محجوزة (باللون الأخضر)
-    bookedSlots: {
-        'b1': {
-            '2025-12-01': [ 
-                { time: '09:00', bed: 'Bed-2', client: 'Ahmed Sami', age: 30, service: 'Initial Assessment', phone: '0501234567' },
-                { time: '14:00', bed: 'Bed-1', client: 'Fatima Khalid', age: 45, service: 'Post-Injury Rehab', phone: '0551122334' }
-            ],
-            '2025-12-02': [ 
-                { time: '16:00', bed: 'Bed-3', client: 'Laila Ali', age: 22, service: 'Hydrotherapy Session', phone: '0559876543' }
-            ]
-        }
+class BookingsScreen extends StatefulWidget {
+  const BookingsScreen({super.key});
+
+  @override
+  State<BookingsScreen> createState() => _BookingsScreenState();
+}
+
+class _BookingsScreenState extends State<BookingsScreen> {
+  final ClinicApiService _clinicService = ClinicApiService();
+
+  DateTime _selectedDate = DateTime.now();
+  String? _selectedBranchId;
+  String? _activeModal; // 'details', 'confirm-cancel'
+  ClinicBooking? _selectedBooking;
+  String? _notificationMsg;
+  String _notificationType = 'success';
+
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  List<ClinicBranch> _branches = [];
+  List<ClinicBooking> _bookings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final branches = await _clinicService.getMyBranches();
+      final bookings = await _clinicService.getMyBookings();
+
+      if (mounted) {
+        setState(() {
+          _branches = branches;
+          _bookings = bookings;
+          _isLoading = false;
+
+          // Set default branch if available
+          if (_branches.isNotEmpty && _selectedBranchId == null) {
+            _selectedBranchId = _branches.first.id;
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load data: $e';
+          _isLoading = false;
+        });
+      }
     }
-};
+  }
 
-export default function App() {
-    const [selectedDate, setSelectedDate] = useState(new Date(2025, 11, 1)); 
-    const [selectedBranchId, setSelectedBranchId] = useState('b1');
-    const [view, setView] = useState('list');
-    const [activeModal, setActiveModal] = useState(null); // 'details', 'confirm-cancel'
-    const [selectedBooking, setSelectedBooking] = useState(null);
-    const [notification, setNotification] = useState(null);
-    const [loading, setLoading] = useState(false);
+  void _showNotification(String msg, [String type = 'success']) {
+    setState(() {
+      _notificationMsg = msg;
+      _notificationType = type;
+    });
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() => _notificationMsg = null);
+      }
+    });
+  }
 
-    // --- أدوات مساعدة ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+  String _formatDateStr(DateTime date) {
+    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
 
-    const formatDateStr = (date) => {
-        const yyyy = date.getFullYear();
-        const mm = String(date.getMonth() + 1).padStart(2, '0');
-        const dd = String(date.getDate()).padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-    };
+  String _getDisplayDate(DateTime date) {
+    return DateFormat('EEE, d MMM yyyy').format(date);
+  }
 
-    const getDisplayDate = (date) => {
-        return date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-    };
+  String _formatTime24to12(String time24) {
+    final parts = time24.split(':');
+    int hr = int.parse(parts[0]);
+    final min = parts[1];
+    final ampm = hr >= 12 ? 'PM' : 'AM';
+    hr = hr % 12;
+    if (hr == 0) hr = 12;
+    return '${hr.toString().padLeft(2, '0')}:$min $ampm';
+  }
 
-    const formatTime24to12 = (time24) => {
-        const [hr24, min] = time24.split(':');
-        let hr = parseInt(hr24);
-        const ampm = hr >= 12 ? 'PM' : 'AM';
-        hr = hr % 12 || 12;
-        return `${String(hr).padStart(2, '0')}:${min} ${ampm}`;
-    };
+  List<TimeGroup> get _currentBookings {
+    final dateKey = _formatDateStr(_selectedDate);
 
-    // --- المنطق البرمجي ---
-    const currentBookings = useMemo(() => {
-        const dateKey = formatDateStr(selectedDate);
-        const branchBookings = MOCK_DATA.bookedSlots[selectedBranchId]?.[dateKey] || [];
-        
-        // تجميع الحجوزات حسب الوقت
-        const grouped = branchBookings.reduce((acc, booking) => {
-            if (!acc[booking.time]) acc[booking.time] = [];
-            acc[booking.time].push(booking);
-            return acc;
-        }, {});
+    // Filter bookings by selected branch and date
+    final branchBookings = _bookings.where((booking) {
+      return booking.branchId == _selectedBranchId &&
+             _formatDateStr(booking.bookingDate) == dateKey;
+    }).toList();
 
-        return Object.keys(grouped).sort().map(time => ({
-            time,
-            bookings: grouped[time]
-        }));
-    }, [selectedDate, selectedBranchId]);
+    // Group by time
+    final Map<String, List<ClinicBooking>> grouped = {};
+    for (var booking in branchBookings) {
+      grouped.putIfAbsent(booking.bookingTime, () => []).add(booking);
+    }
 
-    const changeDate = (days) => {
-        const newDate = new Date(selectedDate);
-        newDate.setDate(newDate.getDate() + days);
-        setSelectedDate(newDate);
-    };
+    final sortedTimes = grouped.keys.toList()..sort((a, b) => a.compareTo(b));
+    return sortedTimes.map((time) => TimeGroup(time: time, bookings: grouped[time]!)).toList();
+  }
 
-    const handleCancelBooking = () => {
-        showNotify(`Booking for ${selectedBooking.client} cancelled successfully`, 'error');
-        setActiveModal(null);
-        setSelectedBooking(null);
-    };
+  void _changeDate(int days) {
+    setState(() {
+      _selectedDate = _selectedDate.add(Duration(days: days));
+    });
+  }
 
-    // --- واجهات العرض ---
+  Future<void> _handleCancelBooking() async {
+    if (_selectedBooking == null) return;
 
-    const renderBookingsManagement = () => (
-        <div className="p-6 space-y-6 animate-in text-left">
-            <header className="space-y-1">
-                <h1 className="text-3xl font-black text-gray-900 tracking-tight">Bookings</h1>
-                <p className="text-sm text-gray-400 font-medium">Coordinate client sessions and resources</p>
-            </header>
+    try {
+      setState(() => _isLoading = true);
 
-            {/* بطاقة اختيار الفرع والتاريخ */}
-            <div className="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm space-y-5">
-                <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">Active Branch</label>
-                    <div className="flex items-center bg-gray-50 rounded-2xl px-4 py-1 border border-transparent focus-within:border-blue-500 transition-all">
-                        <Building2 className="w-5 h-5 text-gray-400 mr-3" />
-                        <select 
-                            value={selectedBranchId}
-                            onChange={(e) => setSelectedBranchId(e.target.value)}
-                            className="flex-1 bg-transparent py-3.5 text-sm font-bold outline-none"
-                        >
-                            {MOCK_DATA.branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                    </div>
-                </div>
+      await _clinicService.deleteBooking(_selectedBooking!.id);
+      await _loadData(); // Reload data
 
-                <div className="flex items-center justify-between bg-blue-50 rounded-2xl p-2">
-                    <button onClick={() => changeDate(-1)} className="p-3 bg-white rounded-xl text-blue-600 shadow-sm active:scale-90 transition-transform">
-                        <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <div className="text-center">
-                        <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Schedule for</p>
-                        <p className="text-sm font-black text-blue-900">{getDisplayDate(selectedDate)}</p>
-                    </div>
-                    <button onClick={() => changeDate(1)} className="p-3 bg-white rounded-xl text-blue-600 shadow-sm active:scale-90 transition-transform">
-                        <ArrowRight className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
+      if (mounted) {
+        setState(() {
+          _activeModal = null;
+          _selectedBooking = null;
+          _isLoading = false;
+        });
+        _showNotification('Booking for ${_selectedBooking!.clientName} cancelled successfully', 'error');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showNotification('Failed to cancel booking: $e', 'error');
+      }
+    }
+  }
 
-            {/* قائمة الحجوزات */}
-            <div className="space-y-8 pb-20">
-                {currentBookings.length > 0 ? (
-                    currentBookings.map(group => (
-                        <div key={group.time} className="space-y-3">
-                            <div className="flex items-center space-x-3 px-2">
-                                <div className="h-px bg-gray-100 flex-grow"></div>
-                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] whitespace-nowrap">
-                                    {formatTime24to12(group.time)}
-                                </span>
-                                <div className="h-px bg-gray-100 flex-grow"></div>
-                            </div>
-                            
-                            {group.bookings.map((booking, idx) => (
-                                <div key={idx} className="bg-white rounded-[28px] border border-gray-100 shadow-sm p-5 flex items-center justify-between border-l-8 border-l-emerald-500 hover:shadow-md transition-all">
-                                    <div className="flex-grow min-w-0">
-                                        <h3 className="font-black text-gray-900 truncate text-lg">{booking.client}</h3>
-                                        <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest mt-1 flex items-center">
-                                            <Activity className="w-3 h-3 mr-1.5" /> {booking.service}
-                                        </p>
-                                        <div className="flex items-center space-x-3 mt-3 text-[10px] text-gray-400 font-bold uppercase">
-                                            <span className="flex items-center"><Layers className="w-3 h-3 mr-1" /> {booking.bed}</span>
-                                            <span className="flex items-center"><User className="w-3 h-3 mr-1" /> Age: {booking.age}</span>
-                                        </div>
-                                    </div>
-                                    <button 
-                                        onClick={() => { setSelectedBooking(booking); setActiveModal('details'); }}
-                                        className="p-3 bg-gray-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-sm flex-shrink-0 ml-4"
-                                    >
-                                        <Eye className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    ))
-                ) : (
-                    <div className="py-20 text-center animate-in">
-                        <div className="w-20 h-20 bg-gray-50 rounded-[40px] flex items-center justify-center mx-auto mb-4 text-gray-300">
-                            <Calendar className="w-10 h-10" />
-                        </div>
-                        <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">No Bookings Scheduled</p>
-                    </div>
-                )}
-            </div>
-        </div>
+  Future<void> _launchWhatsApp(String phone) async {
+    final cleanPhone = phone.replaceAll('+', '');
+    final url = Uri.parse('https://wa.me/$cleanPhone');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show loading state
+    if (_isLoading && _bookings.isEmpty) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('Loading bookings...'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show error state
+    if (_errorMessage != null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
+                const SizedBox(height: 16),
+                Text(_errorMessage!),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _loadData,
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final currentBookings = _currentBookings;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: Stack(
+        children: [
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Bookings', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                  const SizedBox(height: 4),
+                  const Text('Coordinate client sessions and resources', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF9CA3AF))),
+                  const SizedBox(height: 24),
+
+                  // Branch & Date Card
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('ACTIVE BRANCH', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9FAFB),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.transparent),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.business, size: 20, color: Color(0xFF9CA3AF)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: DropdownButton<String>(
+                                  value: _selectedBranchId,
+                                  isExpanded: true,
+                                  underline: const SizedBox(),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                  items: _branches.map((b) => DropdownMenuItem(value: b.id, child: Text(b.locationName))).toList(),
+                                  onChanged: (value) => setState(() => _selectedBranchId = value!),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              InkWell(
+                                onTap: () => _changeDate(-1),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                                  ),
+                                  child: const Icon(Icons.arrow_back, color: Color(0xFF2563EB), size: 20),
+                                ),
+                              ),
+                              Column(
+                                children: [
+                                  const Text('SCHEDULE FOR', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF60A5FA), letterSpacing: 3.0)),
+                                  const SizedBox(height: 4),
+                                  Text(_getDisplayDate(_selectedDate), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF1E3A8A))),
+                                ],
+                              ),
+                              InkWell(
+                                onTap: () => _changeDate(1),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                                  ),
+                                  child: const Icon(Icons.arrow_forward, color: Color(0xFF2563EB), size: 20),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Bookings List
+                  if (currentBookings.isNotEmpty)
+                    ...currentBookings.map((timeGroup) {
+                      return Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Row(
+                              children: [
+                                const Expanded(child: Divider(color: Color(0xFFF3F4F6))),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                                  child: Text(_formatTime24to12(timeGroup.time), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                ),
+                                const Expanded(child: Divider(color: Color(0xFFF3F4F6))),
+                              ],
+                            ),
+                          ),
+                          ...timeGroup.bookings.map((booking) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(28),
+                                border: const Border(left: BorderSide(color: Color(0xFF10B981), width: 8)),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(booking.clientName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            const Icon(Icons.local_hospital_outlined, size: 12, color: Color(0xFF2563EB)),
+                                            const SizedBox(width: 6),
+                                            Text(booking.status.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF2563EB), letterSpacing: 3.0)),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Row(
+                                          children: [
+                                            if (booking.bedNumber != null)
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.layers_outlined, size: 12, color: Color(0xFF9CA3AF)),
+                                                  const SizedBox(width: 4),
+                                                  Text(booking.bedNumber!, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+                                                ],
+                                              ),
+                                            const SizedBox(width: 12),
+                                            if (booking.clientAge != null)
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.person_outline, size: 12, color: Color(0xFF9CA3AF)),
+                                                  const SizedBox(width: 4),
+                                                  Text('Age: ${booking.clientAge}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+                                                ],
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  InkWell(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedBooking = booking;
+                                        _activeModal = 'details';
+                                      });
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: const Icon(Icons.visibility_outlined, color: Color(0xFF2563EB), size: 20),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )),
+                        ],
+                      );
+                    })
+                  else
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 80),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(40),
+                            ),
+                            child: const Icon(Icons.calendar_today_outlined, size: 40, color: Color(0xFFE5E7EB)),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('NO BOOKINGS SCHEDULED', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          // Modals
+          if (_activeModal != null && _selectedBooking != null)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _activeModal = null),
+                child: Container(
+                  color: const Color(0xFF0F172A).withOpacity(0.6),
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: () {},
+                      child: Container(
+                        margin: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(32),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(40),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(0, 10))],
+                        ),
+                        child: _activeModal == 'details' ? _buildDetailsModal() : _buildCancelModal(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+          // Notification
+          if (_notificationMsg != null)
+            Positioned(
+              bottom: 40,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: _notificationType == 'error' ? const Color(0xFFDC2626) : const Color(0xFF0F172A),
+                    borderRadius: BorderRadius.circular(100),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_notificationType == 'success' ? Icons.check_circle : Icons.error, color: Colors.white, size: 16),
+                      const SizedBox(width: 8),
+                      Text(_notificationMsg!.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
+  }
 
-    const renderModals = () => {
-        if (!activeModal || !selectedBooking) return null;
+  Widget _buildDetailsModal() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Align(
+          alignment: Alignment.topRight,
+          child: InkWell(
+            onTap: () => setState(() => _activeModal = null),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9FAFB),
+                borderRadius: BorderRadius.circular(100),
+              ),
+              child: const Icon(Icons.close, color: Color(0xFF9CA3AF), size: 20),
+            ),
+          ),
+        ),
 
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm animate-in">
-                <div className="bg-white w-full max-w-sm rounded-[40px] p-8 shadow-2xl space-y-6 relative overflow-hidden">
-                    <button onClick={() => setActiveModal(null)} className="absolute top-6 right-6 p-2 bg-gray-50 rounded-full text-gray-400"><X className="w-5 h-5" /></button>
-                    
-                    {activeModal === 'details' && (
-                        <div className="space-y-6 text-left">
-                            <div className="text-center pb-2">
-                                <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-[30px] flex items-center justify-center mx-auto mb-4">
-                                    <User className="w-10 h-10" />
-                                </div>
-                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">{selectedBooking.client}</h3>
-                                <p className="text-sm font-bold text-blue-600 uppercase tracking-widest mt-1">{selectedBooking.service}</p>
-                            </div>
+        const SizedBox(height: 24),
 
-                            <div className="p-5 bg-gray-50 rounded-3xl border border-gray-100 space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase">Appointment</span>
-                                    <span className="text-xs font-bold text-gray-800">{formatTime24to12(selectedBooking.time)}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase">Assigned Bed</span>
-                                    <span className="text-xs font-bold text-gray-800">{selectedBooking.bed}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase">Age Group</span>
-                                    <span className="text-xs font-bold text-gray-800">{selectedBooking.age} Years</span>
-                                </div>
-                            </div>
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: const Color(0xFFEFF6FF),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: const Icon(Icons.person, color: Color(0xFF2563EB), size: 40),
+        ),
 
-                            <div className="pt-2 space-y-3">
-                                <a 
-                                    href={`https://wa.me/${selectedBooking.phone.replace('+', '')}`} 
-                                    target="_blank" 
-                                    className="w-full flex items-center justify-center py-4 bg-[#25D366] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl active:scale-95 transition-all"
-                                >
-                                    <MessageCircle className="w-5 h-5 mr-2" /> WhatsApp Chat
-                                </a>
-                                <button 
-                                    onClick={() => setActiveModal('confirm-cancel')}
-                                    className="w-full py-4 text-red-500 font-black text-xs uppercase tracking-widest hover:bg-red-50 transition-colors rounded-2xl"
-                                >
-                                    Cancel Booking
-                                </button>
-                            </div>
-                        </div>
-                    )}
+        const SizedBox(height: 16),
 
-                    {activeModal === 'confirm-cancel' && (
-                        <div className="space-y-6 text-center py-4">
-                            <div className="w-20 h-20 bg-red-50 text-red-600 rounded-[30px] flex items-center justify-center mx-auto">
-                                <AlertCircle className="w-10 h-10" />
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-2xl font-black text-gray-900 tracking-tight">Confirm Deletion</h3>
-                                <p className="text-sm text-gray-500 px-4">Are you sure you want to cancel the booking for <span className="text-gray-900 font-bold">{selectedBooking.client}</span>?</p>
-                            </div>
-                            <div className="flex flex-col space-y-3 pt-2">
-                                <button onClick={handleCancelBooking} className="w-full py-4 bg-red-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl">Yes, Cancel Booking</button>
-                                <button onClick={() => setActiveModal('details')} className="w-full py-4 text-gray-400 font-bold text-sm">Keep Booking</button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
+        Text(_selectedBooking!.clientName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+        const SizedBox(height: 4),
+        Text(_selectedBooking!.status.toUpperCase(), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF2563EB), letterSpacing: 3.0)),
 
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-white font-black text-blue-600 animate-pulse uppercase tracking-[0.3em]">Swim 360</div>;
+        const SizedBox(height: 24),
 
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 relative">
-            
-            {/* عرض واجهة إدارة الحجوزات */}
-            {renderBookingsManagement()}
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: const Color(0xFFF3F4F6)),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('APPOINTMENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                  Text(_formatTime24to12(_selectedBooking!.bookingTime), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (_selectedBooking!.bedNumber != null)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('ASSIGNED BED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                    Text(_selectedBooking!.bedNumber!, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              if (_selectedBooking!.bedNumber != null)
+                const SizedBox(height: 12),
+              if (_selectedBooking!.clientAge != null)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('AGE GROUP', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                    Text('${_selectedBooking!.clientAge} Years', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+            ],
+          ),
+        ),
 
-            {/* عرض النوافذ المنبثقة */}
-            {renderModals()}
+        const SizedBox(height: 24),
 
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    {notification.type === 'success' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-                    <span>{notification.msg}</span>
-                </div>
-            )}
+        if (_selectedBooking!.phone != null)
+          InkWell(
+            onTap: () => _launchWhatsApp(_selectedBooking!.phone!),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF25D366),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [BoxShadow(color: const Color(0xFF25D366).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.chat_bubble_outline, color: Colors.white, size: 20),
+                  SizedBox(width: 8),
+                  Text('WHATSAPP CHAT', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+                ],
+              ),
+            ),
+          ),
 
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-            `}</style>
-        </div>
+        if (_selectedBooking!.phone != null)
+          const SizedBox(height: 12),
+
+        InkWell(
+          onTap: () => setState(() => _activeModal = 'confirm-cancel'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Text('CANCEL BOOKING', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), letterSpacing: 3.0)),
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _buildCancelModal() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 80,
+          height: 80,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF2F2),
+            borderRadius: BorderRadius.circular(30),
+          ),
+          child: const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 40),
+        ),
+
+        const SizedBox(height: 24),
+
+        const Text('Confirm Deletion', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+        const SizedBox(height: 8),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: RichText(
+            textAlign: TextAlign.center,
+            text: TextSpan(
+              style: const TextStyle(fontSize: 14, color: Color(0xFF6B7280)),
+              children: [
+                const TextSpan(text: 'Are you sure you want to cancel the booking for '),
+                TextSpan(text: _selectedBooking!.clientName, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.black)),
+                const TextSpan(text: '?'),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 32),
+
+        InkWell(
+          onTap: _handleCancelBooking,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFFDC2626),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [BoxShadow(color: const Color(0xFFDC2626).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+            ),
+            child: const Text('YES, CANCEL BOOKING', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 3.0)),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        InkWell(
+          onTap: () => setState(() => _activeModal = 'details'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: const Text('Keep Booking', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF))),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class TimeGroup {
+  final String time;
+  final List<ClinicBooking> bookings;
+
+  TimeGroup({required this.time, required this.bookings});
 }

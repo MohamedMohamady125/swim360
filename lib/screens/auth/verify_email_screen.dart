@@ -1,142 +1,367 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-    <title>Swim 360 - Verify Code</title>
-    <style>
-        body { font-family: 'Inter', sans-serif; background-color: #2563eb; }
-        
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-in { animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        
-        /* OTP Input focus handling */
-        .otp-input:focus {
-            background-color: #f0f9ff;
-            border-color: #2563eb;
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
-        }
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-        /* Spinner */
-        .spinner {
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            width: 16px; height: 16px;
-            border-radius: 50%;
-            border-left-color: white;
-            animation: spin 1s linear infinite;
-        }
-        .spinner-blue { border-left-color: #2563eb; border-top-color: rgba(37,99,235,0.1); }
-        @keyframes spin { to { transform: rotate(360deg); } }
-    </style>
-</head>
-<body class="flex items-center justify-center min-h-screen p-6 no-scrollbar">
+class VerifyEmailScreen extends StatefulWidget {
+  const VerifyEmailScreen({Key? key}) : super(key: key);
 
-    <div class="w-full max-w-md bg-white p-8 md:p-10 rounded-[40px] shadow-2xl animate-in text-center relative">
-        
-        <div class="flex justify-center mb-6">
-            <div class="w-16 h-16 bg-blue-50 rounded-[24px] flex items-center justify-center text-blue-600 shadow-inner">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                    <path d="M2 6c.6.5 1.2 1 2.5 1C5.8 7 7.2 6 8.5 6c1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                    <path d="M2 12c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                    <path d="M2 18c.6.5 1.2 1 2.5 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 4 1 1.3 0 2.7-1 4-1 1.3 0 2.7 1 3.5 1"></path>
-                </svg>
-            </div>
-        </div>
+  @override
+  State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
+}
 
-        <h1 class="text-3xl font-black text-gray-900 tracking-tight leading-none italic uppercase">
-            Reset Code
-        </h1>
-        <p class="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mt-3 mb-8">
-            Check your email inbox
-        </p>
+class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
+  final List<TextEditingController> _controllers = List.generate(
+    6,
+    (index) => TextEditingController(),
+  );
+  final List<FocusNode> _focusNodes = List.generate(
+    6,
+    (index) => FocusNode(),
+  );
 
-        <div class="flex justify-between gap-2 mb-6" id="otp-group">
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-black text-gray-900 bg-gray-50 border-none rounded-xl shadow-inner outline-none transition-all">
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-black text-gray-900 bg-gray-50 border-none rounded-xl shadow-inner outline-none transition-all">
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-black text-gray-900 bg-gray-50 border-none rounded-xl shadow-inner outline-none transition-all">
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-black text-gray-900 bg-gray-50 border-none rounded-xl shadow-inner outline-none transition-all">
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-black text-gray-900 bg-gray-50 border-none rounded-xl shadow-inner outline-none transition-all">
-            <input type="text" maxlength="1" class="otp-input w-12 h-14 text-center text-xl font-black text-gray-900 bg-gray-50 border-none rounded-xl shadow-inner outline-none transition-all">
-        </div>
+  bool _isVerifying = false;
+  bool _isResending = false;
+  String? _statusMessage;
+  bool _showStatus = false;
 
-        <div class="mb-8">
-            <button id="resend-btn" onclick="handleResend()" class="group inline-flex items-center text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-blue-600 transition-colors">
-                <span id="resend-text">Resend Code</span>
-                <div id="resend-spinner" class="ml-2 hidden"><div class="spinner spinner-blue !w-3 !h-3"></div></div>
-            </button>
-        </div>
+  @override
+  void dispose() {
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    for (var node in _focusNodes) {
+      node.dispose();
+    }
+    super.dispose();
+  }
 
-        <div id="status-msg" class="min-h-[20px] mb-6 hidden">
-            <p class="text-[10px] font-black uppercase tracking-widest text-emerald-500"></p>
-        </div>
+  Future<void> _handleResend() async {
+    setState(() {
+      _isResending = true;
+      _showStatus = false;
+    });
 
-        <button id="verify-btn" onclick="handleVerify()" class="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm uppercase tracking-[0.2em] shadow-xl shadow-blue-600/20 active:scale-95 transition-all flex justify-center items-center">
-            <span id="verify-text">Verify Code</span>
-            <div id="verify-spinner" class="hidden"><div class="spinner"></div></div>
-        </button>
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 2));
 
-        <button onclick="window.history.back()" class="mt-8 text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline underline-offset-4">
-            Return to Sign in
-        </button>
+    if (mounted) {
+      setState(() {
+        _isResending = false;
+        _showStatus = true;
+        _statusMessage = 'New code sent to your email!';
+      });
+    }
+  }
 
-    </div>
+  Future<void> _handleVerify() async {
+    setState(() {
+      _isVerifying = true;
+      _showStatus = false;
+    });
 
-    <script>
-        // OTP Auto-focus logic
-        const inputs = document.querySelectorAll('.otp-input');
-        inputs.forEach((input, index) => {
-            input.oninput = (e) => {
-                if (e.target.value && index < inputs.length - 1) inputs[index + 1].focus();
-            };
-            input.onkeydown = (e) => {
-                if (e.key === 'Backspace' && !e.target.value && index > 0) inputs[index - 1].focus();
-            };
-        });
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 2));
 
-        function handleResend() {
-            const text = document.getElementById('resend-text');
-            const spinner = document.getElementById('resend-spinner');
-            const status = document.getElementById('status-msg');
+    if (mounted) {
+      setState(() {
+        _isVerifying = false;
+        _showStatus = true;
+        _statusMessage = 'Success! Identity Confirmed.';
+      });
+    }
+  }
 
-            text.textContent = "Sending...";
-            spinner.classList.remove('hidden');
-            
-            setTimeout(() => {
-                text.textContent = "Resend Code";
-                spinner.classList.add('hidden');
-                status.classList.remove('hidden');
-                status.querySelector('p').textContent = "New code sent to your email!";
-            }, 2000);
-        }
+  void _onOtpChanged(int index, String value) {
+    if (value.isNotEmpty && index < 5) {
+      _focusNodes[index + 1].requestFocus();
+    }
+  }
 
-        function handleVerify() {
-            const btnText = document.getElementById('verify-text');
-            const spinner = document.getElementById('verify-spinner');
-            const btn = document.getElementById('verify-btn');
-            const status = document.getElementById('status-msg');
+  void _onOtpKeyEvent(int index, RawKeyEvent event) {
+    if (event is RawKeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.backspace &&
+        _controllers[index].text.isEmpty &&
+        index > 0) {
+      _focusNodes[index - 1].requestFocus();
+    }
+  }
 
-            btnText.classList.add('hidden');
-            spinner.classList.remove('hidden');
-            btn.classList.add('opacity-50', 'pointer-events-none');
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF2563EB),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: _buildCard(),
+          ),
+        ),
+      ),
+    );
+  }
 
-            setTimeout(() => {
-                spinner.classList.add('hidden');
-                btnText.classList.remove('hidden');
-                btnText.textContent = "Verified!";
-                btn.classList.remove('opacity-50', 'pointer-events-none');
-                btn.classList.replace('bg-blue-600', 'bg-emerald-500');
-                
-                status.classList.remove('hidden');
-                status.querySelector('p').textContent = "Success! Identity Confirmed.";
-                status.querySelector('p').className = "text-[10px] font-black uppercase tracking-widest text-emerald-500";
-            }, 2000);
-        }
-    </script>
-</body>
-</html>
+  Widget _buildCard() {
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 448),
+      padding: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(40),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 25,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildIcon(),
+          const SizedBox(height: 24),
+          _buildTitle(),
+          const SizedBox(height: 12),
+          _buildSubtitle(),
+          const SizedBox(height: 32),
+          _buildOtpFields(),
+          const SizedBox(height: 24),
+          _buildResendButton(),
+          const SizedBox(height: 32),
+          _buildStatusMessage(),
+          const SizedBox(height: 24),
+          _buildVerifyButton(),
+          const SizedBox(height: 32),
+          _buildBackButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIcon() {
+    return Container(
+      width: 64,
+      height: 64,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEFF6FF),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+            spreadRadius: 0,
+            blurStyle: BlurStyle.inner,
+          ),
+        ],
+      ),
+      child: const Icon(
+        Icons.waves,
+        color: Color(0xFF2563EB),
+        size: 40,
+      ),
+    );
+  }
+
+  Widget _buildTitle() {
+    return Text(
+      'RESET CODE',
+      style: TextStyle(
+        fontSize: 30,
+        fontWeight: FontWeight.w900,
+        color: const Color(0xFF111827),
+        letterSpacing: -0.5,
+        fontStyle: FontStyle.italic,
+        height: 1.0,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildSubtitle() {
+    return Text(
+      'CHECK YOUR EMAIL INBOX',
+      style: TextStyle(
+        fontSize: 10,
+        fontWeight: FontWeight.w900,
+        color: const Color(0xFF9CA3AF),
+        letterSpacing: 2.0,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildOtpFields() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(6, (index) {
+        return SizedBox(
+          width: 48,
+          height: 56,
+          child: RawKeyboardListener(
+            focusNode: FocusNode(),
+            onKey: (event) => _onOtpKeyEvent(index, event),
+            child: TextFormField(
+              controller: _controllers[index],
+              focusNode: _focusNodes[index],
+              textAlign: TextAlign.center,
+              maxLength: 1,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF111827),
+              ),
+              onChanged: (value) => _onOtpChanged(index, value),
+              decoration: InputDecoration(
+                counterText: '',
+                filled: true,
+                fillColor: const Color(0xFFF9FAFB),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: Color(0xFF2563EB),
+                    width: 2,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildResendButton() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        TextButton(
+          onPressed: _isResending ? null : _handleResend,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _isResending ? 'SENDING...' : 'RESEND CODE',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: _isResending
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF2563EB),
+                  letterSpacing: 2.5,
+                ),
+              ),
+              if (_isResending) ...[
+                const SizedBox(width: 8),
+                const SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatusMessage() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      height: _showStatus ? null : 20,
+      child: _showStatus
+          ? Center(
+              child: Text(
+                _statusMessage?.toUpperCase() ?? '',
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: Color(0xFF10B981),
+                  letterSpacing: 2.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            )
+          : const SizedBox(height: 20),
+    );
+  }
+
+  Widget _buildVerifyButton() {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF2563EB).withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: _isVerifying ? null : _handleVerify,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _showStatus
+              ? const Color(0xFF10B981)
+              : const Color(0xFF2563EB),
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 40),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          elevation: 0,
+          disabledBackgroundColor: const Color(0xFF2563EB).withOpacity(0.5),
+        ),
+        child: _isVerifying
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : Text(
+                _showStatus ? 'VERIFIED!' : 'VERIFY CODE',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 2.8,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildBackButton() {
+    return TextButton(
+      onPressed: () => Navigator.of(context).pop(),
+      child: Text(
+        'RETURN TO SIGN IN',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+          color: const Color(0xFF2563EB),
+          letterSpacing: 2.5,
+          decoration: TextDecoration.underline,
+          decorationColor: const Color(0xFF2563EB),
+        ),
+      ),
+    );
+  }
+}

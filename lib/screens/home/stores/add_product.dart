@@ -1,324 +1,510 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Plus, UploadCloud, ChevronDown, Check, 
-  Layers, Package, Ruler, Palette, Building2, 
-  X, Info, ArrowLeft, Camera
-} from 'lucide-react';
+import 'package:flutter/material.dart';
 
-// --- DATA DEFINITIONS ---
-const BRANDS = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
-const CATEGORIES = ["Cap", "Goggles", "Suit", "Kickboard", "Paddles", "Parachute", "Fins", "Snorkels", "Deflectors", "Apparel", "Other"];
-const SIZES = ["XS", "S", "M", "L", "XL", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "ONE SIZE", "OTHER"];
-const COLORS = [
-    { name: 'Red', code: '#EF4444' },
-    { name: 'Blue', code: '#3B82F6' },
-    { name: 'Yellow', code: '#FACC15' },
-    { name: 'Orange', code: '#F97316' },
-    { name: 'Gold', code: '#FFD700' },
-    { name: 'Green', code: '#10B981' },
-    { name: 'Black', code: '#000000' },
-    { name: 'White', code: '#FFFFFF' },
-    { name: 'Pink', code: '#EC4899' },
-    { name: 'Purple', code: '#8B5CF6' }
-];
-const BRANCHES = ["Zamalek Main", "New Cairo Hub", "Alexandria Branch", "Giza Outlet"];
+class AddProductScreen extends StatefulWidget {
+  const AddProductScreen({super.key});
 
-export default function App() {
-    const [notification, setNotification] = useState(null);
-    const [isSizeDropdownOpen, setIsSizeDropdownOpen] = useState(false);
-    
-    // Form State
-    const [form, setForm] = useState({
-        name: '',
-        price: '',
-        brand: 'Speedo',
-        category: 'Suit',
-        description: '',
-        selectedSizes: [],
-        selectedColors: [],
-        selectedBranches: [],
-        photos: [],
-        sizeGuide: null
-    });
+  @override
+  State<AddProductScreen> createState() => _AddProductScreenState();
+}
 
-    // --- UTILITIES ---
-    const showNotify = (msg, type = 'success') => {
-        setNotification({ msg, type });
-        setTimeout(() => setNotification(null), 3000);
-    };
+class _AddProductScreenState extends State<AddProductScreen> {
+  final List<String> brands = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
+  final List<String> categories = ["Cap", "Goggles", "Suit", "Kickboard", "Paddles", "Parachute", "Fins", "Snorkels", "Deflectors", "Apparel", "Other"];
+  final List<String> sizes = ["XS", "S", "M", "L", "XL", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "ONE SIZE", "OTHER"];
+  final List<Map<String, dynamic>> colors = [
+    {'name': 'Red', 'code': const Color(0xFFEF4444)},
+    {'name': 'Blue', 'code': const Color(0xFF3B82F6)},
+    {'name': 'Yellow', 'code': const Color(0xFFFACC15)},
+    {'name': 'Orange', 'code': const Color(0xFFF97316)},
+    {'name': 'Gold', 'code': const Color(0xFFFFD700)},
+    {'name': 'Green', 'code': const Color(0xFF10B981)},
+    {'name': 'Black', 'code': const Color(0xFF000000)},
+    {'name': 'White', 'code': const Color(0xFFFFFFFF)},
+    {'name': 'Pink', 'code': const Color(0xFFEC4899)},
+    {'name': 'Purple', 'code': const Color(0xFF8B5CF6)},
+  ];
+  final List<String> branches = ["Zamalek Main", "New Cairo Hub", "Alexandria Branch", "Giza Outlet"];
 
-    const toggleSize = (size) => {
-        const isOneSize = size === 'ONE SIZE' || size === 'OTHER';
-        setForm(prev => {
-            let newSizes = [...prev.selectedSizes];
-            if (newSizes.includes(size)) {
-                newSizes = newSizes.filter(s => s !== size);
-            } else {
-                if (isOneSize) {
-                    newSizes = [size]; // Clear others if one-size/other is picked
-                } else {
-                    newSizes = newSizes.filter(s => s !== 'ONE SIZE' && s !== 'OTHER');
-                    newSizes.push(size);
-                }
-            }
-            return { ...prev, selectedSizes: newSizes };
-        });
-    };
+  String name = '';
+  String price = '';
+  String brand = 'Speedo';
+  String category = 'Suit';
+  String description = '';
+  List<String> selectedSizes = [];
+  List<String> selectedColors = [];
+  List<String> selectedBranches = [];
+  bool isSizeDropdownOpen = false;
 
-    const toggleColor = (colorName) => {
-        setForm(prev => {
-            const newColors = prev.selectedColors.includes(colorName)
-                ? prev.selectedColors.filter(c => c !== colorName)
-                : [...prev.selectedColors, colorName];
-            return { ...prev, selectedColors: newColors };
-        });
-    };
-
-    const toggleBranch = (branch) => {
-        setForm(prev => {
-            const newBranches = prev.selectedBranches.includes(branch)
-                ? prev.selectedBranches.filter(b => b !== branch)
-                : [...prev.selectedBranches, branch];
-            return { ...prev, selectedBranches: newBranches };
-        });
-    };
-
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (!form.name || !form.price || form.selectedSizes.length === 0 || form.selectedColors.length === 0) {
-            showNotify("Please complete all required fields and variants", "error");
-            return;
+  void _toggleSize(String size) {
+    final isOneSize = size == 'ONE SIZE' || size == 'OTHER';
+    setState(() {
+      if (selectedSizes.contains(size)) {
+        selectedSizes.remove(size);
+      } else {
+        if (isOneSize) {
+          selectedSizes = [size];
+        } else {
+          selectedSizes.removeWhere((s) => s == 'ONE SIZE' || s == 'OTHER');
+          selectedSizes.add(size);
         }
-        showNotify("Product Published Successfully!");
-        // Reset Logic or redirection would go here
-    };
+      }
+    });
+  }
 
-    return (
-        <div className="max-w-md mx-auto min-h-screen bg-[#F8FAFC] font-sans text-gray-900 pb-12">
-            
-            {/* Header */}
-            <header className="px-6 pt-12 pb-6 bg-white border-b border-gray-100 sticky top-0 z-30">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-blue-600 rounded-2xl text-white shadow-lg shadow-blue-100">
-                            <Plus className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tight">Add Product</h1>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">Official Inventory</p>
-                        </div>
-                    </div>
-                    <button onClick={() => window.history.back()} className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                        <X className="w-6 h-6" />
-                    </button>
-                </div>
-            </header>
-
-            <main className="p-6 space-y-6 animate-in">
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    
-                    {/* 1. Identification Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-5">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Layers className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">General Information</h3>
-                        </div>
-
-                        <div className="space-y-4 text-left">
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Product Title</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    placeholder="e.g. FINA Competition Suit" 
-                                    value={form.name} 
-                                    onChange={e => setForm({...form, name: e.target.value})}
-                                    className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none" 
-                                />
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Brand</label>
-                                    <select 
-                                        value={form.brand} 
-                                        onChange={e => setForm({...form, brand: e.target.value})}
-                                        className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none"
-                                    >
-                                        {BRANDS.map(b => <option key={b}>{b}</option>)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Category</label>
-                                    <select 
-                                        value={form.category} 
-                                        onChange={e => setForm({...form, category: e.target.value})}
-                                        className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none"
-                                    >
-                                        {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Base Price ($)</label>
-                                <input 
-                                    type="number" 
-                                    required
-                                    step="0.01"
-                                    placeholder="0.00" 
-                                    value={form.price} 
-                                    onChange={e => setForm({...form, price: e.target.value})}
-                                    className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold outline-none" 
-                                />
-                            </div>
-
-                            <div>
-                                <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Description</label>
-                                <textarea 
-                                    required
-                                    placeholder="Enter materials, features, and care instructions..." 
-                                    rows="4" 
-                                    value={form.description} 
-                                    onChange={e => setForm({...form, description: e.target.value})}
-                                    className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold resize-none focus:ring-2 focus:ring-blue-500 outline-none" 
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 2. Media Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Camera className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Media Gallery</h3>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="p-8 bg-gray-50 rounded-[28px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200 text-gray-400 cursor-pointer hover:bg-blue-50 transition-colors">
-                                <Plus className="w-6 h-6 mb-1 text-blue-600" />
-                                <span className="text-[8px] font-black uppercase text-center">Add Photos<br/>(Max 10)</span>
-                            </div>
-                            <div className={`p-8 rounded-[28px] flex flex-col items-center justify-center border-2 border-dashed transition-colors cursor-pointer ${form.sizeGuide ? 'bg-blue-50 border-blue-600 text-blue-600' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
-                                <Ruler className="w-6 h-6 mb-1" />
-                                <span className="text-[8px] font-black uppercase">Size Guide<br/>(Optional)</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. Variants Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-6">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Palette className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Variants</h3>
-                        </div>
-
-                        {/* CUSTOM SIZE DROPDOWN WITH CHECKBOXES */}
-                        <div className="relative text-left">
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Available Sizes</label>
-                            <button 
-                                type="button"
-                                onClick={() => setIsSizeDropdownOpen(!isSizeDropdownOpen)}
-                                className="w-full mt-2 p-4 bg-gray-50 border-none rounded-2xl text-sm font-bold flex items-center justify-between group active:bg-gray-100 transition-all"
-                            >
-                                <span className={form.selectedSizes.length > 0 ? 'text-blue-600' : 'text-gray-400'}>
-                                    {form.selectedSizes.length > 0 
-                                        ? `${form.selectedSizes.length} Sizes Selected` 
-                                        : 'Choose Sizes'}
-                                </span>
-                                <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isSizeDropdownOpen ? 'rotate-180' : ''}`} />
-                            </button>
-
-                            {isSizeDropdownOpen && (
-                                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[24px] shadow-2xl border border-gray-100 z-50 p-4 max-h-60 overflow-y-auto no-scrollbar space-y-2">
-                                    {SIZES.map(size => {
-                                        const isOneSize = size === 'ONE SIZE' || size === 'OTHER';
-                                        const isDisabled = !isOneSize && (form.selectedSizes.includes('ONE SIZE') || form.selectedSizes.includes('OTHER'));
-                                        
-                                        return (
-                                            <button 
-                                                key={size}
-                                                type="button"
-                                                disabled={isDisabled}
-                                                onClick={() => toggleSize(size)}
-                                                className={`w-full p-3.5 rounded-xl flex items-center justify-between transition-all ${form.selectedSizes.includes(size) ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-700'} ${isDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                            >
-                                                <span className="text-xs font-bold uppercase">{size}</span>
-                                                <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 ${form.selectedSizes.includes(size) ? 'bg-white border-white' : 'border-gray-200 bg-white'}`}>
-                                                    {form.selectedSizes.includes(size) && <Check className="w-4 h-4 text-blue-600" />}
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* Colors Picker */}
-                        <div className="space-y-4 pt-2 text-left">
-                            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">Color Palette</label>
-                            <div className="flex flex-wrap gap-4">
-                                {COLORS.map(color => (
-                                    <button 
-                                        key={color.name}
-                                        type="button"
-                                        onClick={() => toggleColor(color.name)}
-                                        className={`w-11 h-11 rounded-full border-4 transition-all relative ${form.selectedColors.includes(color.name) ? 'border-blue-600 scale-110 shadow-lg' : 'border-white shadow-sm'}`}
-                                        style={{ backgroundColor: color.code }}
-                                    >
-                                        {form.selectedColors.includes(color.name) && <Check className="w-5 h-5 text-white absolute inset-0 m-auto" />}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 4. Branch Allocation Section */}
-                    <div className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100 space-y-4 text-left">
-                        <div className="flex items-center space-x-2 mb-2">
-                            <Building2 className="w-4 h-4 text-blue-600" />
-                            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest">Branch Stock Allocation</h3>
-                        </div>
-                        <div className="space-y-2">
-                            {BRANCHES.map(branch => (
-                                <button 
-                                    key={branch}
-                                    type="button"
-                                    onClick={() => toggleBranch(branch)}
-                                    className={`w-full p-4 rounded-2xl flex items-center justify-between transition-all border ${form.selectedBranches.includes(branch) ? 'bg-blue-50 border-blue-600 ring-2 ring-blue-50' : 'bg-gray-50 border-transparent'}`}
-                                >
-                                    <span className={`text-sm font-bold ${form.selectedBranches.includes(branch) ? 'text-blue-700' : 'text-gray-500'}`}>{branch}</span>
-                                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 ${form.selectedBranches.includes(branch) ? 'bg-blue-600 border-blue-600' : 'border-gray-200 bg-white'}`}>
-                                        {form.selectedBranches.includes(branch) && <Check className="w-3.5 h-3.5 text-white" />}
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Submit Button */}
-                    <div className="pt-4">
-                        <button 
-                            type="submit" 
-                            className="w-full py-5 bg-blue-600 text-white rounded-[24px] font-black text-sm shadow-xl active:scale-95 transition-all uppercase tracking-[0.2em]"
-                        >
-                            Publish to Inventory
-                        </button>
-                    </div>
-                </form>
-            </main>
-
-            {notification && (
-                <div className={`fixed bottom-10 left-1/2 -translate-x-1/2 px-8 py-4 rounded-full text-[10px] font-black shadow-2xl z-[100] animate-bounce flex items-center space-x-2 uppercase tracking-widest ${notification.type === 'error' ? 'bg-red-600' : 'bg-gray-900'} text-white`}>
-                    <span>{notification.msg}</span>
-                </div>
-            )}
-
-            <style>{`
-                @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                .animate-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-                .no-scrollbar::-webkit-scrollbar { display: none; }
-                .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
-        </div>
+  void _handleSubmit() {
+    if (name.isEmpty || price.isEmpty || selectedSizes.isEmpty || selectedColors.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please complete all required fields and variants'), backgroundColor: Color(0xFFEF4444)),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Product Published Successfully!'), backgroundColor: Color(0xFF1F2937)),
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 48, 24, 24),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                border: Border(bottom: BorderSide(color: Color(0xFFF3F4F6))),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2563EB),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
+                        ),
+                        child: const Icon(Icons.add, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Add Product', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+                          SizedBox(height: 2),
+                          Text('OFFICIAL INVENTORY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, size: 24)),
+                ],
+              ),
+            ),
+
+            // Form
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(24),
+                children: [
+                  // 1. General Information
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.layers, color: Color(0xFF2563EB), size: 16),
+                            SizedBox(width: 8),
+                            Text('GENERAL INFORMATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        const Text('Product Title', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          onChanged: (val) => setState(() => name = val),
+                          decoration: InputDecoration(
+                            hintText: 'e.g. FINA Competition Suit',
+                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Brand', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(16)),
+                                    child: DropdownButton<String>(
+                                      value: brand,
+                                      isExpanded: true,
+                                      underline: const SizedBox(),
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                      items: brands.map((b) => DropdownMenuItem(value: b, child: Text(b))).toList(),
+                                      onChanged: (val) => setState(() => brand = val!),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Category', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(16)),
+                                    child: DropdownButton<String>(
+                                      value: category,
+                                      isExpanded: true,
+                                      underline: const SizedBox(),
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
+                                      items: categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                                      onChanged: (val) => setState(() => category = val!),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Base Price (\$)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          onChanged: (val) => setState(() => price = val),
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            hintText: '0.00',
+                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Description', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 8),
+                        TextField(
+                          onChanged: (val) => setState(() => description = val),
+                          maxLines: 4,
+                          decoration: InputDecoration(
+                            hintText: 'Enter materials, features, and care instructions...',
+                            hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                            filled: true,
+                            fillColor: const Color(0xFFF9FAFB),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                            contentPadding: const EdgeInsets.all(16),
+                          ),
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 2. Media Gallery
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.camera_alt, color: Color(0xFF2563EB), size: 16),
+                            SizedBox(width: 8),
+                            Text('MEDIA GALLERY', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(color: const Color(0xFFE5E7EB), width: 2, style: BorderStyle.solid),
+                                ),
+                                child: const Column(
+                                  children: [
+                                    Icon(Icons.add, color: Color(0xFF2563EB), size: 24),
+                                    SizedBox(height: 4),
+                                    Text('Add Photos\n(Max 10)', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(32),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(28),
+                                  border: Border.all(color: const Color(0xFFE5E7EB), width: 2, style: BorderStyle.solid),
+                                ),
+                                child: const Column(
+                                  children: [
+                                    Icon(Icons.straighten, color: Color(0xFF9CA3AF), size: 24),
+                                    SizedBox(height: 4),
+                                    Text('Size Guide\n(Optional)', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF)), textAlign: TextAlign.center),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 3. Variants
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.palette, color: Color(0xFF2563EB), size: 16),
+                            SizedBox(width: 8),
+                            Text('VARIANTS', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        const Text('Available Sizes', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          onTap: () => setState(() => isSizeDropdownOpen = !isSizeDropdownOpen),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(color: const Color(0xFFF9FAFB), borderRadius: BorderRadius.circular(16)),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  selectedSizes.isEmpty ? 'Choose Sizes' : '${selectedSizes.length} Sizes Selected',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: selectedSizes.isEmpty ? const Color(0xFF9CA3AF) : const Color(0xFF2563EB)),
+                                ),
+                                Icon(isSizeDropdownOpen ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, color: const Color(0xFF9CA3AF)),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (isSizeDropdownOpen)
+                          Container(
+                            margin: const EdgeInsets.only(top: 12),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: const Color(0xFFF3F4F6)),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))],
+                            ),
+                            child: Column(
+                              children: sizes.map((size) {
+                                final isSelected = selectedSizes.contains(size);
+                                final isOneSize = size == 'ONE SIZE' || size == 'OTHER';
+                                final isDisabled = !isOneSize && (selectedSizes.contains('ONE SIZE') || selectedSizes.contains('OTHER'));
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: InkWell(
+                                    onTap: isDisabled ? null : () => _toggleSize(size),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(size, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isSelected ? Colors.white : Colors.black)),
+                                          Container(
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                              color: isSelected ? Colors.white : const Color(0xFFFFFFFF),
+                                              borderRadius: BorderRadius.circular(6),
+                                              border: Border.all(color: isSelected ? Colors.white : const Color(0xFFE5E7EB), width: 2),
+                                            ),
+                                            child: isSelected ? const Icon(Icons.check, size: 16, color: Color(0xFF2563EB)) : null,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+                        const Text('Color Palette', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
+                        const SizedBox(height: 16),
+                        Wrap(
+                          spacing: 16,
+                          runSpacing: 16,
+                          children: colors.map((color) {
+                            final isSelected = selectedColors.contains(color['name']);
+                            return InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    selectedColors.remove(color['name']);
+                                  } else {
+                                    selectedColors.add(color['name']);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: color['code'],
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: isSelected ? const Color(0xFF2563EB) : Colors.white, width: 4),
+                                  boxShadow: isSelected ? [const BoxShadow(color: Color(0xFF2563EB), blurRadius: 10)] : [const BoxShadow(color: Colors.black12, blurRadius: 4)],
+                                ),
+                                child: isSelected ? const Icon(Icons.check, color: Colors.white, size: 20) : null,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // 4. Branch Stock Allocation
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      border: Border.all(color: const Color(0xFFF3F4F6)),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.business, color: Color(0xFF2563EB), size: 16),
+                            SizedBox(width: 8),
+                            Text('BRANCH STOCK ALLOCATION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        ...branches.map((branch) {
+                          final isSelected = selectedBranches.contains(branch);
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  if (isSelected) {
+                                    selectedBranches.remove(branch);
+                                  } else {
+                                    selectedBranches.add(branch);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF9FAFB),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: isSelected ? const Color(0xFF2563EB) : Colors.transparent, width: isSelected ? 2 : 0),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(branch, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: isSelected ? const Color(0xFF1E40AF) : const Color(0xFF6B7280))),
+                                    Container(
+                                      width: 20,
+                                      height: 20,
+                                      decoration: BoxDecoration(
+                                        color: isSelected ? const Color(0xFF2563EB) : Colors.white,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE5E7EB), width: 2),
+                                      ),
+                                      child: isSelected ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Submit Button
+                  InkWell(
+                    onTap: _handleSubmit,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [BoxShadow(color: const Color(0xFF2563EB).withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 8))],
+                      ),
+                      child: const Center(
+                        child: Text('PUBLISH TO INVENTORY', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 2.0)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
