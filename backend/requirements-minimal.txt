@@ -1,0 +1,29 @@
+# Minimal requirements for Swim360 Backend (without optional packages)
+
+# FastAPI and server
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+
+# Database
+asyncpg==0.29.0
+databases==0.8.0
+sqlalchemy==2.0.25
+
+# Authentication & Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+pydantic[email]==2.6.1
+pydantic-settings==2.1.0
+
+# Supabase
+supabase==2.3.4
+gotrue==2.4.2
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2024.1
+httpx==0.26.0
+aiofiles==23.2.1
+loguru==0.7.2
