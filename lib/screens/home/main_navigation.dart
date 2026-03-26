@@ -5,6 +5,8 @@ import 'package:swim360/screens/profile/settings_screen.dart';
 import 'package:swim360/screens/notifications/swimmer_notifications_screen.dart';
 import 'package:swim360/screens/marketplace/used_screen.dart';
 import 'package:swim360/screens/marketplace/stores_screen.dart';
+import 'package:swim360/screens/events/events_screen.dart';
+import 'package:swim360/core/services/notification_service.dart';
 
 class MainNavigation extends StatefulWidget {
   const MainNavigation({super.key});
@@ -15,7 +17,9 @@ class MainNavigation extends StatefulWidget {
 
 class _MainNavigationState extends State<MainNavigation> with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
+  int _notificationCount = 0;
   late AnimationController _animationController;
+  final NotificationService _notificationService = NotificationService();
 
   @override
   void initState() {
@@ -25,6 +29,20 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
       duration: const Duration(milliseconds: 400),
     );
     _animationController.forward();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final result = await _notificationService.getNotifications(limit: 1);
+      if (mounted) {
+        setState(() {
+          _notificationCount = result.unreadCount;
+        });
+      }
+    } catch (_) {
+      // Keep default count of 0 if fetch fails
+    }
   }
 
   @override
@@ -47,7 +65,7 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const SwimmerNotificationsScreen()),
-    );
+    ).then((_) => _loadUnreadCount());
   }
 
   void _navigateToSettings() {
@@ -69,7 +87,7 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
     return Scaffold(
       backgroundColor: const Color(0xFFF3F4F6),
       appBar: TopBar(
-        notificationCount: 5,
+        notificationCount: _notificationCount,
         onNotificationTap: _navigateToNotifications,
         onSettingsTap: _navigateToSettings,
         onProfileTap: _navigateToProfile,
@@ -229,21 +247,7 @@ class _MainNavigationState extends State<MainNavigation> with SingleTickerProvid
   }
 
   Widget _buildEventsView() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(80),
-        child: Text(
-          'SECTION COMING SOON',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w900,
-            color: Colors.grey.shade300,
-            letterSpacing: 2.5,
-          ),
-        ),
-      ),
-    );
+    return const EventsScreen();
   }
 
   Widget _buildMarketplaceView() {

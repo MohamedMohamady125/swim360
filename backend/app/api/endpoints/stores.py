@@ -19,6 +19,19 @@ router = APIRouter(tags=["Stores & Marketplace"])
 
 
 # ============================================
+# PUBLIC LIST-ALL ENDPOINTS (must be before /{id} routes)
+# ============================================
+
+@router.get("/stores/all", response_model=List[StoreDetails])
+async def get_all_stores():
+    """Get all stores (public)"""
+    result = await database.fetch_all(
+        "SELECT * FROM store_details ORDER BY created_at DESC"
+    )
+    return result
+
+
+# ============================================
 # STORE DETAILS ENDPOINTS
 # ============================================
 

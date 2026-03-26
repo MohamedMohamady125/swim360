@@ -2,8 +2,7 @@
 Database connection and session management
 """
 from typing import AsyncGenerator
-from databases import Database
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine, MetaData, text
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool
@@ -47,8 +46,36 @@ AsyncSessionLocal = async_sessionmaker(
     autoflush=False,
 )
 
-# Database instance for async queries
-database = Database(ASYNC_DATABASE_URL)
+class DatabaseWrapper:
+    """Drop-in replacement for the 'databases' library API using SQLAlchemy async engine."""
+
+    def __init__(self, engine):
+        self._engine = engine
+
+    async def connect(self):
+        pass
+
+    async def disconnect(self):
+        await self._engine.dispose()
+
+    async def fetch_one(self, query, values=None):
+        async with self._engine.begin() as conn:
+            result = await conn.execute(text(query), values or {})
+            row = result.mappings().first()
+            return row
+
+    async def fetch_all(self, query, values=None):
+        async with self._engine.begin() as conn:
+            result = await conn.execute(text(query), values or {})
+            return result.mappings().all()
+
+    async def execute(self, query, values=None):
+        async with self._engine.begin() as conn:
+            result = await conn.execute(text(query), values or {})
+            return result
+
+
+database = DatabaseWrapper(async_engine)
 
 # Metadata for reflection
 metadata = MetaData()
@@ -79,13 +106,14 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def connect_db():
     """Connect to database on startup"""
-    await database.connect()
+    async with async_engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
     print("✅ Database connected")
 
 
 async def disconnect_db():
     """Disconnect from database on shutdown"""
-    await database.disconnect()
+    await async_engine.dispose()
     print("❌ Database disconnected")
 
 
@@ -93,7 +121,8 @@ async def disconnect_db():
 async def check_db_connection() -> bool:
     """Check if database connection is alive"""
     try:
-        await database.fetch_one("SELECT 1")
+        async with async_engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
         return True
     except Exception as e:
         print(f"Database connection error: {e}")

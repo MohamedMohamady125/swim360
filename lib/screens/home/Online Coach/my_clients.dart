@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:swim360/core/api/api_config.dart';
+import 'package:swim360/core/services/storage_service.dart';
 
 class MyClientsScreen extends StatefulWidget {
   const MyClientsScreen({super.key});
@@ -9,7 +13,9 @@ class MyClientsScreen extends StatefulWidget {
 }
 
 class _MyClientsScreenState extends State<MyClientsScreen> {
-  final List<Client> _clients = [];
+  final StorageService _storageService = StorageService();
+  List<Client> _clients = [];
+  bool _isLoading = true;
 
   List<Client> _filteredClients = [];
   String _searchQuery = '';
@@ -19,7 +25,75 @@ class _MyClientsScreenState extends State<MyClientsScreen> {
   @override
   void initState() {
     super.initState();
-    _filteredClients = _clients;
+    _loadClients();
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _storageService.getAccessToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  Future<void> _loadClients() async {
+    setState(() => _isLoading = true);
+    try {
+      final headers = await _getHeaders();
+
+      // First get coach's programs
+      final user = await _storageService.getUser();
+      final programsUri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs')
+          .replace(queryParameters: {'provider_id': user?.id ?? ''});
+      final programsResponse = await http.get(programsUri, headers: headers);
+
+      if (programsResponse.statusCode == 200) {
+        final List<dynamic> programs = jsonDecode(programsResponse.body);
+        final List<Client> allClients = [];
+
+        // For each program, get enrollments
+        for (final program in programs) {
+          final programId = program['id'];
+          final programName = program['program_name'] ?? program['title'] ?? 'Unknown';
+
+          try {
+            final enrollUri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs/$programId/enrollments');
+            final enrollResponse = await http.get(enrollUri, headers: headers);
+
+            if (enrollResponse.statusCode == 200) {
+              final List<dynamic> enrollments = jsonDecode(enrollResponse.body);
+              for (final enrollment in enrollments) {
+                final clientName = enrollment['user_name'] ?? enrollment['full_name'] ?? 'Unknown';
+                allClients.add(Client(
+                  id: enrollment['id'] ?? enrollment['user_id'] ?? '',
+                  name: clientName,
+                  program: programName,
+                  endDate: enrollment['end_date'] ?? 'Ongoing',
+                  phone: enrollment['phone_number'] ?? enrollment['phone'] ?? '',
+                  age: enrollment['age'] ?? 0,
+                  gender: enrollment['gender'] ?? 'N/A',
+                  initial: clientName.isNotEmpty ? clientName[0].toUpperCase() : '?',
+                ));
+              }
+            }
+          } catch (_) {
+            // Skip programs where enrollment fetch fails
+          }
+        }
+
+        setState(() {
+          _clients = allClients;
+          _filteredClients = allClients;
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   void _handleSearch(String query) {
@@ -130,7 +204,23 @@ class _MyClientsScreenState extends State<MyClientsScreen> {
 
                 // Client List
                 Expanded(
-                  child: ListView(
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
+                      : _filteredClients.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.people_outline, size: 80, color: Colors.grey.shade300),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No clients yet',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey.shade400),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView(
                     padding: const EdgeInsets.all(24),
                     children: _groupedClients.entries.map((entry) {
                       return Column(

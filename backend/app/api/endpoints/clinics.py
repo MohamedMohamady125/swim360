@@ -18,6 +18,37 @@ router = APIRouter(prefix="/clinics", tags=["Clinics"])
 
 
 # ============================================
+# PUBLIC LIST-ALL ENDPOINTS (must be before /{id} routes)
+# ============================================
+
+@router.get("/all", response_model=List[ClinicDetails])
+async def get_all_clinics():
+    """Get all clinics (public)"""
+    result = await database.fetch_all(
+        "SELECT * FROM clinic_details ORDER BY created_at DESC"
+    )
+    return result
+
+
+@router.get("/branches/all", response_model=List[ClinicBranch])
+async def get_all_clinic_branches():
+    """Get all clinic branches (public)"""
+    result = await database.fetch_all(
+        "SELECT * FROM clinic_branches ORDER BY created_at DESC"
+    )
+    return result
+
+
+@router.get("/services/all", response_model=List[ClinicService])
+async def get_all_clinic_services():
+    """Get all clinic services (public)"""
+    result = await database.fetch_all(
+        "SELECT * FROM clinic_services ORDER BY created_at DESC"
+    )
+    return result
+
+
+# ============================================
 # CLINIC DETAILS ENDPOINTS
 # ============================================
 

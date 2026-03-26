@@ -1,7 +1,35 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/storage_service.dart';
+import 'package:swim360/screens/home/Online Coach/create_program.dart';
+import 'package:swim360/screens/home/Online Coach/my_programs.dart';
+import 'package:swim360/screens/home/Online Coach/my_clients.dart';
+import 'package:swim360/screens/notifications/swimmer_notifications_screen.dart';
 
-class OnlineCoachHomeScreen extends StatelessWidget {
+class OnlineCoachHomeScreen extends StatefulWidget {
   const OnlineCoachHomeScreen({super.key});
+
+  @override
+  State<OnlineCoachHomeScreen> createState() => _OnlineCoachHomeScreenState();
+}
+
+class _OnlineCoachHomeScreenState extends State<OnlineCoachHomeScreen> {
+  final StorageService _storageService = StorageService();
+  String _userName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = await _storageService.getUser();
+    if (mounted) {
+      setState(() {
+        _userName = user?.fullName ?? 'Coach';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +42,7 @@ class OnlineCoachHomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Welcome Header
-              const Text('Hello, John Doe!', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+              Text('Hello, $_userName!', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
               const Text('Online Coach Dashboard.', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
 
@@ -22,7 +50,10 @@ class OnlineCoachHomeScreen extends StatelessWidget {
 
               // Notifications Banner
               InkWell(
-                onTap: () => _showSnackbar(context, 'Navigating to Notifications...', true),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SwimmerNotificationsScreen()),
+                ),
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
@@ -44,7 +75,10 @@ class OnlineCoachHomeScreen extends StatelessWidget {
 
               // Primary Action Banner: CREATE PROGRAM
               InkWell(
-                onTap: () => _showSnackbar(context, 'Navigating to Create Program Form...', false),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const CreateProgramScreen()),
+                ),
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -78,7 +112,10 @@ class OnlineCoachHomeScreen extends StatelessWidget {
                       context,
                       'My Programs',
                       Icons.access_time,
-                      () => _showSnackbar(context, 'Navigating to My Programs List...', false),
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MyProgramsScreen()),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -87,7 +124,10 @@ class OnlineCoachHomeScreen extends StatelessWidget {
                       context,
                       'My Clients',
                       Icons.people,
-                      () => _showSnackbar(context, 'Navigating to Client Roster...', false),
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const MyClientsScreen()),
+                      ),
                     ),
                   ),
                 ],

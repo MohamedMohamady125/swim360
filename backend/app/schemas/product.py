@@ -3,7 +3,7 @@ Product and e-commerce schemas
 """
 from typing import Optional, List
 from decimal import Decimal
-from pydantic import BaseModel, UUID4, Field
+from pydantic import BaseModel, UUID4, Field, field_validator
 from app.schemas.common import ProductCategory, ProductCondition, TimestampMixin
 
 
@@ -49,19 +49,24 @@ class ProductResponse(ProductBase, TimestampMixin):
     """Product response"""
     id: UUID4
     store_id: UUID4
-    photos: List[str]
+    photos: List[str] = []
     intro_video_url: Optional[str] = None
-    available_colors: List[str]
-    available_sizes: List[str]
+    available_colors: List[str] = []
+    available_sizes: List[str] = []
     total_stock: int
-    low_stock_threshold: int
+    low_stock_threshold: int = 0
     is_active: bool
     is_featured: bool
-    rating: Decimal
-    total_reviews: int
-    total_sales: int
-    view_count: int
+    rating: Decimal = 0
+    total_reviews: int = 0
+    total_sales: int = 0
+    view_count: int = 0
     slug: Optional[str] = None
+
+    @field_validator('photos', 'available_colors', 'available_sizes', mode='before')
+    @classmethod
+    def coerce_none_to_list(cls, v):
+        return v if v is not None else []
 
     class Config:
         from_attributes = True

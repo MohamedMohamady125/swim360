@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/academy_service.dart';
+import 'package:swim360/core/models/academy_models.dart';
 
 class BookAcademyScreen extends StatefulWidget {
   const BookAcademyScreen({super.key});
@@ -8,11 +10,79 @@ class BookAcademyScreen extends StatefulWidget {
 }
 
 class _BookAcademyScreenState extends State<BookAcademyScreen> {
+  final AcademyService _academyService = AcademyService();
+
   int _currentStep = 0;
   Academy? _selectedAcademy;
   Branch? _selectedBranch;
+  bool _isLoading = false;
 
-  final List<Academy> _academies = [];
+  List<Academy> _academies = [];
+  List<AcademyBranch> _allBranches = [];
+  List<AcademyProgram> _allPrograms = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final results = await Future.wait([
+        _academyService.getAllAcademies(),
+        _academyService.getAllBranches(),
+        _academyService.getAllPrograms(),
+      ]);
+
+      final academies = results[0] as List<AcademyDetails>;
+      final branches = results[1] as List<AcademyBranch>;
+      final programs = results[2] as List<AcademyProgram>;
+
+      if (mounted) {
+        setState(() {
+          _allBranches = branches;
+          _allPrograms = programs;
+          _academies = academies.map((a) {
+            final academyBranches = branches
+                .where((b) => b.userId == a.userId)
+                .map((b) => Branch(
+                      id: b.id,
+                      name: b.name,
+                      address: [b.city, b.governorate].where((v) => v != null && v.isNotEmpty).join(', '),
+                    ))
+                .toList();
+            final academyPrograms = programs
+                .where((p) => p.userId == a.userId)
+                .map((p) => Program(
+                      id: p.id,
+                      name: p.name,
+                      price: p.price,
+                      description: p.description ?? '',
+                      spots: p.capacity - p.enrolled,
+                    ))
+                .toList();
+            return Academy(
+              id: a.userId,
+              name: a.academyName,
+              area: a.description ?? '',
+              image: '',
+              branches: academyBranches,
+              programs: academyPrograms,
+            );
+          }).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading academy data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   void _handleBack() {
     if (_currentStep > 0) {
@@ -154,11 +224,17 @@ class _BookAcademyScreenState extends State<BookAcademyScreen> {
   }
 
   Widget _buildAcademyList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final colors = [const Color(0xFF1D4ED8), const Color(0xFF7C3AED), const Color(0xFF059669), const Color(0xFFF59E0B), const Color(0xFF0891B2)];
     return ListView.builder(
       padding: const EdgeInsets.all(24),
       itemCount: _academies.length,
       itemBuilder: (context, index) {
         final academy = _academies[index];
+        final bgColor = colors[index % colors.length];
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
           child: InkWell(
@@ -182,15 +258,18 @@ class _BookAcademyScreenState extends State<BookAcademyScreen> {
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                     child: Stack(
                       children: [
-                        Image.network(academy.image, height: 240, width: double.infinity, fit: BoxFit.cover),
                         Container(
                           height: 240,
+                          width: double.infinity,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.8)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [bgColor, Colors.black.withOpacity(0.8)],
                             ),
+                          ),
+                          child: Center(
+                            child: Icon(Icons.school, color: Colors.white.withOpacity(0.3), size: 80),
                           ),
                         ),
                         Positioned(
@@ -201,7 +280,7 @@ class _BookAcademyScreenState extends State<BookAcademyScreen> {
                             children: [
                               Text(academy.name.toUpperCase(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, fontStyle: FontStyle.italic, letterSpacing: -0.5)),
                               const SizedBox(height: 4),
-                              Text(academy.area.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFDEF3FF).withOpacity(0.9), letterSpacing: 2.5)),
+                              Text(academy.area.isNotEmpty ? academy.area.toUpperCase() : '${academy.branches.length} BRANCHES', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFDEF3FF).withOpacity(0.9), letterSpacing: 2.5)),
                             ],
                           ),
                         ),
@@ -335,18 +414,23 @@ class _BookAcademyScreenState extends State<BookAcademyScreen> {
                     color: const Color(0xFFF9FAFB),
                     borderRadius: BorderRadius.circular(32),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('SUBSCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
-                          SizedBox(height: 4),
-                          Text('\$120.00', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+                          const Text('SUBSCRIPTION', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                          const SizedBox(height: 4),
+                          Text(
+                            _selectedAcademy!.programs.isNotEmpty
+                                ? '\$${_selectedAcademy!.programs.first.price.toStringAsFixed(2)}'
+                                : 'Contact Academy',
+                            style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                          ),
                         ],
                       ),
-                      Icon(Icons.star, color: Color(0xFF2563EB), size: 32),
+                      const Icon(Icons.star, color: Color(0xFF2563EB), size: 32),
                     ],
                   ),
                 ),

@@ -17,6 +17,24 @@ class StoreApiService {
   }
 
   // ============================================
+  // PUBLIC LIST-ALL ENDPOINTS
+  // ============================================
+
+  Future<List<StoreDetails>> getAllStores() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/stores/all'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => StoreDetails.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to get all stores: ${response.body}');
+    }
+  }
+
+  // ============================================
   // STORE DETAILS ENDPOINTS
   // ============================================
 

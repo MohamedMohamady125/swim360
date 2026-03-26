@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:swim360/core/services/event_service.dart';
 
 class MyEventsScreen extends StatefulWidget {
   const MyEventsScreen({super.key});
@@ -9,16 +10,77 @@ class MyEventsScreen extends StatefulWidget {
 }
 
 class _MyEventsScreenState extends State<MyEventsScreen> {
+  final EventService _eventService = EventService();
   final List<String> _eventTypes = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
   final List<String> _audiences = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
 
+  static const Map<String, String> _backendToType = {
+    'competition': 'Championship',
+    'seminar': 'Seminar',
+    'webinar': 'Zoom Meeting',
+    'training_camp': 'Training',
+    'meet': 'Fun Swim',
+    'workshop': 'Clinic',
+  };
+
+  static const Map<String, String> _typeToBackend = {
+    'Championship': 'competition',
+    'Seminar': 'seminar',
+    'Zoom Meeting': 'webinar',
+    'Training': 'training_camp',
+    'Fun Swim': 'meet',
+    'Clinic': 'workshop',
+    'Other': 'meet',
+  };
+
   List<Event> _events = [];
+  bool _initialLoading = true;
 
   String _view = 'list'; // 'list', 'edit', 'details'
   Event? _editingEvent;
   String? _notification;
   String _notificationType = 'success';
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEvents();
+  }
+
+  Future<void> _fetchEvents() async {
+    try {
+      final models = await _eventService.getMyEvents();
+      if (mounted) {
+        setState(() {
+          _events = models.map((m) => Event(
+            id: m.id,
+            name: m.eventName,
+            date: '${m.eventDate.year}-${m.eventDate.month.toString().padLeft(2, '0')}-${m.eventDate.day.toString().padLeft(2, '0')}',
+            time: m.startTime ?? '09:00',
+            durationValue: '',
+            durationUnit: 'hours',
+            price: m.registrationFee,
+            tickets: m.maxParticipants ?? 0,
+            locationName: m.venueName ?? '',
+            locationUrl: m.address ?? '',
+            ageRange: '',
+            targetAudience: 'Swimmers',
+            type: _backendToType[m.eventType] ?? m.eventType,
+            description: m.description,
+            videoUrl: '',
+            photoUrl: m.coverPhotoUrl ?? 'https://via.placeholder.com/400x200',
+          )).toList();
+          _initialLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _initialLoading = false);
+        _showNotify('Failed to load events: ${e.toString().replaceAll('Exception: ', '')}', 'error');
+      }
+    }
+  }
 
   void _showNotify(String msg, [String type = 'success']) {
     setState(() {
@@ -74,7 +136,7 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
     });
   }
 
-  void _handleSave() {
+  Future<void> _handleSave() async {
     if (_editingEvent!.name.isEmpty || _editingEvent!.locationName.isEmpty || _editingEvent!.tickets == 0) {
       _showNotify("Please fill in all required fields", "error");
       return;
@@ -82,7 +144,21 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
 
     setState(() => _loading = true);
 
-    Future.delayed(const Duration(seconds: 1), () {
+    try {
+      final updates = <String, dynamic>{
+        'event_name': _editingEvent!.name,
+        'event_type': _typeToBackend[_editingEvent!.type] ?? 'meet',
+        'description': _editingEvent!.description,
+        'event_date': _editingEvent!.date,
+        'start_time': _editingEvent!.time,
+        'venue_name': _editingEvent!.locationName,
+        'address': _editingEvent!.locationUrl,
+        'max_participants': _editingEvent!.tickets,
+        'registration_fee': _editingEvent!.price,
+      };
+
+      await _eventService.updateEvent(_editingEvent!.id, updates);
+
       if (mounted) {
         setState(() {
           _events = _events.map((ev) => ev.id == _editingEvent!.id ? _editingEvent! : ev).toList();
@@ -91,7 +167,32 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
           _view = 'list';
         });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        _showNotify('Failed to update: ${e.toString().replaceAll('Exception: ', '')}', 'error');
+      }
+    }
+  }
+
+  Future<void> _handleDelete(String eventId) async {
+    setState(() => _loading = true);
+    try {
+      await _eventService.deleteEvent(eventId);
+      if (mounted) {
+        setState(() {
+          _events.removeWhere((e) => e.id == eventId);
+          _loading = false;
+          _view = 'list';
+        });
+        _showNotify("Event deleted successfully!");
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        _showNotify('Failed to delete: ${e.toString().replaceAll('Exception: ', '')}', 'error');
+      }
+    }
   }
 
   @override
@@ -146,6 +247,33 @@ class _MyEventsScreenState extends State<MyEventsScreen> {
           const SizedBox(height: 4),
           const Text('Manage and promote your upcoming listings', style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
           const SizedBox(height: 32),
+          if (_initialLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 80),
+              child: Center(child: CircularProgressIndicator(color: Color(0xFF2563EB))),
+            )
+          else if (_events.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 80),
+              child: Center(
+                child: Column(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 80,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF9FAFB),
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      child: const Icon(Icons.event_busy, size: 40, color: Color(0xFFE5E7EB)),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('NO EVENTS YET', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                  ],
+                ),
+              ),
+            )
+          else
           ..._events.map((event) => Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: Container(

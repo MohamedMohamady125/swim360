@@ -17,6 +17,52 @@ class ClinicApiService {
   }
 
   // ============================================
+  // PUBLIC LIST-ALL ENDPOINTS
+  // ============================================
+
+  Future<List<ClinicDetails>> getAllClinics() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/clinics/all'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => ClinicDetails.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to get all clinics: ${response.body}');
+    }
+  }
+
+  Future<List<ClinicBranch>> getAllBranches() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/clinics/branches/all'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => ClinicBranch.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to get all clinic branches: ${response.body}');
+    }
+  }
+
+  Future<List<ClinicService>> getAllServices() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/clinics/services/all'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => ClinicService.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to get all clinic services: ${response.body}');
+    }
+  }
+
+  // ============================================
   // CLINIC DETAILS ENDPOINTS
   // ============================================
 

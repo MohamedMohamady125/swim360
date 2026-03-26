@@ -43,7 +43,7 @@ class StoreDetails {
       shippingAvailable: json['shipping_available'] ?? true,
       acceptsReturns: json['accepts_returns'] ?? true,
       returnPolicyDays: json['return_policy_days'] ?? 30,
-      rating: (json['rating'] ?? 0).toDouble(),
+      rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
       totalReviews: json['total_reviews'] ?? 0,
       totalSales: json['total_sales'] ?? 0,
       createdAt: DateTime.parse(json['created_at']),
@@ -186,7 +186,7 @@ class StoreProduct {
       name: json['name'],
       brand: json['brand'],
       category: json['category'],
-      price: (json['price'] ?? 0).toDouble(),
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
       description: json['description'],
       availableSizes: json['available_sizes'] != null
           ? List<String>.from(json['available_sizes'])
@@ -254,9 +254,9 @@ class OrderItem {
       productBrand: json['product_brand'],
       selectedSize: json['selected_size'],
       selectedColor: json['selected_color'],
-      unitPrice: (json['unit_price'] ?? 0).toDouble(),
+      unitPrice: double.tryParse(json['unit_price']?.toString() ?? '0') ?? 0.0,
       quantity: json['quantity'] ?? 1,
-      subtotal: (json['subtotal'] ?? 0).toDouble(),
+      subtotal: double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
       createdAt: DateTime.parse(json['created_at']),
     );
   }
@@ -318,7 +318,7 @@ class StoreOrder {
       userId: json['user_id'],
       storeOwnerId: json['store_owner_id'],
       status: json['status'] ?? 'pending',
-      totalAmount: (json['total_amount'] ?? 0).toDouble(),
+      totalAmount: double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0.0,
       customerName: json['customer_name'],
       customerPhone: json['customer_phone'],
       deliveryAddress: json['delivery_address'],
@@ -414,34 +414,34 @@ class UsedItem {
   factory UsedItem.fromJson(Map<String, dynamic> json) {
     return UsedItem(
       id: json['id'],
-      sellerId: json['seller_id'],
+      sellerId: json['sellerId'] ?? json['seller_id'],
       title: json['title'],
       description: json['description'],
       category: json['category'],
       brand: json['brand'],
       condition: json['condition'],
-      price: (json['price'] ?? 0).toDouble(),
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
       currency: json['currency'] ?? 'USD',
-      isNegotiable: json['is_negotiable'] ?? true,
+      isNegotiable: json['isNegotiable'] ?? json['is_negotiable'] ?? true,
       size: json['size'],
       color: json['color'],
-      yearPurchased: json['year_purchased'],
+      yearPurchased: json['yearPurchased'] ?? json['year_purchased'],
       photos: json['photos'] != null
           ? List<String>.from(json['photos'])
           : null,
-      contactPhone: json['contact_phone'],
-      contactWhatsapp: json['contact_whatsapp'],
-      preferredContactMethod: json['preferred_contact_method'],
+      contactPhone: json['contactPhone'] ?? json['contact_phone'] ?? '',
+      contactWhatsapp: json['contactWhatsapp'] ?? json['contact_whatsapp'],
+      preferredContactMethod: json['preferredContactMethod'] ?? json['preferred_contact_method'],
       city: json['city'],
       governorate: json['governorate'],
-      isSold: json['is_sold'] ?? false,
-      isActive: json['is_active'] ?? true,
-      viewCount: json['view_count'] ?? 0,
-      soldAt: json['sold_at'] != null
-          ? DateTime.parse(json['sold_at'])
+      isSold: json['isSold'] ?? json['is_sold'] ?? false,
+      isActive: json['isActive'] ?? json['is_active'] ?? true,
+      viewCount: json['viewCount'] ?? json['view_count'] ?? 0,
+      soldAt: (json['soldAt'] ?? json['sold_at']) != null
+          ? DateTime.parse(json['soldAt'] ?? json['sold_at'])
           : null,
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      createdAt: DateTime.parse(json['createdAt'] ?? json['created_at']),
+      updatedAt: DateTime.parse(json['updatedAt'] ?? json['updated_at']),
     );
   }
 
@@ -454,14 +454,14 @@ class UsedItem {
       'condition': condition,
       'price': price,
       'currency': currency,
-      'is_negotiable': isNegotiable,
+      'isNegotiable': isNegotiable,
       'size': size,
       'color': color,
-      'year_purchased': yearPurchased,
+      'yearPurchased': yearPurchased,
       'photos': photos,
-      'contact_phone': contactPhone,
-      'contact_whatsapp': contactWhatsapp,
-      'preferred_contact_method': preferredContactMethod,
+      'contactPhone': contactPhone,
+      'contactWhatsapp': contactWhatsapp,
+      'preferredContactMethod': preferredContactMethod,
       'city': city,
       'governorate': governorate,
     };

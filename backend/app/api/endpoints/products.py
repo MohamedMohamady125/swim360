@@ -103,6 +103,20 @@ async def create_product(
     return dict(new_product)
 
 
+@router.get("/{product_id}", response_model=ProductResponse)
+async def get_product(product_id: str):
+    """Get a single product by ID"""
+    product = await database.fetch_one(
+        "SELECT * FROM products WHERE id = :product_id AND is_active = true",
+        {"product_id": product_id}
+    )
+
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+
+    return dict(product)
+
+
 @router.put("/{product_id}", response_model=ProductResponse)
 async def update_product(
     product_id: str,
@@ -128,6 +142,21 @@ async def update_product(
 
     updated_product = await database.fetch_one(query=query, values=update_data)
     return dict(updated_product)
+
+
+@router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_product(
+    product_id: str,
+    current_user: dict = Depends(require_store)
+):
+    """Delete a product (store owner only)"""
+    result = await database.execute(
+        "DELETE FROM products WHERE id = :product_id AND store_id = :user_id",
+        {"product_id": product_id, "user_id": current_user["id"]}
+    )
+
+    if result == 0:
+        raise HTTPException(status_code=404, detail="Product not found or access denied")
 
 
 # ==================== CART ====================

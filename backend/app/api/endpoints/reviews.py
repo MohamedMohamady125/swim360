@@ -22,7 +22,7 @@ async def list_reviews(
     limit: int = Query(20, ge=1, le=100)
 ):
     """List reviews with filters"""
-    conditions = ["is_active = true"]
+    conditions = ["r.is_active = true"]
     params = {}
 
     if target_id:
@@ -43,11 +43,11 @@ async def list_reviews(
     where_clause = " AND ".join(conditions)
 
     # Count total
-    count_query = f"SELECT COUNT(*) as count FROM reviews WHERE {where_clause}"
+    count_query = f"SELECT COUNT(*) as count FROM reviews r WHERE {where_clause}"
     count_result = await database.fetch_one(count_query, params)
 
     # Calculate average rating
-    avg_query = f"SELECT AVG(rating)::float as avg_rating FROM reviews WHERE {where_clause}"
+    avg_query = f"SELECT AVG(r.rating)::float as avg_rating FROM reviews r WHERE {where_clause}"
     avg_result = await database.fetch_one(avg_query, params)
 
     params["skip"] = skip

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/storage_service.dart';
 
 class AcademyHomeScreen extends StatefulWidget {
   const AcademyHomeScreen({Key? key}) : super(key: key);
@@ -11,6 +12,8 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  final StorageService _storageService = StorageService();
+  String _userName = '';
 
   @override
   void initState() {
@@ -23,6 +26,16 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = await _storageService.getUser();
+    if (mounted) {
+      setState(() {
+        _userName = user?.fullName ?? 'Academy Manager';
+      });
+    }
   }
 
   @override
@@ -121,7 +134,7 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Hello, Academy Manager!',
+          'Hello, ${_userName.isNotEmpty ? _userName : 'Academy Manager'}!',
           style: TextStyle(
             fontSize: 30,
             fontWeight: FontWeight.w800,

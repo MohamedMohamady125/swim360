@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:swim360/core/services/storage_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,6 +11,8 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final StorageService _storageService = StorageService();
+
   String _userName = 'User Name';
   String _email = 'user@swim360.com';
   String? _profileImagePath;
@@ -40,7 +43,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _nameController.text = _userName;
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    final user = await _storageService.getUser();
+    if (user != null && mounted) {
+      setState(() {
+        _userName = user.fullName ?? 'User Name';
+        _email = user.email;
+        _nameController.text = _userName;
+      });
+    }
   }
 
   @override

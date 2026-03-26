@@ -2,7 +2,8 @@
 Review and rating schemas
 """
 from typing import Optional, List
-from pydantic import BaseModel, UUID4, Field
+from datetime import datetime
+from pydantic import BaseModel, UUID4, Field, field_validator
 from app.schemas.common import TimestampMixin
 
 
@@ -33,14 +34,19 @@ class ReviewResponse(TimestampMixin):
     rating: int
     title: Optional[str] = None
     comment: Optional[str] = None
-    photos: List[str]
-    is_verified_purchase: bool
-    is_active: bool
-    is_flagged: bool
+    photos: List[str] = []
+    is_verified_purchase: bool = False
+    is_active: bool = True
+    is_flagged: bool = False
 
     # Optional: include reviewer details
     reviewer_name: Optional[str] = None
     reviewer_photo: Optional[str] = None
+
+    @field_validator('photos', mode='before')
+    @classmethod
+    def coerce_none_to_list(cls, v):
+        return v if v is not None else []
 
     class Config:
         from_attributes = True
@@ -75,7 +81,7 @@ class FavoriteResponse(BaseModel):
     user_id: UUID4
     item_id: UUID4
     item_type: str
-    created_at: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -92,8 +98,8 @@ class NotificationResponse(BaseModel):
     related_id: Optional[UUID4] = None
     related_type: Optional[str] = None
     is_read: bool
-    read_at: Optional[str] = None
-    created_at: str
+    read_at: Optional[datetime] = None
+    created_at: datetime
 
     class Config:
         from_attributes = True

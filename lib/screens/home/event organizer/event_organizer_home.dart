@@ -1,7 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/storage_service.dart';
+import 'package:swim360/screens/home/event organizer/create_event.dart';
+import 'package:swim360/screens/home/event organizer/my_events.dart';
+import 'package:swim360/screens/home/event organizer/my_attendees.dart';
 
-class EventOrganizerHomeScreen extends StatelessWidget {
+class EventOrganizerHomeScreen extends StatefulWidget {
   const EventOrganizerHomeScreen({super.key});
+
+  @override
+  State<EventOrganizerHomeScreen> createState() => _EventOrganizerHomeScreenState();
+}
+
+class _EventOrganizerHomeScreenState extends State<EventOrganizerHomeScreen> {
+  final StorageService _storageService = StorageService();
+  String _userName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = await _storageService.getUser();
+    if (mounted && user != null) {
+      setState(() {
+        _userName = user.fullName ?? 'Organizer';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +41,7 @@ class EventOrganizerHomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Welcome Header
-              const Text('Hello, John Doe!', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+              Text('Hello, ${_userName.isNotEmpty ? _userName : 'Organizer'}!', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
               const SizedBox(height: 8),
               const Text('Event Organizer Dashboard.', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
 
@@ -30,11 +57,11 @@ class EventOrganizerHomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [BoxShadow(color: const Color(0xFFEF4444).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('NOTIFICATIONS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white)),
-                      const Icon(Icons.notifications, color: Colors.white, size: 24),
+                      Text('NOTIFICATIONS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white)),
+                      Icon(Icons.notifications, color: Colors.white, size: 24),
                     ],
                   ),
                 ),
@@ -44,7 +71,10 @@ class EventOrganizerHomeScreen extends StatelessWidget {
 
               // Primary Action Banner: CREATE EVENT
               InkWell(
-                onTap: () => _showSnackbar(context, 'Navigating to Create Event Form...', false),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateEventScreen()),
+                ),
                 child: Container(
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
@@ -52,17 +82,17 @@ class EventOrganizerHomeScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [BoxShadow(color: const Color(0xFF3B82F6).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 8))],
                   ),
-                  child: Row(
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Row(
+                      Row(
                         children: [
                           Text('CREATE EVENT', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Colors.white)),
                           SizedBox(width: 8),
                           Text('>', style: TextStyle(fontSize: 24, color: Colors.white)),
                         ],
                       ),
-                      const Icon(Icons.description, color: Colors.white, size: 40),
+                      Icon(Icons.description, color: Colors.white, size: 40),
                     ],
                   ),
                 ),
@@ -78,7 +108,10 @@ class EventOrganizerHomeScreen extends StatelessWidget {
                       context,
                       'My Events',
                       Icons.event,
-                      () => _showSnackbar(context, 'Navigating to My Events List...', false),
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyEventsScreen()),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -87,7 +120,10 @@ class EventOrganizerHomeScreen extends StatelessWidget {
                       context,
                       'My Attendees',
                       Icons.people,
-                      () => _showSnackbar(context, 'Navigating to My Attendees List...', false),
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MyAttendeesScreen()),
+                      ),
                     ),
                   ),
                 ],
@@ -110,7 +146,10 @@ class EventOrganizerHomeScreen extends StatelessWidget {
                       'Set up a new swim meet or clinic.',
                       const Color(0xFFFEE2E2),
                       const Color(0xFFB91C1C),
-                      () => _showSnackbar(context, 'Opening Create Event Form...', false),
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const CreateEventScreen()),
+                      ),
                     ),
                     const SizedBox(width: 16),
                     _buildPoster(

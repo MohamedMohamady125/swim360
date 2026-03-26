@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/event_service.dart';
+import 'package:swim360/core/models/event_models.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({Key? key}) : super(key: key);
@@ -10,6 +12,8 @@ class EventsScreen extends StatefulWidget {
 }
 
 class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMixin {
+  final EventService _eventService = EventService();
+
   String currentLang = 'en';
   String searchQuery = '';
   String selectedType = 'all';
@@ -18,63 +22,12 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
   DateTime? endDate;
   String sortBy = 'date-asc';
   bool showFilterModal = false;
+  bool _isLoading = false;
 
   late AnimationController _modalController;
   late Animation<double> _modalAnimation;
 
-  final List<EventData> events = [
-    EventData(
-      id: 'event1',
-      title: {'en': 'Regional Championship', 'ar': 'بطولة إقليمية'},
-      description: {
-        'en': 'This is the premier swimming event of the season, featuring top athletes from five regions competing for the coveted gold medal. All ages and skill levels are welcome to watch and participate in support activities. Sign up now!',
-        'ar': 'هذا هو الحدث الأبرز للسباحة هذا الموسم، يضم نخبة من الرياضيين من خمس مناطق يتنافسون على الميدالية الذهبية المرموقة. نرحب بجميع الأعمار ومستويات المهارة للمشاهدة والمشاركة في الأنشطة الداعمة. سجل الآن!'
-      },
-      date: DateTime(2025, 11, 10),
-      duration: {'en': '9:00 AM | 3 hrs', 'ar': '9:00 ص | 3 ساعات'},
-      location: {'en': 'Central Pool (NYC)', 'ar': 'المسبح المركزي (NYC)'},
-      type: 'championship',
-      ageGroup: '15+',
-      price: 45,
-      seatsLeft: 25,
-      imageColor: const Color(0xFF1D4ED8),
-      coordinates: '40.7128,-74.0060',
-    ),
-    EventData(
-      id: 'event2',
-      title: {'en': 'Open Water Fun Swim', 'ar': 'سباحة ترفيهية في المياه المفتوحة'},
-      description: {
-        'en': 'A social and non-competitive open water swimming event perfect for all levels. Wetsuits are encouraged. Meet at the main beach flagpole. Snacks and warm drinks provided afterwards!',
-        'ar': 'فعالية سباحة اجتماعية وغير تنافسية في المياه المفتوحة مثالية لجميع المستويات. نشجع على ارتداء بدلات الغوص. التجمع عند سارية العلم الرئيسية على الشاطئ. يتم توفير الوجبات الخفيفة والمشروبات الدافئة لاحقاً!'
-      },
-      date: DateTime(2025, 11, 15),
-      duration: {'en': '8:30 AM | 2 hours', 'ar': '8:30 ص | ساعتين'},
-      location: {'en': 'Sea Coast (LA)', 'ar': 'شاطئ البحر (LA)'},
-      type: 'fun-swim',
-      ageGroup: 'all-ages',
-      price: 0,
-      seatsLeft: 10,
-      imageColor: const Color(0xFFEF4444),
-      coordinates: '34.0522,-118.2437',
-    ),
-    EventData(
-      id: 'event3',
-      title: {'en': 'Masters Training Session', 'ar': 'جلسة تدريب للمحترفين'},
-      description: {
-        'en': 'Focused training for competitive swimmers aged 25+. High-intensity intervals and technique drills led by Coach Sarah. Drop-in available for \$15. Secure your spot early!',
-        'ar': 'تدريب مركز للسباحين المتنافسين الذين تتراوح أعمارهم بين 25+ فما فوق. تدريبات متكررة عالية الكثافة وتمارين تقنية بقيادة المدربة سارة. Drop-in متاح مقابل 15 دولار. احجز مكانك مبكراً!'
-      },
-      date: DateTime(2025, 12, 1),
-      duration: {'en': '7:00 PM | 90 mins', 'ar': '7:00 م | 90 دقيقة'},
-      location: {'en': 'Local Gym Pool (LON)', 'ar': 'مسبح النادي المحلي (LON)'},
-      type: 'training',
-      ageGroup: 'adults',
-      price: 15,
-      seatsLeft: 4,
-      imageColor: const Color(0xFF059669),
-      coordinates: '51.5074,-0.1278',
-    ),
-  ];
+  List<EventData> events = [];
 
   @override
   void initState() {
@@ -87,6 +40,52 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
       parent: _modalController,
       curve: Curves.easeInOut,
     );
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final apiEvents = await _eventService.getEvents();
+
+      if (mounted) {
+        final colors = [const Color(0xFF1D4ED8), const Color(0xFFEF4444), const Color(0xFF059669), const Color(0xFF7C3AED), const Color(0xFFF59E0B), const Color(0xFF0891B2), const Color(0xFF8B5CF6)];
+        setState(() {
+          events = apiEvents.asMap().entries.map((entry) {
+            final e = entry.value;
+            final colorIndex = entry.key % colors.length;
+            final location = e.venueName ?? e.city ?? 'Online';
+            final startTime = e.startTime ?? '';
+            final endTime = e.endTime ?? '';
+            final duration = startTime.isNotEmpty ? '$startTime${endTime.isNotEmpty ? ' - $endTime' : ''}' : 'TBD';
+            final lat = e.latitude?.toString() ?? '';
+            final lng = e.longitude?.toString() ?? '';
+
+            return EventData(
+              id: e.id,
+              title: {'en': e.eventName, 'ar': e.eventName},
+              description: {'en': e.description, 'ar': e.description},
+              date: e.eventDate,
+              duration: {'en': duration, 'ar': duration},
+              location: {'en': location, 'ar': location},
+              type: e.eventType,
+              ageGroup: 'all-ages',
+              price: e.registrationFee.toInt(),
+              seatsLeft: e.seatsLeft,
+              imageColor: colors[colorIndex],
+              coordinates: (lat.isNotEmpty && lng.isNotEmpty) ? '$lat,$lng' : '',
+            );
+          }).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading events: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override
@@ -128,6 +127,7 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
         '15+': '15+',
         'adults': 'Adults (25+)',
         'description': 'Description',
+        'no_events': 'No events found',
       },
       'ar': {
         'events_title': 'الفعاليات',
@@ -160,6 +160,7 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
         '15+': '15+',
         'adults': 'بالغون (25+)',
         'description': 'الوصف',
+        'no_events': 'لا توجد فعاليات',
       },
     };
     
@@ -271,20 +272,32 @@ class _EventsScreenState extends State<EventsScreen> with TickerProviderStateMix
                   
                   // Events list
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: filteredEvents.length,
-                      itemBuilder: (context, index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 32),
-                          child: EventCard(
-                            event: filteredEvents[index],
-                            currentLang: currentLang,
-                            getText: getText,
-                            onRegister: () => _registerForEvent(filteredEvents[index]),
-                          ),
-                        );
-                      },
-                    ),
+                    child: _isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : filteredEvents.isEmpty
+                            ? Center(
+                                child: Text(
+                                  getText('no_events'),
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    color: Color(0xFF9CA3AF),
+                                  ),
+                                ),
+                              )
+                            : ListView.builder(
+                                itemCount: filteredEvents.length,
+                                itemBuilder: (context, index) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 32),
+                                    child: EventCard(
+                                      event: filteredEvents[index],
+                                      currentLang: currentLang,
+                                      getText: getText,
+                                      onRegister: () => _registerForEvent(filteredEvents[index]),
+                                    ),
+                                  );
+                                },
+                              ),
                   ),
                 ],
               ),
@@ -729,7 +742,7 @@ class _EventCardState extends State<EventCard> with SingleTickerProviderStateMix
 
     // Prefer platform-specific scheme if available, else fall back to Google Maps web
     Uri? uri;
-    if (Platform.isIOS) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       // Apple Maps
       uri = Uri.parse('http://maps.apple.com/?ll=$lat,$lng&q=${Uri.encodeComponent(label)}');
     } else {

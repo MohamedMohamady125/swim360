@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/event_service.dart';
+import 'package:swim360/core/models/event_models.dart';
 
 class BookEventScreen extends StatefulWidget {
   const BookEventScreen({super.key});
@@ -9,11 +11,46 @@ class BookEventScreen extends StatefulWidget {
 }
 
 class _BookEventScreenState extends State<BookEventScreen> {
-  int _currentStep = 0;
-  Event? _selectedEvent;
-  int _ticketQty = 1;
+  final EventService _eventService = EventService();
 
-  final List<Event> _events = [];
+  int _currentStep = 0;
+  EventModel? _selectedEvent;
+  int _ticketQty = 1;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  List<EventModel> _events = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadEvents();
+  }
+
+  Future<void> _loadEvents() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final events = await _eventService.getEvents();
+
+      if (mounted) {
+        setState(() {
+          _events = events;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load events: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   Future<void> _launchUrl(String urlString) async {
     final url = Uri.parse(urlString);
@@ -167,6 +204,23 @@ class _BookEventScreenState extends State<BookEventScreen> {
   }
 
   Widget _buildEventList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _loadEvents, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(24),
       itemCount: _events.length + 1,
@@ -195,6 +249,8 @@ class _BookEventScreenState extends State<BookEventScreen> {
         }
 
         final event = _events[index - 1];
+        final displayDate = '${event.eventDate.day}/${event.eventDate.month}/${event.eventDate.year}';
+        final location = event.venueName ?? event.city ?? 'TBD';
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
           child: InkWell(
@@ -218,14 +274,24 @@ class _BookEventScreenState extends State<BookEventScreen> {
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                     child: Stack(
                       children: [
-                        Image.network(event.image, height: 240, width: double.infinity, fit: BoxFit.cover),
                         Container(
                           height: 240,
+                          width: double.infinity,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.8)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                event.eventType == 'championship' ? const Color(0xFF1D4ED8) : event.eventType == 'fun_swim' ? const Color(0xFFEF4444) : const Color(0xFF059669),
+                                Colors.black.withOpacity(0.8),
+                              ],
+                            ),
+                          ),
+                          child: Center(
+                            child: Icon(
+                              event.eventType == 'championship' ? Icons.emoji_events : event.eventType == 'fun_swim' ? Icons.pool : Icons.fitness_center,
+                              color: Colors.white.withOpacity(0.3),
+                              size: 80,
                             ),
                           ),
                         ),
@@ -235,9 +301,9 @@ class _BookEventScreenState extends State<BookEventScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(event.name.toUpperCase(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, fontStyle: FontStyle.italic, letterSpacing: -0.5)),
+                              Text(event.eventName.toUpperCase(), style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white, fontStyle: FontStyle.italic, letterSpacing: -0.5)),
                               const SizedBox(height: 4),
-                              Text(event.location.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFFECDD3).withOpacity(0.9), letterSpacing: 2.5)),
+                              Text(location.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFFFECDD3).withOpacity(0.9), letterSpacing: 2.5)),
                             ],
                           ),
                         ),
@@ -261,13 +327,13 @@ class _BookEventScreenState extends State<BookEventScreen> {
                               child: const Icon(Icons.calendar_today, color: Color(0xFFEF4444), size: 24),
                             ),
                             const SizedBox(width: 8),
-                            Text(event.displayDate.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                            Text(displayDate.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
                           ],
                         ),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text('\$${event.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                            Text('\$${event.registrationFee.toStringAsFixed(2)}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
                             const Text('BOOK NOW', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), fontStyle: FontStyle.italic, letterSpacing: 2.5)),
                           ],
                         ),
@@ -284,41 +350,37 @@ class _BookEventScreenState extends State<BookEventScreen> {
   }
 
   Widget _buildEventDetails() {
+    final startTime = _selectedEvent!.startTime ?? 'TBD';
+    final latitude = _selectedEvent!.latitude;
+    final longitude = _selectedEvent!.longitude;
+    final mapUrl = (latitude != null && longitude != null)
+        ? 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude'
+        : '';
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Stack(
             children: [
-              Image.network(_selectedEvent!.image, height: 256, width: double.infinity, fit: BoxFit.cover),
               Container(
                 height: 256,
+                width: double.infinity,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.6)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _selectedEvent!.eventType == 'championship' ? const Color(0xFF1D4ED8) : _selectedEvent!.eventType == 'fun_swim' ? const Color(0xFFEF4444) : const Color(0xFF059669),
+                      Colors.black.withOpacity(0.6),
+                    ],
                   ),
                 ),
-              ),
-              Positioned(
-                top: 100,
-                left: 0,
-                right: 0,
                 child: Center(
-                  child: InkWell(
-                    onTap: () => _launchUrl(_selectedEvent!.videoUrl),
-                    child: Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white.withOpacity(0.4)),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30)],
-                      ),
-                      child: const Icon(Icons.play_arrow, color: Colors.white, size: 32),
-                    ),
+                  child: Icon(
+                    _selectedEvent!.eventType == 'championship' ? Icons.emoji_events : _selectedEvent!.eventType == 'fun_swim' ? Icons.pool : Icons.fitness_center,
+                    color: Colors.white.withOpacity(0.3),
+                    size: 100,
                   ),
                 ),
               ),
@@ -337,7 +399,7 @@ class _BookEventScreenState extends State<BookEventScreen> {
                         color: const Color(0xFFFFF1F2),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(_selectedEvent!.type.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), letterSpacing: 2.5)),
+                      child: Text(_selectedEvent!.eventType.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFFEF4444), letterSpacing: 2.5)),
                     ),
                     const SizedBox(width: 8),
                     Container(
@@ -351,13 +413,13 @@ class _BookEventScreenState extends State<BookEventScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                Text(_selectedEvent!.name.toUpperCase(), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                Text(_selectedEvent!.eventName.toUpperCase(), style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
                 const SizedBox(height: 32),
                 Row(
                   children: [
                     Expanded(
                       child: InkWell(
-                        onTap: () => _launchUrl(_selectedEvent!.mapUrl),
+                        onTap: mapUrl.isNotEmpty ? () => _launchUrl(mapUrl) : null,
                         child: Container(
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
@@ -377,13 +439,16 @@ class _BookEventScreenState extends State<BookEventScreen> {
                                 child: const Icon(Icons.location_on, color: Color(0xFFEF4444), size: 20),
                               ),
                               const SizedBox(width: 16),
-                              const Expanded(
+                              Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('LOCATION', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
-                                    SizedBox(height: 4),
-                                    Text('Open Maps', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF2563EB), decoration: TextDecoration.underline)),
+                                    const Text('LOCATION', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      mapUrl.isNotEmpty ? 'Open Maps' : (_selectedEvent!.venueName ?? 'Online'),
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF2563EB)),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -419,7 +484,7 @@ class _BookEventScreenState extends State<BookEventScreen> {
                                 children: [
                                   const Text('STARTS', style: TextStyle(fontSize: 8, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
                                   const SizedBox(height: 4),
-                                  Text(_selectedEvent!.startTime, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
+                                  Text(startTime, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900)),
                                 ],
                               ),
                             ),
@@ -534,7 +599,7 @@ class _BookEventScreenState extends State<BookEventScreen> {
                         children: [
                           const Text('TOTAL DUE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
                           const SizedBox(height: 4),
-                          Text('\$${(_selectedEvent!.price * _ticketQty).toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
+                          Text('\$${(_selectedEvent!.registrationFee * _ticketQty).toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -1.0)),
                         ],
                       ),
                       Container(
@@ -603,7 +668,7 @@ class _BookEventScreenState extends State<BookEventScreen> {
               children: [
                 const Text('SINGLE TICKET', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.5)),
                 const SizedBox(height: 4),
-                Text('\$${_selectedEvent!.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
+                Text('\$${_selectedEvent!.registrationFee.toStringAsFixed(2)}', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, fontStyle: FontStyle.italic, letterSpacing: -1.0)),
               ],
             ),
             InkWell(
@@ -623,34 +688,4 @@ class _BookEventScreenState extends State<BookEventScreen> {
       ),
     );
   }
-}
-
-class Event {
-  final String id;
-  final String name;
-  final String type;
-  final String displayDate;
-  final String startTime;
-  final String location;
-  final double price;
-  final int seatsLeft;
-  final String image;
-  final String description;
-  final String mapUrl;
-  final String videoUrl;
-
-  Event({
-    required this.id,
-    required this.name,
-    required this.type,
-    required this.displayDate,
-    required this.startTime,
-    required this.location,
-    required this.price,
-    required this.seatsLeft,
-    required this.image,
-    required this.description,
-    required this.mapUrl,
-    required this.videoUrl,
-  });
 }

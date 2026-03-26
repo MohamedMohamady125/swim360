@@ -2,6 +2,7 @@
 Chat and messaging schemas
 """
 from typing import Optional, List
+from datetime import datetime
 from pydantic import BaseModel, UUID4, Field
 from app.schemas.common import TimestampMixin
 
@@ -28,9 +29,9 @@ class MessageResponse(BaseModel):
     attachment_url: Optional[str] = None
     attachment_type: Optional[str] = None
     is_read: bool
-    read_at: Optional[str] = None
+    read_at: Optional[datetime] = None
     is_deleted: bool
-    created_at: str
+    created_at: datetime
 
     class Config:
         from_attributes = True
@@ -41,7 +42,7 @@ class ConversationResponse(TimestampMixin):
     id: UUID4
     participant_1_id: UUID4
     participant_2_id: UUID4
-    last_message_at: Optional[str] = None
+    last_message_at: Optional[datetime] = None
     last_message_preview: Optional[str] = None
     is_active: bool
 

@@ -17,6 +17,52 @@ class AcademyService {
   }
 
   // ============================================
+  // PUBLIC LIST-ALL ENDPOINTS
+  // ============================================
+
+  Future<List<AcademyDetails>> getAllAcademies() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/academies/all'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => AcademyDetails.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to get all academies: ${response.body}');
+    }
+  }
+
+  Future<List<AcademyBranch>> getAllBranches() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/academies/branches/all'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => AcademyBranch.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to get all branches: ${response.body}');
+    }
+  }
+
+  Future<List<AcademyProgram>> getAllPrograms() async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/academies/programs/all'),
+      headers: {'Content-Type': 'application/json'},
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(response.body);
+      return data.map((json) => AcademyProgram.fromJson(json)).toList();
+    } else {
+      throw Exception('Failed to get all programs: ${response.body}');
+    }
+  }
+
+  // ============================================
   // ACADEMY DETAILS ENDPOINTS
   // ============================================
 

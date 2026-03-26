@@ -83,6 +83,23 @@ async def create_booking(
     return dict(new_booking)
 
 
+@router.get("/{booking_id}", response_model=BookingResponse)
+async def get_booking(
+    booking_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get a single booking"""
+    booking = await database.fetch_one(
+        "SELECT * FROM bookings WHERE id = :booking_id AND (swimmer_id = :user_id OR provider_id = :user_id)",
+        {"booking_id": booking_id, "user_id": current_user["id"]}
+    )
+
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found or access denied")
+
+    return dict(booking)
+
+
 @router.put("/{booking_id}", response_model=BookingResponse)
 async def update_booking(
     booking_id: str,
@@ -118,3 +135,23 @@ async def update_booking(
 
     updated_booking = await database.fetch_one(query=query, values=update_data)
     return dict(updated_booking)
+
+
+@router.delete("/{booking_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def cancel_booking(
+    booking_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Cancel a booking"""
+    existing = await database.fetch_one(
+        "SELECT * FROM bookings WHERE id = :booking_id AND (swimmer_id = :user_id OR provider_id = :user_id)",
+        {"booking_id": booking_id, "user_id": current_user["id"]}
+    )
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Booking not found or access denied")
+
+    await database.execute(
+        "UPDATE bookings SET status = 'cancelled', cancelled_at = NOW(), updated_at = NOW() WHERE id = :booking_id",
+        {"booking_id": booking_id}
+    )

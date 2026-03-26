@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/storage_service.dart';
 
 class SwimmerHomeScreen extends StatefulWidget {
   const SwimmerHomeScreen({super.key});
@@ -8,7 +9,24 @@ class SwimmerHomeScreen extends StatefulWidget {
 }
 
 class _SwimmerHomeScreenState extends State<SwimmerHomeScreen> {
+  final StorageService _storageService = StorageService();
   bool _showNotificationBadge = true;
+  String _userName = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserName();
+  }
+
+  Future<void> _loadUserName() async {
+    final user = await _storageService.getUser();
+    if (mounted) {
+      setState(() {
+        _userName = user?.fullName ?? 'Swimmer';
+      });
+    }
+  }
 
   void _clearNotifications() {
     setState(() {
@@ -62,17 +80,17 @@ class _SwimmerHomeScreenState extends State<SwimmerHomeScreen> {
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
+                    children: [
                       Text(
-                        'Hey Yehia 👋',
-                        style: TextStyle(
+                        'Hey $_userName',
+                        style: const TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFF111827),
                         ),
                       ),
-                      SizedBox(height: 2),
-                      Text(
+                      const SizedBox(height: 2),
+                      const Text(
                         'Ready to dive in?',
                         style: TextStyle(
                           fontSize: 14,

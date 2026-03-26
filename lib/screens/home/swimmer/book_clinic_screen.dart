@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/clinic_service.dart';
+import 'package:swim360/core/models/clinic_models.dart';
 
 class BookClinicScreen extends StatefulWidget {
   const BookClinicScreen({super.key});
@@ -8,6 +10,8 @@ class BookClinicScreen extends StatefulWidget {
 }
 
 class _BookClinicScreenState extends State<BookClinicScreen> {
+  final ClinicApiService _clinicService = ClinicApiService();
+
   int _currentStep = 0;
   Clinic? _selectedClinic;
   Branch? _selectedBranch;
@@ -15,8 +19,74 @@ class _BookClinicScreenState extends State<BookClinicScreen> {
   int _selectedBed = 1;
   String? _selectedSlot;
   String? _selectedService;
+  bool _isLoading = false;
 
-  final List<Clinic> _clinics = [];
+  List<Clinic> _clinics = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final results = await Future.wait([
+        _clinicService.getAllClinics(),
+        _clinicService.getAllBranches(),
+        _clinicService.getAllServices(),
+      ]);
+
+      final clinics = results[0] as List<ClinicDetails>;
+      final branches = results[1] as List<ClinicBranch>;
+      final services = results[2] as List<ClinicService>;
+
+      if (mounted) {
+        setState(() {
+          _clinics = clinics.map((c) {
+            final clinicBranches = branches
+                .where((b) => b.userId == c.userId)
+                .map((b) {
+                  final openHour = int.tryParse(b.openingHour ?? '8') ?? 8;
+                  final closeHour = int.tryParse(b.closingHour ?? '18') ?? 18;
+                  return Branch(
+                    id: b.id,
+                    name: b.locationName,
+                    beds: b.numberOfBeds,
+                    openHour: openHour,
+                    closeHour: closeHour,
+                  );
+                })
+                .toList();
+            final clinicServices = services
+                .where((s) => s.userId == c.userId)
+                .map((s) => Service(
+                      id: s.id,
+                      name: s.title,
+                      price: s.price,
+                      duration: s.duration ?? '60 min',
+                    ))
+                .toList();
+            return Clinic(
+              id: c.userId,
+              name: c.clinicName,
+              image: '',
+              branches: clinicBranches,
+              services: clinicServices,
+            );
+          }).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading clinic data: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   void _handleBack() {
     if (_currentStep > 0) {
@@ -165,11 +235,17 @@ class _BookClinicScreenState extends State<BookClinicScreen> {
   }
 
   Widget _buildClinicList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final colors = [const Color(0xFF2563EB), const Color(0xFF7C3AED), const Color(0xFF10B981), const Color(0xFFEF4444), const Color(0xFF0891B2)];
     return ListView.builder(
       padding: const EdgeInsets.all(24),
       itemCount: _clinics.length,
       itemBuilder: (context, index) {
         final clinic = _clinics[index];
+        final bgColor = colors[index % colors.length];
         return Padding(
           padding: const EdgeInsets.only(bottom: 24),
           child: Column(
@@ -209,15 +285,18 @@ class _BookClinicScreenState extends State<BookClinicScreen> {
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
                         child: Stack(
                           children: [
-                            Image.network(clinic.image, height: 192, width: double.infinity, fit: BoxFit.cover),
                             Container(
                               height: 192,
+                              width: double.infinity,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [Colors.black.withOpacity(0), Colors.black.withOpacity(0.8)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [bgColor, Colors.black.withOpacity(0.8)],
                                 ),
+                              ),
+                              child: Center(
+                                child: Icon(Icons.medical_services, color: Colors.white.withOpacity(0.3), size: 80),
                               ),
                             ),
                             Positioned(

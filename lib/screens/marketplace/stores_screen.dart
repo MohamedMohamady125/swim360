@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/store_service.dart';
+import 'package:swim360/core/models/store_models.dart' as models;
 
 class StoresScreen extends StatefulWidget {
   const StoresScreen({super.key});
@@ -8,6 +10,8 @@ class StoresScreen extends StatefulWidget {
 }
 
 class _StoresScreenState extends State<StoresScreen> {
+  final StoreApiService _storeService = StoreApiService();
+
   String _view = 'home';
   Store? _selectedStore;
   Product? _selectedProduct;
@@ -15,8 +19,79 @@ class _StoresScreenState extends State<StoresScreen> {
   String? _selectedColor;
   String? _sizeGuidePhoto;
   int _photoIndex = 0;
+  bool _isLoading = false;
 
-  final List<Store> _stores = [];
+  List<Store> _stores = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStores();
+  }
+
+  Future<void> _loadStores() async {
+    try {
+      setState(() => _isLoading = true);
+
+      final storeDetails = await _storeService.getAllStores();
+
+      // Load products for each store in parallel
+      final productFutures = storeDetails.map((s) => _storeService.getStoreProducts(s.userId));
+      final allProducts = await Future.wait(productFutures);
+
+      if (mounted) {
+        setState(() {
+          _stores = List.generate(storeDetails.length, (i) {
+            final s = storeDetails[i];
+            final storeProducts = allProducts[i];
+
+            // Group products by category
+            final Map<String, List<Product>> productsByCategory = {};
+            final Set<String> categories = {};
+            for (final p in storeProducts) {
+              final cat = p.category ?? 'Other';
+              categories.add(cat);
+              productsByCategory.putIfAbsent(cat, () => []);
+              productsByCategory[cat]!.add(Product(
+                id: p.id,
+                name: p.name,
+                price: p.price,
+                brand: p.brand ?? '',
+                description: p.description ?? '',
+                photos: p.photoUrl != null && p.photoUrl!.isNotEmpty ? [p.photoUrl!] : [],
+                availableSizes: p.availableSizes ?? [],
+                availableColors: (p.availableColors ?? []).map((c) {
+                  final hex = int.tryParse(c.replaceFirst('#', '0xFF'));
+                  return hex != null ? Color(hex) : const Color(0xFF9CA3AF);
+                }).toList(),
+              ));
+            }
+
+            return Store(
+              id: s.userId,
+              name: s.storeName,
+              photo: '',
+              banner: '',
+              location: s.description ?? 'Egypt',
+              rating: s.rating,
+              categories: categories.toList(),
+              mostSold: productsByCategory.entries
+                  .expand((e) => e.value.take(1).map((p) => p.name))
+                  .take(3)
+                  .toList(),
+              products: productsByCategory,
+            );
+          });
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading stores: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   void _showNotification(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -79,6 +154,10 @@ class _StoresScreenState extends State<StoresScreen> {
   }
 
   Widget _buildStoresList() {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -119,7 +198,20 @@ class _StoresScreenState extends State<StoresScreen> {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                  child: Image.network(store.banner, height: 160, width: double.infinity, fit: BoxFit.cover),
+                  child: store.banner.isNotEmpty
+                      ? Image.network(store.banner, height: 160, width: double.infinity, fit: BoxFit.cover)
+                      : Container(
+                          height: 160,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [const Color(0xFF2563EB), Colors.black.withOpacity(0.8)],
+                            ),
+                          ),
+                          child: Center(child: Icon(Icons.shopping_bag, color: Colors.white.withOpacity(0.3), size: 60)),
+                        ),
                 ),
                 Container(
                   height: 160,
@@ -150,7 +242,9 @@ class _StoresScreenState extends State<StoresScreen> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.network(store.photo, fit: BoxFit.cover),
+                          child: store.photo.isNotEmpty
+                              ? Image.network(store.photo, fit: BoxFit.cover)
+                              : const Icon(Icons.store, color: Color(0xFF2563EB), size: 32),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -205,7 +299,20 @@ class _StoresScreenState extends State<StoresScreen> {
         children: [
           Stack(
             children: [
-              Image.network(_selectedStore!.banner, height: 224, width: double.infinity, fit: BoxFit.cover),
+              _selectedStore!.banner.isNotEmpty
+                  ? Image.network(_selectedStore!.banner, height: 224, width: double.infinity, fit: BoxFit.cover)
+                  : Container(
+                      height: 224,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [const Color(0xFF2563EB), Colors.black.withOpacity(0.8)],
+                        ),
+                      ),
+                      child: Center(child: Icon(Icons.shopping_bag, color: Colors.white.withOpacity(0.3), size: 80)),
+                    ),
               Container(
                 height: 224,
                 decoration: BoxDecoration(
@@ -246,7 +353,9 @@ class _StoresScreenState extends State<StoresScreen> {
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(24),
-                    child: Image.network(_selectedStore!.photo, fit: BoxFit.cover),
+                    child: _selectedStore!.photo.isNotEmpty
+                        ? Image.network(_selectedStore!.photo, fit: BoxFit.cover)
+                        : const Icon(Icons.store, color: Color(0xFF2563EB), size: 48),
                   ),
                 ),
               ),
@@ -367,7 +476,17 @@ class _StoresScreenState extends State<StoresScreen> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(24),
-                child: Image.network(product.photos[0], width: 96, height: 96, fit: BoxFit.cover),
+                child: product.photos.isNotEmpty
+                    ? Image.network(product.photos[0], width: 96, height: 96, fit: BoxFit.cover)
+                    : Container(
+                        width: 96,
+                        height: 96,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                        child: const Icon(Icons.shopping_bag, color: Color(0xFF2563EB), size: 36),
+                      ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -406,13 +525,24 @@ class _StoresScreenState extends State<StoresScreen> {
             children: [
               SizedBox(
                 height: MediaQuery.of(context).size.width,
-                child: PageView.builder(
-                  itemCount: _selectedProduct!.photos.length,
-                  onPageChanged: (index) => setState(() => _photoIndex = index),
-                  itemBuilder: (context, index) {
-                    return Image.network(_selectedProduct!.photos[index], fit: BoxFit.cover);
-                  },
-                ),
+                child: _selectedProduct!.photos.isNotEmpty
+                    ? PageView.builder(
+                        itemCount: _selectedProduct!.photos.length,
+                        onPageChanged: (index) => setState(() => _photoIndex = index),
+                        itemBuilder: (context, index) {
+                          return Image.network(_selectedProduct!.photos[index], fit: BoxFit.cover);
+                        },
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [const Color(0xFF2563EB), Colors.black.withOpacity(0.7)],
+                          ),
+                        ),
+                        child: Center(child: Icon(Icons.shopping_bag, color: Colors.white.withOpacity(0.3), size: 100)),
+                      ),
               ),
               if (_selectedProduct!.photos.length > 1)
                 Positioned(

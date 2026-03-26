@@ -83,6 +83,48 @@ async def list_events(
     )
 
 
+@router.get("/my", response_model=EventListResponse)
+async def get_my_events(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: dict = Depends(require_event_organizer)
+):
+    """Get current organizer's events"""
+    count_result = await database.fetch_one(
+        "SELECT COUNT(*) as count FROM events WHERE organizer_id = :organizer_id",
+        {"organizer_id": current_user["id"]}
+    )
+
+    events = await database.fetch_all(
+        """
+        SELECT * FROM events
+        WHERE organizer_id = :organizer_id
+        ORDER BY event_date DESC
+        LIMIT :limit OFFSET :skip
+        """,
+        {"organizer_id": current_user["id"], "skip": skip, "limit": limit}
+    )
+
+    return EventListResponse(
+        total=count_result["count"],
+        events=[dict(e) for e in events]
+    )
+
+
+@router.get("/{event_id}", response_model=EventResponse)
+async def get_event(event_id: str):
+    """Get a single event by ID"""
+    event = await database.fetch_one(
+        "SELECT * FROM events WHERE id = :event_id",
+        {"event_id": event_id}
+    )
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    return dict(event)
+
+
 @router.post("", response_model=EventResponse, status_code=status.HTTP_201_CREATED)
 async def create_event(
     event: EventCreate,
@@ -110,6 +152,76 @@ async def create_event(
 
     new_event = await database.fetch_one(query=query, values=values)
     return dict(new_event)
+
+
+@router.put("/{event_id}", response_model=EventResponse)
+async def update_event(
+    event_id: str,
+    updates: EventUpdate,
+    current_user: dict = Depends(require_event_organizer)
+):
+    """Update an event (organizer only)"""
+    existing = await database.fetch_one(
+        "SELECT * FROM events WHERE id = :event_id AND organizer_id = :user_id",
+        {"event_id": event_id, "user_id": current_user["id"]}
+    )
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Event not found or access denied")
+
+    update_data = updates.dict(exclude_unset=True)
+    if not update_data:
+        return dict(existing)
+
+    set_clause = ", ".join([f"{key} = :{key}" for key in update_data.keys()])
+    query = f"UPDATE events SET {set_clause}, updated_at = NOW() WHERE id = :event_id RETURNING *"
+    update_data["event_id"] = event_id
+
+    updated_event = await database.fetch_one(query=query, values=update_data)
+    return dict(updated_event)
+
+
+@router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_event(
+    event_id: str,
+    current_user: dict = Depends(require_event_organizer)
+):
+    """Delete an event (organizer only)"""
+    result = await database.execute(
+        "DELETE FROM events WHERE id = :event_id AND organizer_id = :user_id",
+        {"event_id": event_id, "user_id": current_user["id"]}
+    )
+
+    if result == 0:
+        raise HTTPException(status_code=404, detail="Event not found or access denied")
+
+
+@router.get("/{event_id}/registrations", response_model=List[EventRegistrationResponse])
+async def get_event_registrations(
+    event_id: str,
+    current_user: dict = Depends(require_event_organizer)
+):
+    """Get registrations for an event (organizer only)"""
+    event = await database.fetch_one(
+        "SELECT * FROM events WHERE id = :event_id AND organizer_id = :user_id",
+        {"event_id": event_id, "user_id": current_user["id"]}
+    )
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found or access denied")
+
+    registrations = await database.fetch_all(
+        """
+        SELECT er.*, p.full_name, p.email, p.phone_number
+        FROM event_registrations er
+        LEFT JOIN profiles p ON er.user_id = p.id
+        WHERE er.event_id = :event_id
+        ORDER BY er.created_at DESC
+        """,
+        {"event_id": event_id}
+    )
+
+    return [dict(r) for r in registrations]
 
 
 @router.post("/{event_id}/register", response_model=EventRegistrationResponse)

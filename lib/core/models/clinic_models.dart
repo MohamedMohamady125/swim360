@@ -37,7 +37,7 @@ class ClinicDetails {
       specializations: json['specializations'] != null
           ? List<String>.from(json['specializations'])
           : null,
-      rating: (json['rating'] ?? 0).toDouble(),
+      rating: double.tryParse(json['rating']?.toString() ?? '0') ?? 0.0,
       totalReviews: json['total_reviews'] ?? 0,
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
@@ -174,7 +174,7 @@ class ClinicService {
       userId: json['user_id'],
       title: json['title'],
       category: json['category'],
-      price: (json['price'] ?? 0).toDouble(),
+      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
       duration: json['duration'],
       description: json['description'],
       videoUrl: json['video_url'],

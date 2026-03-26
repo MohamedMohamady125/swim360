@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/notification_service.dart';
 
 class SwimmerNotificationsScreen extends StatefulWidget {
   const SwimmerNotificationsScreen({super.key});
@@ -8,31 +9,120 @@ class SwimmerNotificationsScreen extends StatefulWidget {
 }
 
 class _SwimmerNotificationsScreenState extends State<SwimmerNotificationsScreen> with SingleTickerProviderStateMixin {
+  final NotificationService _notificationService = NotificationService();
   String _currentFilter = 'all';
   NotificationItem? _selectedNotification;
+  bool _isLoading = true;
 
-  final List<NotificationItem> _notifications = [];
+  List<NotificationItem> _notifications = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) return 'just now';
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    if (difference.inDays < 7) return '${difference.inDays}d ago';
+    if (difference.inDays < 30) return '${(difference.inDays / 7).floor()}w ago';
+    return '${(difference.inDays / 30).floor()}mo ago';
+  }
+
+  IconData _iconForType(String type) {
+    switch (type) {
+      case 'booking_confirmed':
+        return Icons.check_circle;
+      case 'order_placed':
+        return Icons.shopping_bag;
+      case 'new_message':
+        return Icons.chat;
+      case 'event_reminder':
+        return Icons.event;
+      default:
+        return Icons.notifications;
+    }
+  }
+
+  Color _colorForType(String type) {
+    switch (type) {
+      case 'booking_confirmed':
+        return Colors.green;
+      case 'order_placed':
+        return Colors.blue;
+      case 'new_message':
+        return Colors.purple;
+      case 'event_reminder':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _categoryForType(String type) {
+    if (type == 'order_placed') return 'order';
+    if (['booking_confirmed', 'event_reminder'].contains(type)) return 'booking';
+    return type;
+  }
+
+  Future<void> _loadNotifications() async {
+    setState(() => _isLoading = true);
+    try {
+      final result = await _notificationService.getNotifications();
+      setState(() {
+        _notifications = result.notifications.map((n) => NotificationItem(
+          id: n.id,
+          type: _categoryForType(n.type),
+          title: n.title,
+          message: n.message,
+          time: _formatTimeAgo(n.createdAt),
+          isRead: n.isRead,
+          color: _colorForType(n.type),
+          icon: _iconForType(n.type),
+        )).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   List<NotificationItem> get _filteredNotifications {
     return _notifications.where((n) {
       if (_currentFilter == 'unread') return !n.isRead;
       if (_currentFilter == 'orders') return n.type == 'order';
-      if (_currentFilter == 'bookings') return ['academy', 'clinic', 'event'].contains(n.type);
+      if (_currentFilter == 'bookings') return ['academy', 'clinic', 'event', 'booking'].contains(n.type);
       return true;
     }).toList();
   }
 
   int get _unreadCount => _notifications.where((n) => !n.isRead).length;
 
-  void _markAllRead() {
-    setState(() {
-      for (var notification in _notifications) {
-        notification.isRead = true;
-      }
-    });
+  void _markAllRead() async {
+    try {
+      await _notificationService.markAllRead();
+      await _loadNotifications();
+    } catch (e) {
+      // Fallback to local update
+      setState(() {
+        for (var notification in _notifications) {
+          notification.isRead = true;
+        }
+      });
+    }
   }
 
-  void _openNotification(NotificationItem notification) {
+  void _openNotification(NotificationItem notification) async {
+    try {
+      await _notificationService.markAsRead(notification.id);
+    } catch (_) {}
     setState(() {
       notification.isRead = true;
       _selectedNotification = notification;
@@ -172,6 +262,12 @@ class _SwimmerNotificationsScreenState extends State<SwimmerNotificationsScreen>
   }
 
   Widget _buildNotificationsList() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF2563EB)),
+      );
+    }
+
     if (_filteredNotifications.isEmpty) {
       return Center(
         child: Column(

@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:swim360/core/api/api_config.dart';
+import 'package:swim360/core/services/storage_service.dart';
 
 class CreateProgramScreen extends StatefulWidget {
   const CreateProgramScreen({super.key});
@@ -8,24 +12,111 @@ class CreateProgramScreen extends StatefulWidget {
 }
 
 class _CreateProgramScreenState extends State<CreateProgramScreen> {
+  final StorageService _storageService = StorageService();
   String _deliveryMethod = 'live';
   String _durationUnit = 'Weeks';
   String? _coverFileName;
   bool _isPublishing = false;
 
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _durationController = TextEditingController();
+  final TextEditingController _maxClientsController = TextEditingController();
+  final TextEditingController _videoUrlController = TextEditingController();
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _priceController.dispose();
+    _durationController.dispose();
+    _maxClientsController.dispose();
+    _videoUrlController.dispose();
+    super.dispose();
+  }
+
+  String _mapDeliveryToCategory(String delivery) {
+    switch (delivery) {
+      case 'live':
+        return 'adults';
+      case 'self-paced':
+        return 'beginner';
+      case 'hybrid':
+        return 'intermediate';
+      default:
+        return 'beginner';
+    }
+  }
+
   Future<void> _handleSubmit() async {
-    setState(() => _isPublishing = true);
-
-    await Future.delayed(const Duration(milliseconds: 1500));
-
-    if (mounted) {
-      setState(() => _isPublishing = false);
+    if (_titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('PROGRAM PUBLISHED!', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
-          backgroundColor: Color(0xFF10B981),
+          content: Text('PLEASE ENTER A PROGRAM TITLE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+          backgroundColor: Color(0xFFEF4444),
         ),
       );
+      return;
+    }
+
+    setState(() => _isPublishing = true);
+
+    try {
+      final token = await _storageService.getAccessToken();
+      final durationWeeks = int.tryParse(_durationController.text) ?? 12;
+      final price = double.tryParse(_priceController.text) ?? 0.0;
+
+      final body = jsonEncode({
+        'program_name': _titleController.text,
+        'category': _mapDeliveryToCategory(_deliveryMethod),
+        'description': _descriptionController.text,
+        'duration_weeks': _durationUnit == 'Weeks' ? durationWeeks : (durationWeeks * 4),
+        'sessions_per_week': 3,
+        'session_duration_minutes': 60,
+        'price': price,
+        'currency': 'EGP',
+        'cover_photo_url': _coverFileName ?? '',
+      });
+
+      final response = await http.post(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: body,
+      );
+
+      if (mounted) {
+        setState(() => _isPublishing = false);
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PROGRAM PUBLISHED!', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+          Navigator.pop(context);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('FAILED TO PUBLISH: ${response.statusCode}', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isPublishing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('ERROR: ${e.toString()}'.toUpperCase(), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+            backgroundColor: const Color(0xFFEF4444),
+          ),
+        );
+      }
     }
   }
 
@@ -112,6 +203,7 @@ class _CreateProgramScreenState extends State<CreateProgramScreen> {
                           const Text('Program Title', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
                           const SizedBox(height: 6),
                           TextField(
+                            controller: _titleController,
                             decoration: InputDecoration(
                               hintText: 'e.g. Elite Performance Coaching',
                               hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
@@ -201,6 +293,7 @@ class _CreateProgramScreenState extends State<CreateProgramScreen> {
                           const Text('Intro Video URL', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
                           const SizedBox(height: 6),
                           TextField(
+                            controller: _videoUrlController,
                             decoration: InputDecoration(
                               hintText: 'YouTube/Vimeo Link',
                               hintStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
@@ -216,6 +309,7 @@ class _CreateProgramScreenState extends State<CreateProgramScreen> {
                           const Text('Detailed Description', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
                           const SizedBox(height: 6),
                           TextField(
+                            controller: _descriptionController,
                             maxLines: 4,
                             decoration: InputDecoration(
                               hintText: 'Goals, workload, and target audience...',
@@ -262,6 +356,7 @@ class _CreateProgramScreenState extends State<CreateProgramScreen> {
                                     const Text('Price (\$)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
                                     const SizedBox(height: 6),
                                     TextField(
+                                      controller: _priceController,
                                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                       decoration: InputDecoration(
                                         hintText: '199.99',
@@ -292,6 +387,7 @@ class _CreateProgramScreenState extends State<CreateProgramScreen> {
                                         children: [
                                           Expanded(
                                             child: TextField(
+                                              controller: _durationController,
                                               keyboardType: TextInputType.number,
                                               decoration: const InputDecoration(
                                                 hintText: '12',
@@ -334,6 +430,7 @@ class _CreateProgramScreenState extends State<CreateProgramScreen> {
                                     const Text('Max Clients', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF), letterSpacing: 2.0)),
                                     const SizedBox(height: 6),
                                     TextField(
+                                      controller: _maxClientsController,
                                       keyboardType: TextInputType.number,
                                       decoration: InputDecoration(
                                         hintText: 'Unlimited',

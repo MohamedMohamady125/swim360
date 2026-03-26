@@ -65,7 +65,7 @@ class EventResponse(EventBase, TimestampMixin):
     id: UUID4
     organizer_id: UUID4
     cover_photo_url: Optional[str] = None
-    gallery_photos: List[str]
+    gallery_photos: List[str] = []
     current_participants: int
     is_active: bool
     is_featured: bool

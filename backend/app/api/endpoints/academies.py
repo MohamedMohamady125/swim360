@@ -20,6 +20,37 @@ router = APIRouter(prefix="/academies", tags=["Academies"])
 
 
 # ============================================
+# PUBLIC LIST-ALL ENDPOINTS (must be before /{id} routes)
+# ============================================
+
+@router.get("/all", response_model=List[AcademyDetails])
+async def get_all_academies():
+    """Get all academies (public)"""
+    result = await database.fetch_all(
+        "SELECT * FROM academy_details ORDER BY created_at DESC"
+    )
+    return result
+
+
+@router.get("/branches/all", response_model=List[AcademyBranch])
+async def get_all_branches():
+    """Get all academy branches (public)"""
+    result = await database.fetch_all(
+        "SELECT * FROM academy_branches ORDER BY created_at DESC"
+    )
+    return result
+
+
+@router.get("/programs/all", response_model=List[AcademyProgram])
+async def get_all_programs():
+    """Get all academy programs (public)"""
+    result = await database.fetch_all(
+        "SELECT * FROM academy_programs ORDER BY created_at DESC"
+    )
+    return result
+
+
+# ============================================
 # ACADEMY DETAILS ENDPOINTS
 # ============================================
 

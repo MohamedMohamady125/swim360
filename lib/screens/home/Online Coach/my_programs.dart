@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:swim360/core/api/api_config.dart';
+import 'package:swim360/core/services/storage_service.dart';
 
 class MyProgramsScreen extends StatefulWidget {
   const MyProgramsScreen({super.key});
@@ -8,29 +12,60 @@ class MyProgramsScreen extends StatefulWidget {
 }
 
 class _MyProgramsScreenState extends State<MyProgramsScreen> {
-  List<Program> _programs = [
-    Program(
-      id: 'prog1',
-      title: '12-Week Stroke Mastery',
-      price: 199.99,
-      duration: '12 Weeks',
-      endDate: '2026-12-31',
-      photoUrl: 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=800',
-      description: 'Comprehensive stroke mastery curriculum.',
-    ),
-    Program(
-      id: 'prog2',
-      title: 'Nutrition for Triathletes',
-      price: 49.00,
-      duration: '8 Sessions',
-      endDate: '',
-      photoUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80&w=800',
-      description: 'Fueling endurance athletes.',
-    ),
-  ];
+  final StorageService _storageService = StorageService();
+  List<Program> _programs = [];
+  bool _isLoading = true;
 
   Program? _editingProgram;
   bool _showModal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrograms();
+  }
+
+  Future<Map<String, String>> _getHeaders() async {
+    final token = await _storageService.getAccessToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  Future<void> _loadPrograms() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await _storageService.getUser();
+      final headers = await _getHeaders();
+      final uri = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs')
+          .replace(queryParameters: {'provider_id': user?.id ?? ''});
+
+      final response = await http.get(uri, headers: headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          _programs = data.map((json) => Program(
+            id: json['id'] ?? '',
+            title: json['program_name'] ?? json['title'] ?? '',
+            price: (json['price'] ?? 0).toDouble(),
+            duration: '${json['duration_weeks'] ?? 0} Weeks',
+            endDate: json['end_date'] ?? '',
+            photoUrl: json['cover_photo_url'] ?? 'https://images.unsplash.com/photo-1530549387634-e5a529577059?auto=format&fit=crop&q=80&w=800',
+            description: json['description'] ?? '',
+          )).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   void _openEditModal(Program program) {
     setState(() {
@@ -47,13 +82,80 @@ class _MyProgramsScreenState extends State<MyProgramsScreen> {
     });
   }
 
-  void _handleSave(String description, String endDate) {
-    setState(() {
-      final index = _programs.indexWhere((p) => p.id == _editingProgram!.id);
-      _programs[index].description = description;
-      _programs[index].endDate = endDate;
-      _showModal = false;
-    });
+  Future<void> _handleSave(String description, String endDate) async {
+    try {
+      final headers = await _getHeaders();
+      final body = jsonEncode({
+        'description': description,
+        'end_date': endDate.isNotEmpty ? endDate : null,
+      });
+
+      final response = await http.put(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs/${_editingProgram!.id}'),
+        headers: headers,
+        body: body,
+      );
+
+      if (response.statusCode == 200) {
+        setState(() => _showModal = false);
+        await _loadPrograms();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PROGRAM UPDATED!', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+              backgroundColor: Color(0xFF10B981),
+            ),
+          );
+        }
+      } else {
+        // Fallback to local update
+        setState(() {
+          final index = _programs.indexWhere((p) => p.id == _editingProgram!.id);
+          _programs[index].description = description;
+          _programs[index].endDate = endDate;
+          _showModal = false;
+        });
+      }
+    } catch (e) {
+      // Fallback to local update
+      setState(() {
+        final index = _programs.indexWhere((p) => p.id == _editingProgram!.id);
+        _programs[index].description = description;
+        _programs[index].endDate = endDate;
+        _showModal = false;
+      });
+    }
+  }
+
+  Future<void> _handleDelete(String programId) async {
+    try {
+      final headers = await _getHeaders();
+      final response = await http.delete(
+        Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs/$programId'),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 204) {
+        await _loadPrograms();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('PROGRAM DELETED!', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+              backgroundColor: Color(0xFFEF4444),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('FAILED TO DELETE PROGRAM', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 2.0)),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -117,65 +219,119 @@ class _MyProgramsScreenState extends State<MyProgramsScreen> {
 
                 // Program List
                 Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(24),
-                    itemCount: _programs.length,
-                    itemBuilder: (context, index) {
-                      final program = _programs[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: InkWell(
-                          onTap: () => _openEditModal(program),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(32),
-                              border: Border.all(color: const Color(0xFFF3F4F6)),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
-                            ),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(24),
-                                  child: Image.network(
-                                    program.photoUrl,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
+                  child: _isLoading
+                      ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
+                      : _programs.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.description_outlined, size: 80, color: Colors.grey.shade300),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No programs yet',
+                                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.grey.shade400),
                                   ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(program.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
-                                      const SizedBox(height: 4),
-                                      Text('\$${program.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${program.duration} ${program.endDate.isNotEmpty ? '• Ends ${program.endDate}' : '• Ongoing'}',
-                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0),
+                                ],
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(24),
+                              itemCount: _programs.length,
+                              itemBuilder: (context, index) {
+                                final program = _programs[index];
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16),
+                                  child: Dismissible(
+                                    key: Key(program.id),
+                                    direction: DismissDirection.endToStart,
+                                    background: Container(
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(right: 24),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEF4444),
+                                        borderRadius: BorderRadius.circular(32),
                                       ),
-                                    ],
+                                      child: const Icon(Icons.delete, color: Colors.white, size: 28),
+                                    ),
+                                    confirmDismiss: (direction) async {
+                                      return await showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Delete Program'),
+                                          content: const Text('Are you sure you want to delete this program?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Color(0xFFEF4444)))),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    onDismissed: (direction) => _handleDelete(program.id),
+                                    child: InkWell(
+                                      onTap: () => _openEditModal(program),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(32),
+                                          border: Border.all(color: const Color(0xFFF3F4F6)),
+                                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 2))],
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            ClipRRect(
+                                              borderRadius: BorderRadius.circular(24),
+                                              child: Image.network(
+                                                program.photoUrl,
+                                                width: 80,
+                                                height: 80,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) {
+                                                  return Container(
+                                                    width: 80,
+                                                    height: 80,
+                                                    decoration: BoxDecoration(
+                                                      color: const Color(0xFFEFF6FF),
+                                                      borderRadius: BorderRadius.circular(24),
+                                                    ),
+                                                    child: const Icon(Icons.description, color: Color(0xFF2563EB), size: 32),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(program.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+                                                  const SizedBox(height: 4),
+                                                  Text('\$${program.price.toStringAsFixed(2)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF2563EB))),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    '${program.duration} ${program.endDate.isNotEmpty ? '• Ends ${program.endDate}' : '• Ongoing'}',
+                                                    style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFF9FAFB),
+                                                borderRadius: BorderRadius.circular(12),
+                                              ),
+                                              child: const Icon(Icons.edit, color: Color(0xFF9CA3AF), size: 20),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFF9FAFB),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.edit, color: Color(0xFF9CA3AF), size: 20),
-                                ),
-                              ],
+                                );
+                              },
                             ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
                 ),
               ],
             ),

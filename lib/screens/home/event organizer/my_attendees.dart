@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/event_service.dart';
 
 class MyAttendeesScreen extends StatefulWidget {
   const MyAttendeesScreen({super.key});
@@ -9,16 +10,79 @@ class MyAttendeesScreen extends StatefulWidget {
 }
 
 class _MyAttendeesScreenState extends State<MyAttendeesScreen> {
-  final List<Event> _events = [];
+  final EventService _eventService = EventService();
+  List<Event> _events = [];
+  bool _loadingEvents = true;
+  bool _loadingAttendees = false;
 
   final Map<String, List<Attendee>> _attendees = {};
 
-  String _selectedEventId = 'e1';
+  String? _selectedEventId;
   String _searchTerm = '';
   String? _activeModal;
   Attendee? _selectedAttendee;
   String? _notification;
   String _notificationType = 'success';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchEvents();
+  }
+
+  Future<void> _fetchEvents() async {
+    try {
+      final models = await _eventService.getMyEvents();
+      if (mounted) {
+        setState(() {
+          _events = models.map((m) => Event(
+            id: m.id,
+            name: m.eventName,
+            date: '${m.eventDate.year}-${m.eventDate.month.toString().padLeft(2, '0')}-${m.eventDate.day.toString().padLeft(2, '0')}',
+          )).toList();
+          _loadingEvents = false;
+          if (_events.isNotEmpty) {
+            _selectedEventId = _events.first.id;
+            _fetchRegistrations(_events.first.id);
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingEvents = false);
+        _showNotify('Failed to load events: ${e.toString().replaceAll('Exception: ', '')}', 'error');
+      }
+    }
+  }
+
+  Future<void> _fetchRegistrations(String eventId) async {
+    if (_attendees.containsKey(eventId)) return;
+    setState(() => _loadingAttendees = true);
+    try {
+      final regs = await _eventService.getEventRegistrations(eventId);
+      if (mounted) {
+        setState(() {
+          _attendees[eventId] = regs.map((r) {
+            final name = r['full_name'] ?? r['email'] ?? 'Unknown';
+            return Attendee(
+              id: r['user_id'] ?? r['id'] ?? '',
+              name: name,
+              age: 0,
+              phone: r['phone_number'] ?? '',
+              ticket: 'Standard',
+              avatar: name.isNotEmpty ? name[0].toUpperCase() : '?',
+            );
+          }).toList();
+          _loadingAttendees = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loadingAttendees = false);
+        _showNotify('Failed to load registrations: ${e.toString().replaceAll('Exception: ', '')}', 'error');
+      }
+    }
+  }
 
   void _showNotify(String msg, [String type = 'success']) {
     setState(() {
@@ -33,12 +97,18 @@ class _MyAttendeesScreenState extends State<MyAttendeesScreen> {
   }
 
   List<Attendee> get _filteredAttendees {
+    if (_selectedEventId == null) return [];
     final roster = _attendees[_selectedEventId] ?? [];
     return roster.where((a) => a.name.toLowerCase().contains(_searchTerm.toLowerCase())).toList();
   }
 
-  Event get _selectedEvent {
-    return _events.firstWhere((e) => e.id == _selectedEventId);
+  Event? get _selectedEvent {
+    if (_selectedEventId == null || _events.isEmpty) return null;
+    try {
+      return _events.firstWhere((e) => e.id == _selectedEventId);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _launchWhatsApp(String phone) async {
@@ -142,6 +212,17 @@ class _MyAttendeesScreenState extends State<MyAttendeesScreen> {
                           ],
                         ),
                         const SizedBox(height: 8),
+                        if (_loadingEvents)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Center(child: CircularProgressIndicator(color: Color(0xFF2563EB))),
+                          )
+                        else if (_events.isEmpty)
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 16),
+                            child: Text('No events found', style: TextStyle(fontSize: 14, color: Color(0xFF9CA3AF))),
+                          )
+                        else
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           decoration: BoxDecoration(
@@ -159,10 +240,13 @@ class _MyAttendeesScreenState extends State<MyAttendeesScreen> {
                                   underline: const SizedBox(),
                                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.black),
                                   items: _events.map((e) => DropdownMenuItem(value: e.id, child: Text(e.name))).toList(),
-                                  onChanged: (value) => setState(() {
-                                    _selectedEventId = value!;
-                                    _searchTerm = '';
-                                  }),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _selectedEventId = value!;
+                                      _searchTerm = '';
+                                    });
+                                    _fetchRegistrations(value!);
+                                  },
                                 ),
                               ),
                               const Icon(Icons.arrow_drop_down, color: Color(0xFF9CA3AF)),
@@ -200,7 +284,12 @@ class _MyAttendeesScreenState extends State<MyAttendeesScreen> {
 
                   const SizedBox(height: 16),
 
-                  if (_filteredAttendees.isNotEmpty)
+                  if (_loadingAttendees)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Center(child: CircularProgressIndicator(color: Color(0xFF2563EB))),
+                    )
+                  else if (_filteredAttendees.isNotEmpty)
                     ..._filteredAttendees.map((attendee) => Padding(
                       padding: const EdgeInsets.only(bottom: 16),
                       child: InkWell(
@@ -339,7 +428,7 @@ class _MyAttendeesScreenState extends State<MyAttendeesScreen> {
 
                             Text(_selectedAttendee!.name, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
                             const SizedBox(height: 4),
-                            Text(_selectedEvent.name.toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
+                            Text((_selectedEvent?.name ?? '').toUpperCase(), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF9CA3AF), letterSpacing: 3.0)),
 
                             const SizedBox(height: 24),
 

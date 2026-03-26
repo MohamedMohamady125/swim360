@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/event_service.dart';
 
 class CreateEventScreen extends StatefulWidget {
   const CreateEventScreen({super.key});
@@ -8,6 +9,7 @@ class CreateEventScreen extends StatefulWidget {
 }
 
 class _CreateEventScreenState extends State<CreateEventScreen> {
+  final EventService _eventService = EventService();
   final List<String> _eventTypes = ["Championship", "Clinic", "Seminar", "Zoom Meeting", "Fun Swim", "Training", "Other"];
   final List<String> _audiences = ["Swimmers", "Nutritionists", "Doctors", "Parents", "Coaches", "Other"];
 
@@ -43,7 +45,17 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
     });
   }
 
-  void _handleSubmit() {
+  static const Map<String, String> _typeToBackend = {
+    'Championship': 'competition',
+    'Seminar': 'seminar',
+    'Zoom Meeting': 'webinar',
+    'Training': 'training_camp',
+    'Fun Swim': 'meet',
+    'Clinic': 'workshop',
+    'Other': 'meet',
+  };
+
+  Future<void> _handleSubmit() async {
     if (_name.isEmpty || _price.isEmpty || _locationName.isEmpty || _tickets.isEmpty) {
       _showNotify("Please fill in all required fields.", "error");
       return;
@@ -51,29 +63,34 @@ class _CreateEventScreenState extends State<CreateEventScreen> {
 
     setState(() => _loading = true);
 
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    try {
+      final eventData = <String, dynamic>{
+        'event_name': _name,
+        'event_type': _typeToBackend[_type] ?? 'meet',
+        'description': _description.isNotEmpty ? _description : _name,
+        'event_date': _date.isNotEmpty ? _date : DateTime.now().toIso8601String().split('T')[0],
+        'start_time': _time.isNotEmpty ? _time : '09:00',
+        'venue_name': _locationName,
+        'address': _locationUrl,
+        'max_participants': int.tryParse(_tickets) ?? 100,
+        'registration_fee': double.tryParse(_price) ?? 0.0,
+        'is_online': false,
+      };
+
+      await _eventService.createEvent(eventData);
+
       if (mounted) {
-        setState(() {
-          _loading = false;
-          _showNotify("Event Published Successfully!");
-          // Reset form
-          _name = '';
-          _type = 'Championship';
-          _description = '';
-          _date = '';
-          _time = '';
-          _durationValue = '';
-          _durationUnit = 'hours';
-          _tickets = '';
-          _locationName = '';
-          _locationUrl = '';
-          _price = '';
-          _ageRange = '';
-          _targetAudience = 'Swimmers';
-          _videoUrl = '';
-        });
+        _showNotify("Event Published Successfully!");
+        await Future.delayed(const Duration(seconds: 1));
+        if (mounted) Navigator.pop(context, true);
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        _showNotify("Failed to create event: ${e.toString().replaceAll('Exception: ', '')}", "error");
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

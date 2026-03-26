@@ -68,7 +68,7 @@ async def get_current_user(
         # If Supabase token verification fails, try our own token
         try:
             payload = decode_token(token)
-            user_id = payload.get("user_id")
+            user_id = payload.get("sub") or payload.get("user_id")
 
             if not user_id:
                 raise HTTPException(
