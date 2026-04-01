@@ -1,11 +1,12 @@
 /// API Configuration for Swim360 Backend
 class ApiConfig {
-  // Base URL - Change this based on your environment
-  static const String baseUrl = 'http://localhost:8000';
+  // Base URL - Production Railway deployment
+  static const String baseUrl = 'https://swim360-production.up.railway.app';
 
-  // For Android Emulator, use: 'http://10.0.2.2:8000'
-  // For iOS Simulator, use: 'http://localhost:8000'
-  // For physical device on same network, use: 'http://YOUR_COMPUTER_IP:8000'
+  // For local development, use:
+  // Android Emulator: 'http://10.0.2.2:8000'
+  // iOS Simulator: 'http://localhost:8000'
+  // Physical device on same network: 'http://YOUR_COMPUTER_IP:8000'
 
   static const String apiVersion = 'v1';
   static const String apiPrefix = '/api/$apiVersion';
