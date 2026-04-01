@@ -1,0 +1,18 @@
+# Ignore Flutter files - we only deploy the backend
+android/
+ios/
+lib/
+linux/
+macos/
+test/
+web/
+windows/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.metadata
+pubspec.yaml
+pubspec.lock
+analysis_options.yaml
+README.md
+.gitignore
