@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/academy_service.dart';
+import 'package:swim360/core/models/academy_models.dart';
 
 class MyProgramsScreen extends StatefulWidget {
   const MyProgramsScreen({super.key});
@@ -9,10 +11,56 @@ class MyProgramsScreen extends StatefulWidget {
 }
 
 class _MyProgramsScreenState extends State<MyProgramsScreen> {
+  final AcademyService _academyService = AcademyService();
   String _currentTab = 'active';
   Program? _selectedProgram;
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  final List<Program> _programs = [];
+  List<Program> _programs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrograms();
+  }
+
+  Future<void> _loadPrograms() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final enrollments = await _academyService.getMyEnrollments();
+
+      if (mounted) {
+        setState(() {
+          _programs = enrollments.map((e) => Program(
+            id: e.id,
+            type: 'Swimming',
+            name: e.name,
+            provider: 'Academy',
+            schedule: e.duration ?? 'Flexible',
+            endDate: e.updatedAt.add(Duration(days: 90)).toIso8601String().split('T')[0],
+            sessionCount: e.capacity,
+            completedSessions: e.enrolled,
+            status: 'active',
+            color: const Color(0xFF2563EB),
+            description: e.description ?? 'Swimming training program',
+          )).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load programs: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   List<Program> get _filteredPrograms => _programs.where((p) => p.status == _currentTab).toList();
 

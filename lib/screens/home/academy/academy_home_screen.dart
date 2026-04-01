@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:swim360/core/services/storage_service.dart';
+import 'package:swim360/screens/home/academy/add_program_screen.dart';
+import 'package:swim360/screens/home/academy/my_programs_screen.dart';
+import 'package:swim360/screens/home/academy/schedule_screen.dart';
+import 'package:swim360/screens/home/academy/add_branch_screen.dart';
+import 'package:swim360/screens/home/academy/branches_screen.dart';
+import 'package:swim360/screens/home/academy/coaches_screen.dart';
+import 'package:swim360/screens/home/academy/my_swimmers_screen.dart';
 
 class AcademyHomeScreen extends StatefulWidget {
   const AcademyHomeScreen({Key? key}) : super(key: key);
@@ -44,19 +51,10 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
     super.dispose();
   }
 
-  void _showAction(String name) {
-    final isError = name == 'Notifications';
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Navigating to $name...'),
-        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF2563EB),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-        margin: const EdgeInsets.symmetric(horizontal: 80, vertical: 24),
-        duration: const Duration(seconds: 3),
-      ),
+  void _navigateTo(Widget screen) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => screen),
     );
   }
 
@@ -155,7 +153,9 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
 
   Widget _buildNotificationsBanner() {
     return InkWell(
-      onTap: () => _showAction('Notifications'),
+      onTap: () {
+        // Notifications feature - can be implemented later
+      },
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
@@ -194,7 +194,7 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
 
   Widget _buildMySwimmersBanner() {
     return InkWell(
-      onTap: () => _showAction('My Swimmers'),
+      onTap: () => _navigateTo(const MySwimmersScreen()),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -249,32 +249,32 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
       _ActionItem(
         title: 'Add Program',
         icon: Icons.add_circle_outline,
-        onTap: () => _showAction('Add Program'),
+        onTap: () => _navigateTo(const AddProgramScreen()),
       ),
       _ActionItem(
         title: 'My Programs',
         icon: Icons.assignment_outlined,
-        onTap: () => _showAction('My Programs'),
+        onTap: () => _navigateTo(const MyProgramsScreen()),
       ),
       _ActionItem(
         title: 'Groups & Schedule',
         icon: Icons.calendar_today_outlined,
-        onTap: () => _showAction('Groups & Schedule'),
+        onTap: () => _navigateTo(const ScheduleScreen()),
       ),
       _ActionItem(
         title: 'Add Branch',
         icon: Icons.location_on_outlined,
-        onTap: () => _showAction('Add Branch'),
+        onTap: () => _navigateTo(const AddBranchScreen()),
       ),
       _ActionItem(
         title: 'My Branches',
         icon: Icons.business_outlined,
-        onTap: () => _showAction('My Branches'),
+        onTap: () => _navigateTo(const BranchesScreen()),
       ),
       _ActionItem(
         title: 'Coaches',
         icon: Icons.person_outline,
-        onTap: () => _showAction('Coaches'),
+        onTap: () => _navigateTo(const CoachesScreen()),
       ),
     ];
 
@@ -341,21 +341,27 @@ class _AcademyHomeScreenState extends State<AcademyHomeScreen>
         description: 'Set up a new swim meet or clinic.',
         color: const Color(0xFFFEE2E2),
         textColor: const Color(0xFFB91C1C),
-        onTap: () => _showAction('Create Event'),
+        onTap: () {
+          // Can be implemented later
+        },
       ),
       _ToolItem(
         title: 'Create Offer',
         description: 'Post a discount code or package deal.',
         color: const Color(0xFFFEF3C7),
         textColor: const Color(0xFFA16207),
-        onTap: () => _showAction('Create Offer'),
+        onTap: () {
+          // Can be implemented later
+        },
       ),
       _ToolItem(
         title: 'Advertise',
         description: 'Promote your brand to our users.',
         color: const Color(0xFFDCFCE7),
         textColor: const Color(0xFF15803D),
-        onTap: () => _showAction('Advertise'),
+        onTap: () {
+          // Can be implemented later
+        },
       ),
     ];
 

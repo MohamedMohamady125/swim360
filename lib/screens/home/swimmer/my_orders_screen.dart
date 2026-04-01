@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/store_service.dart';
+import 'package:swim360/core/models/store_models.dart';
 
 class MyOrdersScreen extends StatefulWidget {
   const MyOrdersScreen({super.key});
@@ -8,9 +10,55 @@ class MyOrdersScreen extends StatefulWidget {
 }
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
+  final StoreApiService _storeService = StoreApiService();
   String _currentTab = 'ongoing';
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  final List<Order> _orders = [];
+  List<Order> _orders = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
+  }
+
+  Future<void> _loadOrders() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final storeOrders = await _storeService.getMyOrders();
+
+      if (mounted) {
+        setState(() {
+          _orders = storeOrders.map((o) => Order(
+            id: o.id.toString(),
+            date: o.createdAt.toIso8601String().split('T')[0],
+            estimated: o.deliveryDate?.toIso8601String().split('T')[0] ?? 'TBD',
+            total: o.totalAmount,
+            items: o.items?.map((item) => OrderItem(
+              name: item.productName,
+              image: '', // Add image URL if available in backend
+              price: item.unitPrice,
+            )).toList() ?? [],
+            status: o.status,
+            isOngoing: o.status == 'pending' || o.status == 'processing',
+          )).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load orders: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   List<Order> get _filteredOrders {
     return _orders.where((o) => o.isOngoing == (_currentTab == 'ongoing')).toList();

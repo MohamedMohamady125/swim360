@@ -2,6 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:swim360/core/services/storage_service.dart';
+import 'package:swim360/screens/home/main_navigation.dart';
+import 'package:swim360/screens/home/academy/academy_navigation.dart';
+import 'package:swim360/screens/home/clinic/clinic_navigation.dart';
+import 'package:swim360/screens/home/stores/store_navigation.dart';
+import 'package:swim360/screens/home/Online Coach/online_coach_navigation.dart';
+import 'package:swim360/screens/home/event organizer/event_organizer_navigation.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -31,8 +37,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   final List<UserRole> _roles = [
     UserRole(id: 'swimmer', name: 'Swimmer', description: 'Manage your training', icon: Icons.person, color: const Color(0xFF2563EB)),
-    UserRole(id: 'coach', name: 'Coach', description: 'Train and mentor', icon: Icons.military_tech, color: const Color(0xFF7C3AED)),
-    UserRole(id: 'parent', name: 'Parent', description: 'Oversee progress', icon: Icons.shield, color: const Color(0xFF10B981)),
     UserRole(id: 'online-coach', name: 'Online Coach', description: 'Remote digital programs', icon: Icons.laptop, color: const Color(0xFF0891B2)),
     UserRole(id: 'clinic', name: 'Clinic', description: 'Recovery & medical', icon: Icons.medical_services, color: const Color(0xFFEF4444)),
     UserRole(id: 'academy', name: 'Academy', description: 'Structured swim levels', icon: Icons.school, color: const Color(0xFFF59E0B)),
@@ -130,12 +134,79 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _lockRole() {
+  Future<void> _lockRole() async {
     setState(() {
       _isRoleLocked = true;
     });
     Navigator.pop(context); // Close confirmation dialog
     _showToast('Account Mode Set');
+
+    // Save role preference to storage
+    if (_selectedRole != null) {
+      await _storageService.saveString('selected_role', _selectedRole!.id);
+
+      // Navigate to the appropriate home screen based on role
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      if (!mounted) return;
+
+      // Pop back to previous screen and let the app handle navigation
+      Navigator.of(context).popUntil((route) => route.isFirst);
+
+      // Navigate to role-specific screen
+      _navigateToRoleHome(_selectedRole!.id);
+    }
+  }
+
+  void _navigateToRoleHome(String roleId) {
+    Widget homeScreen;
+
+    switch (roleId) {
+      case 'swimmer':
+        homeScreen = const MainNavigation(); // Default is swimmer
+        break;
+      case 'academy':
+        homeScreen = _getAcademyHome();
+        break;
+      case 'clinic':
+        homeScreen = _getClinicHome();
+        break;
+      case 'shop':
+        homeScreen = _getStoreHome();
+        break;
+      case 'online-coach':
+        homeScreen = _getOnlineCoachHome();
+        break;
+      case 'organizer':
+        homeScreen = _getEventOrganizerHome();
+        break;
+      default:
+        homeScreen = const MainNavigation();
+    }
+
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (context) => homeScreen),
+    );
+  }
+
+  Widget _getAcademyHome() {
+    return const AcademyNavigation();
+  }
+
+  Widget _getClinicHome() {
+    return const ClinicNavigation();
+  }
+
+  Widget _getStoreHome() {
+    return const StoreNavigation();
+  }
+
+  Widget _getOnlineCoachHome() {
+    return const OnlineCoachNavigation();
+  }
+
+  Widget _getEventOrganizerHome() {
+    return const EventOrganizerNavigation();
   }
 
   void _showLogoutConfirmation() {

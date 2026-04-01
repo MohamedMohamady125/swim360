@@ -125,4 +125,14 @@ class StorageService {
       await _secureStorage.deleteAll();
     }
   }
+
+  /// Save a string preference
+  Future<void> saveString(String key, String value) async {
+    await _write(key, value);
+  }
+
+  /// Get a string preference
+  Future<String?> getString(String key) async {
+    return await _read(key);
+  }
 }

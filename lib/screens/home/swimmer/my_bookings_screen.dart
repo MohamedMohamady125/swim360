@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/clinic_service.dart';
+import 'package:swim360/core/models/clinic_models.dart';
 
 class MyBookingsScreen extends StatefulWidget {
   const MyBookingsScreen({super.key});
@@ -9,10 +11,53 @@ class MyBookingsScreen extends StatefulWidget {
 }
 
 class _MyBookingsScreenState extends State<MyBookingsScreen> {
+  final ClinicApiService _clinicService = ClinicApiService();
   String _currentTab = 'upcoming';
   String _currentFilter = 'all';
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  final List<Booking> _bookings = [];
+  List<Booking> _bookings = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings();
+  }
+
+  Future<void> _loadBookings() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final clinicBookings = await _clinicService.getMyBookings();
+
+      if (mounted) {
+        setState(() {
+          _bookings = clinicBookings.map((b) => Booking(
+            id: b.id,
+            type: 'clinic',
+            name: 'Clinic Appointment',
+            date: b.bookingDate.toIso8601String().split('T')[0],
+            time: b.bookingTime,
+            location: 'Clinic Branch',
+            status: b.status,
+            provider: 'Clinic',
+          )).toList();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load bookings: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   List<Booking> get _filteredBookings {
     return _bookings.where((b) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/clinic_service.dart';
 
 class AddBranchScreen extends StatefulWidget {
   const AddBranchScreen({super.key});
@@ -8,6 +9,7 @@ class AddBranchScreen extends StatefulWidget {
 }
 
 class _AddBranchScreenState extends State<AddBranchScreen> {
+  final ClinicApiService _clinicService = ClinicApiService();
   final List<String> _governorates = ["Cairo", "Giza", "Alexandria", "Dakahlia", "Red Sea", "Beheira", "Fayoum", "Gharbia", "Ismailia", "Luxor", "Matrouh", "Minya", "Monufia", "New Valley", "North Sinai", "Port Said", "Qalyubia", "Qena", "Sharqia", "Sohag", "South Sinai", "Suez"];
 
   final List<String> _clinicServices = [
@@ -60,7 +62,7 @@ class _AddBranchScreenState extends State<AddBranchScreen> {
     });
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (_city.isEmpty || _locationName.isEmpty || _numberOfBeds.isEmpty || _selectedServices.isEmpty) {
       _showNotification("Please fill in all required fields and services", "error");
       return;
@@ -77,12 +79,36 @@ class _AddBranchScreenState extends State<AddBranchScreen> {
 
     setState(() => _isLoading = true);
 
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    try {
+      final branchData = {
+        'location_name': _locationName,
+        'governorate': _governorate,
+        'city': _city,
+        'location_url': _locationUrl,
+        'number_of_beds': int.tryParse(_numberOfBeds) ?? 1,
+        'opening_hour': _openingHour,
+        'opening_minute': _openingMinute,
+        'opening_ampm': _openingAmpm,
+        'closing_hour': _closingHour,
+        'closing_minute': _closingMinute,
+        'closing_ampm': _closingAmpm,
+        'services_offered': _selectedServices,
+      };
+
+      await _clinicService.createBranch(branchData);
+
       if (mounted) {
         setState(() => _isLoading = false);
         _showNotification("Clinic Branch Registered Successfully!");
+        await Future.delayed(const Duration(seconds: 2));
+        if (mounted) Navigator.pop(context, true);
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showNotification("Failed: ${e.toString()}", "error");
+      }
+    }
   }
 
   @override

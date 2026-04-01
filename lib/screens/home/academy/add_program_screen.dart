@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/academy_service.dart';
 
 class AddProgramScreen extends StatefulWidget {
   const AddProgramScreen({Key? key}) : super(key: key);
@@ -15,6 +16,7 @@ class _AddProgramScreenState extends State<AddProgramScreen> {
   final _capacityController = TextEditingController();
   final _durationController = TextEditingController();
   final _sessionsController = TextEditingController();
+  final AcademyService _academyService = AcademyService();
 
   final Map<String, DaySchedule> _daySchedules = {
     'Sat': DaySchedule('Saturday'),
@@ -87,11 +89,47 @@ class _AddProgramScreenState extends State<AddProgramScreen> {
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isSubmitting = true);
-      await Future.delayed(const Duration(seconds: 1));
-      if (mounted) {
-        _showSnackbar('Program Registered Successfully!');
-        await Future.delayed(const Duration(milliseconds: 1500));
-        if (mounted) Navigator.of(context).pop();
+
+      try {
+        // Build schedule map from day schedules
+        final Map<String, List<Map<String, String>>> schedule = {};
+        _daySchedules.forEach((key, daySchedule) {
+          if (daySchedule.isActive && daySchedule.timeSlots.isNotEmpty) {
+            schedule[daySchedule.fullName.toLowerCase()] = daySchedule.timeSlots
+                .where((slot) => slot.startTime != null && slot.endTime != null)
+                .map((slot) => {
+                      'start_time': '${slot.startTime!.hour.toString().padLeft(2, '0')}:${slot.startTime!.minute.toString().padLeft(2, '0')}',
+                      'end_time': '${slot.endTime!.hour.toString().padLeft(2, '0')}:${slot.endTime!.minute.toString().padLeft(2, '0')}',
+                    })
+                .toList();
+          }
+        });
+
+        // Create program data
+        final programData = {
+          'title': _titleController.text.trim(),
+          'description': _descriptionController.text.trim(),
+          'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+          'max_students': int.tryParse(_capacityController.text.trim()) ?? 0,
+          'duration': _durationController.text.trim(),
+          'total_sessions': int.tryParse(_sessionsController.text.trim()) ?? 0,
+          'schedule': schedule,
+          'category': 'swimming', // You can add category selection if needed
+        };
+
+        // Call API
+        await _academyService.createProgram(programData);
+
+        if (mounted) {
+          _showSnackbar('Program Registered Successfully!');
+          await Future.delayed(const Duration(milliseconds: 1500));
+          if (mounted) Navigator.of(context).pop(true); // Return true to indicate success
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          _showSnackbar('Failed to create program: ${e.toString()}');
+        }
       }
     }
   }

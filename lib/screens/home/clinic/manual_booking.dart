@@ -115,12 +115,19 @@ class _ManualBookingScreenState extends State<ManualBookingScreen> {
     });
   }
 
-  Branch get _selectedBranch {
-    return _branches.firstWhere((b) => b.id == _selectedBranchId);
+  Branch? get _selectedBranch {
+    if (_branches.isEmpty) return null;
+    try {
+      return _branches.firstWhere((b) => b.id == _selectedBranchId);
+    } catch (e) {
+      return _branches.isNotEmpty ? _branches.first : null;
+    }
   }
 
   List<String> get _bedIds {
-    return List.generate(_selectedBranch.beds, (i) => 'Bed-${i + 1}');
+    final branch = _selectedBranch;
+    if (branch == null) return [];
+    return List.generate(branch.beds, (i) => 'Bed-${i + 1}');
   }
 
   List<String> get _timeSlots {
@@ -315,11 +322,11 @@ class _ManualBookingScreenState extends State<ManualBookingScreen> {
                                 children: [
                                   const Icon(Icons.access_time, size: 12, color: Color(0xFF9CA3AF)),
                                   const SizedBox(width: 4),
-                                  Text('${_selectedBranch.open}:00 - ${_selectedBranch.close}:00', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                                  Text('${_selectedBranch?.open ?? 8}:00 - ${_selectedBranch?.close ?? 20}:00', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
                                   const SizedBox(width: 16),
                                   const Icon(Icons.layers, size: 12, color: Color(0xFF9CA3AF)),
                                   const SizedBox(width: 4),
-                                  Text('${_selectedBranch.beds} Beds Total', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
+                                  Text('${_selectedBranch?.beds ?? 0} Beds Total', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: Color(0xFF9CA3AF))),
                                 ],
                               ),
                             ],
@@ -523,7 +530,7 @@ class _ManualBookingScreenState extends State<ManualBookingScreen> {
               child: Column(
                 children: _timeSlots.map((time) {
                   final hour = int.parse(time.split(':')[0]);
-                  final isOutside = hour < _selectedBranch.open || hour >= _selectedBranch.close;
+                  final isOutside = hour < (_selectedBranch?.open ?? 8) || hour >= (_selectedBranch?.close ?? 20);
 
                   return Container(
                     decoration: const BoxDecoration(

@@ -2,7 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:swim360/screens/auth/signup_screen.dart';
 import 'package:swim360/screens/home/main_navigation.dart';
 import 'package:swim360/core/services/auth_service.dart';
+import 'package:swim360/core/services/storage_service.dart';
 import 'package:swim360/core/models/auth/login_request.dart';
+import 'package:swim360/screens/home/academy/academy_navigation.dart';
+import 'package:swim360/screens/home/clinic/clinic_navigation.dart';
+import 'package:swim360/screens/home/stores/store_navigation.dart';
+import 'package:swim360/screens/home/Online Coach/online_coach_navigation.dart';
+import 'package:swim360/screens/home/event organizer/event_organizer_navigation.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -17,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen>
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _authService = AuthService();
+  final _storageService = StorageService();
   late AnimationController _animationController;
   final List<Animation<double>> _animations = [];
   bool _isLoading = false;
@@ -99,9 +106,36 @@ class _LoginScreenState extends State<LoginScreen>
         if (response.success) {
           _showToast('Login successful!');
 
+          // Check for saved role and navigate to appropriate screen
+          final savedRole = await _storageService.getString('selected_role');
+
+          if (!mounted) return;
+
+          Widget homeScreen;
+
+          switch (savedRole) {
+            case 'academy':
+              homeScreen = const AcademyNavigation();
+              break;
+            case 'clinic':
+              homeScreen = const ClinicNavigation();
+              break;
+            case 'shop':
+              homeScreen = const StoreNavigation();
+              break;
+            case 'online-coach':
+              homeScreen = const OnlineCoachNavigation();
+              break;
+            case 'organizer':
+              homeScreen = const EventOrganizerNavigation();
+              break;
+            default:
+              homeScreen = const MainNavigation(); // Default to swimmer
+          }
+
           // Navigate to main app
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const MainNavigation()),
+            MaterialPageRoute(builder: (context) => homeScreen),
           );
         } else {
           _showToast(response.error ?? 'Login failed. Please try again.');

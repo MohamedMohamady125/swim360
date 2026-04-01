@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/academy_service.dart';
 
 class AddBranchScreen extends StatefulWidget {
   const AddBranchScreen({Key? key}) : super(key: key);
@@ -12,6 +13,7 @@ class _AddBranchScreenState extends State<AddBranchScreen> {
   final _nameController = TextEditingController();
   final _cityController = TextEditingController();
   final _locationUrlController = TextEditingController();
+  final AcademyService _academyService = AcademyService();
 
   TimeOfDay? _openingTime;
   TimeOfDay? _closingTime;
@@ -87,13 +89,57 @@ class _AddBranchScreenState extends State<AddBranchScreen> {
         _isSubmitting = true;
       });
 
-      await Future.delayed(const Duration(seconds: 1));
+      try {
+        // Create branch data
+        final branchData = {
+          'location_name': _nameController.text.trim(),
+          'city': _cityController.text.trim(),
+          'location_url': _locationUrlController.text.trim(),
+          'operating_days': _selectedDays
+              .asMap()
+              .entries
+              .where((e) => e.value)
+              .map((e) => _dayNames[e.key])
+              .toList(),
+        };
 
-      if (mounted) {
-        _showSnackbar('Registry Updated Successfully!');
-        await Future.delayed(const Duration(milliseconds: 1500));
+        if (_openingTime != null) {
+          branchData['opening_hour'] = _openingTime!.hour.toString();
+          branchData['opening_minute'] = _openingTime!.minute.toString();
+          branchData['opening_ampm'] = _openingTime!.period == DayPeriod.am ? 'AM' : 'PM';
+        }
+        if (_closingTime != null) {
+          branchData['closing_hour'] = _closingTime!.hour.toString();
+          branchData['closing_minute'] = _closingTime!.minute.toString();
+          branchData['closing_ampm'] = _closingTime!.period == DayPeriod.am ? 'AM' : 'PM';
+        }
+
+        // Create branch first
+        final branch = await _academyService.createBranch(branchData);
+
+        // Then create pools for this branch
+        for (final pool in _poolEntries) {
+          if (pool.nameController.text.isNotEmpty) {
+            await _academyService.createPool({
+              'branch_id': branch.id,
+              'pool_name': pool.nameController.text.trim(),
+              'lanes': int.tryParse(pool.lanesController.text.trim()) ?? 0,
+              'max_capacity': int.tryParse(pool.capacityController.text.trim()) ?? 0,
+            });
+          }
+        }
+
         if (mounted) {
-          Navigator.of(context).pop();
+          _showSnackbar('Branch & Pools Created Successfully!');
+          await Future.delayed(const Duration(milliseconds: 1500));
+          if (mounted) {
+            Navigator.of(context).pop(true);
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isSubmitting = false);
+          _showSnackbar('Failed: ${e.toString()}');
         }
       }
     }

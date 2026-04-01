@@ -620,8 +620,25 @@ class _BookEventScreenState extends State<BookEventScreen> {
           ),
           const SizedBox(height: 32),
           InkWell(
-            onTap: () {
-              // Navigate to checkout
+            onTap: () async {
+              // Register for event
+              try {
+                setState(() => _isLoading = true);
+                await _eventService.registerForEvent(_selectedEvent!.id);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Successfully registered for event!'), backgroundColor: Color(0xFF10B981)),
+                  );
+                  Navigator.pop(context, true);
+                }
+              } catch (e) {
+                if (mounted) {
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Failed: ${e.toString()}'), backgroundColor: const Color(0xFFEF4444)),
+                  );
+                }
+              }
             },
             child: Container(
               width: double.infinity,

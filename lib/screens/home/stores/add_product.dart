@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:swim360/core/services/store_service.dart';
 
 class AddProductScreen extends StatefulWidget {
   const AddProductScreen({super.key});
@@ -8,6 +9,7 @@ class AddProductScreen extends StatefulWidget {
 }
 
 class _AddProductScreenState extends State<AddProductScreen> {
+  final StoreApiService _storeService = StoreApiService();
   final List<String> brands = ["Speedo", "Arena", "TYR", "Finis", "Mizuno", "MP Michael Phelps", "Zoggs", "Aqua Sphere", "Other"];
   final List<String> categories = ["Cap", "Goggles", "Suit", "Kickboard", "Paddles", "Parachute", "Fins", "Snorkels", "Deflectors", "Apparel", "Other"];
   final List<String> sizes = ["XS", "S", "M", "L", "XL", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40", "ONE SIZE", "OTHER"];
@@ -34,6 +36,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   List<String> selectedColors = [];
   List<String> selectedBranches = [];
   bool isSizeDropdownOpen = false;
+  bool _isSubmitting = false;
 
   void _toggleSize(String size) {
     final isOneSize = size == 'ONE SIZE' || size == 'OTHER';
@@ -51,16 +54,43 @@ class _AddProductScreenState extends State<AddProductScreen> {
     });
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (name.isEmpty || price.isEmpty || selectedSizes.isEmpty || selectedColors.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please complete all required fields and variants'), backgroundColor: Color(0xFFEF4444)),
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Product Published Successfully!'), backgroundColor: Color(0xFF1F2937)),
-    );
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final productData = {
+        'name': name,
+        'brand': brand,
+        'category': category,
+        'price': double.tryParse(price) ?? 0.0,
+        'description': description,
+        'available_sizes': selectedSizes,
+        'available_colors': selectedColors,
+      };
+
+      await _storeService.createProduct(productData);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Product Published Successfully!'), backgroundColor: Color(0xFF1F2937)),
+        );
+        Navigator.of(context).pop(true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed: ${e.toString()}'), backgroundColor: const Color(0xFFEF4444)),
+        );
+      }
+    }
   }
 
   @override

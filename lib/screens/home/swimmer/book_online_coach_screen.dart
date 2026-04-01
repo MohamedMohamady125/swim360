@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:swim360/core/services/academy_service.dart';
+import 'package:swim360/core/models/academy_models.dart';
 
 class BookOnlineCoachScreen extends StatefulWidget {
   const BookOnlineCoachScreen({super.key});
@@ -9,11 +11,80 @@ class BookOnlineCoachScreen extends StatefulWidget {
 }
 
 class _BookOnlineCoachScreenState extends State<BookOnlineCoachScreen> {
+  final AcademyService _academyService = AcademyService();
   int _currentStep = 0;
   Coach? _selectedCoach;
   Program? _selectedProgram;
+  bool _isLoading = true;
+  String? _errorMessage;
 
-  final List<Coach> _coaches = [];
+  List<Coach> _coaches = [];
+  List<AcademyProgram> _allPrograms = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final programs = await _academyService.getAllPrograms();
+
+      if (mounted) {
+        setState(() {
+          _allPrograms = programs;
+
+          // Group programs by provider (coach)
+          final Map<String, List<AcademyProgram>> programsByCoach = {};
+          for (var program in programs) {
+            final coachId = program.userId;
+            if (!programsByCoach.containsKey(coachId)) {
+              programsByCoach[coachId] = [];
+            }
+            programsByCoach[coachId]!.add(program);
+          }
+
+          // Create coach objects
+          _coaches = programsByCoach.entries.map((entry) {
+            return Coach(
+              id: entry.key,
+              name: 'Online Coach', // You may want to fetch coach details
+              specialty: 'Swimming Coach',
+              rating: 4.8,
+              reviews: 120,
+              image: 'https://via.placeholder.com/200',
+              bio: 'Professional swimming coach with years of experience',
+              programs: entry.value.map((p) => Program(
+                id: p.id,
+                title: p.name,
+                duration: p.duration ?? 'Flexible',
+                price: p.price,
+                goal: 'Improve swimming technique',
+                videoUrl: '',
+                image: 'https://via.placeholder.com/400x200',
+                description: p.description ?? 'Professional swimming training program',
+              )).toList(),
+            );
+          }).toList();
+
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load coaches: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   Future<void> _launchUrl(String urlString) async {
     final url = Uri.parse(urlString);

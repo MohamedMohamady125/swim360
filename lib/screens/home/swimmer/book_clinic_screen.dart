@@ -672,11 +672,36 @@ class _BookClinicScreenState extends State<BookClinicScreen> {
               ],
             ),
             InkWell(
-              onTap: () {
+              onTap: () async {
                 if (_currentStep == 2) {
                   setState(() => _currentStep = 3);
                 } else {
-                  // Navigate to checkout
+                  // Create booking
+                  try {
+                    setState(() => _isLoading = true);
+                    final bookingData = {
+                      'branch_id': _selectedBranch!.id,
+                      'service_id': _selectedService,
+                      'client_name': 'User', // You may want to get this from user profile
+                      'booking_date': DateTime.now().toIso8601String().split('T')[0],
+                      'booking_time': _selectedSlot ?? '09:00',
+                      'bed_number': 'Bed-$_selectedBed',
+                    };
+                    await _clinicService.createBooking(bookingData);
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Booking created successfully!'), backgroundColor: Color(0xFF10B981)),
+                      );
+                      Navigator.pop(context, true);
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      setState(() => _isLoading = false);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Failed: ${e.toString()}'), backgroundColor: const Color(0xFFEF4444)),
+                      );
+                    }
+                  }
                 }
               },
               child: Container(

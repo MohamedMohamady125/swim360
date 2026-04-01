@@ -513,4 +513,37 @@ class AcademyService {
       throw Exception('Failed to delete coach: ${response.body}');
     }
   }
+
+  // ========================================
+  // PROGRAM ENROLLMENTS
+  // ========================================
+
+  Future<void> enrollInProgram(String programId, Map<String, dynamic> enrollmentData) async {
+    final headers = await _getHeaders();
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs/$programId/enroll'),
+      headers: headers,
+      body: json.encode(enrollmentData),
+    );
+
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      final body = json.decode(response.body);
+      throw Exception(body['detail'] ?? 'Failed to enroll in program');
+    }
+  }
+
+  Future<List<AcademyProgram>> getMyEnrollments() async {
+    final headers = await _getHeaders();
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}${ApiConfig.apiPrefix}/programs/enrollments/my'),
+      headers: headers,
+    );
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = json.decode(response.body);
+      return data.map((json) => AcademyProgram.fromJson(json['program'] ?? json)).toList();
+    } else {
+      throw Exception('Failed to get enrollments: ${response.body}');
+    }
+  }
 }
